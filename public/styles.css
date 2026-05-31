@@ -662,3 +662,136 @@ tbody tr:hover td { background: #fafbff; }
   .summary-label { font-size: 10px; }
   .summary-amount { font-size: 14px; }
 }
+
+
+/* ---- Scroll to Top Button ---- */
+.scroll-top-btn {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  left: auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  cursor: pointer;
+  z-index: 800;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, transform 0.2s;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0;
+}
+.scroll-top-btn.visible {
+  display: flex;
+}
+.scroll-top-btn:hover {
+  transform: scale(1.1);
+  background: var(--primary-hover);
+}
+
+/* ---- Quick Add FAB ---- */
+.quick-add-fab {
+  display: none;
+  position: fixed;
+  bottom: 80px;
+  right: 24px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 28px;
+  font-weight: 300;
+  border: none;
+  box-shadow: 0 4px 16px rgba(233, 69, 96, 0.4);
+  cursor: pointer;
+  z-index: 800;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  min-width: 52px;
+  padding: 0;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.quick-add-fab:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(233, 69, 96, 0.5);
+}
+
+.quick-add-content {
+  max-width: 360px;
+}
+.quick-add-grid {
+  grid-template-columns: 1fr;
+}
+
+/* ---- Repeat Last Month Button ---- */
+.summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.summary-header h2 { margin-bottom: 0; }
+.repeat-btn {
+  font-size: 11px;
+  padding: 6px 12px;
+  min-height: 32px;
+  white-space: nowrap;
+}
+
+/* ---- Swipe to Delete (mobile) ---- */
+.swipe-container {
+  position: relative;
+  overflow: hidden;
+}
+.swipe-container .swipe-bg {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 80px;
+  background: #ef4444;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.swipe-container.swiping .swipe-bg {
+  opacity: 1;
+}
+.swipe-container .swipe-content {
+  position: relative;
+  background: var(--surface);
+  transition: transform 0.2s ease;
+  z-index: 1;
+}
+.swipe-container.swiping .swipe-content {
+  transition: none;
+}
+
+/* Show FAB only on mobile */
+@media (max-width: 640px) {
+  .quick-add-fab { display: flex; }
+  .scroll-top-btn { bottom: 20px; right: 16px; }
+  .quick-add-fab { bottom: 72px; right: 16px; }
+}
+
+[data-theme="dark"] .scroll-top-btn { background: var(--primary); }
+[data-theme="dark"] .scroll-top-btn:hover { background: var(--primary-hover); }
+[data-theme="dark"] .quick-add-fab { background: var(--accent); }
+[data-theme="dark"] .swipe-container .swipe-content { background: var(--surface); }

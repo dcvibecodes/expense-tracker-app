@@ -265,10 +265,24 @@ app.get("/api/expenses", (req, res) => {
 });
 
 app.get("/api/details", (req, res) => {
-  const sql = "SELECT DISTINCT details FROM expenses ORDER BY details ASC";
+  // Order by most recent first so the latest casing/form of a phrase wins
+  const sql = "SELECT details FROM expenses ORDER BY date DESC, id DESC";
   db.all(sql, (err, rows) => {
     if (err) return res.status(500).json({ error: "Failed to fetch details." });
-    return res.json(rows.map((r) => r.details));
+    // Split comma-separated entries into individual phrases
+    // Deduplicate case-insensitively, keeping the most recent form (first seen)
+    const seen = new Map(); // lowercase -> original form
+    for (const row of rows) {
+      const parts = row.details.split(",");
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (!trimmed) continue;
+        const key = trimmed.toLowerCase();
+        if (!seen.has(key)) seen.set(key, trimmed);
+      }
+    }
+    // Return in recency order (Map preserves insertion order = most recent first)
+    return res.json([...seen.values()]);
   });
 });
 
@@ -297,6 +311,66 @@ app.put("/api/expenses/:id", (req, res) => {
       if (this.changes === 0) return res.status(404).json({ error: "Expense not found." });
       return res.json({ success: true });
     });
+  });
+});
+
+// --- Recurring: Copy last month's expenses ---
+app.get("/api/expenses/last-month", (req, res) => {
+  const now = new Date();
+  let month = now.getMonth(); // 0-indexed, so this is "last month"
+  let year = now.getFullYear();
+  if (month === 0) { month = 12; year--; }
+  const ym = `${year}-${String(month).padStart(2, "0")}`;
+  const sql = "SELECT date, details, category, amount FROM expenses WHERE substr(date, 1, 7) = ? ORDER BY date ASC, id ASC";
+  db.all(sql, [ym], (err, rows) => {
+    if (err) return res.status(500).json({ error: "Failed to fetch last month expenses." });
+    return res.json(rows);
+  });
+});
+
+app.post("/api/expenses/repeat-last-month", (req, res) => {
+  const now = new Date();
+  const curMonth = now.getMonth() + 1;
+  const curYear = now.getFullYear();
+  let lastMonth = curMonth - 1;
+  let lastYear = curYear;
+  if (lastMonth === 0) { lastMonth = 12; lastYear--; }
+  const ym = `${lastYear}-${String(lastMonth).padStart(2, "0")}`;
+
+  // Check if current month already has entries (prevent double-repeat)
+  const curYm = `${curYear}-${String(curMonth).padStart(2, "0")}`;
+  db.get("SELECT COUNT(*) AS cnt FROM expenses WHERE substr(date, 1, 7) = ?", [curYm], (cntErr, cntRow) => {
+    if (cntErr) return res.status(500).json({ error: "DB error." });
+    if (cntRow.cnt > 0) return res.status(400).json({ error: "Current month already has expenses. Use this only on an empty month." });
+
+    const sql = "SELECT date, details, category, amount FROM expenses WHERE substr(date, 1, 7) = ? ORDER BY date ASC, id ASC";
+    db.all(sql, [ym], (err, rows) => {
+      if (err) return res.status(500).json({ error: "Failed to fetch last month." });
+      if (rows.length === 0) return res.status(400).json({ error: "No expenses found in last month." });
+
+      const stmt = db.prepare("INSERT INTO expenses (date, details, category, amount) VALUES (?, ?, ?, ?)");
+      let inserted = 0;
+      for (const row of rows) {
+        // Shift date to current month, clamping day to valid range
+        const day = parseInt(row.date.split("-")[2], 10);
+        const maxDay = new Date(curYear, curMonth, 0).getDate();
+        const newDay = Math.min(day, maxDay);
+        const newDate = `${curYear}-${String(curMonth).padStart(2, "0")}-${String(newDay).padStart(2, "0")}`;
+        stmt.run(newDate, row.details, row.category, row.amount);
+        inserted++;
+      }
+      stmt.finalize();
+      return res.json({ success: true, inserted });
+    });
+  });
+});
+
+app.get("/api/expenses/:id", (req, res) => {
+  const { id } = req.params;
+  db.get("SELECT id, date, details, category, amount FROM expenses WHERE id = ?", [id], (err, row) => {
+    if (err) return res.status(500).json({ error: "Failed to fetch expense." });
+    if (!row) return res.status(404).json({ error: "Expense not found." });
+    return res.json(row);
   });
 });
 

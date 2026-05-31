@@ -15,6 +15,7 @@
         <h2>Expense Tracker Locked</h2>
         <p class="lock-subtitle">Enter your 6-digit PIN to access the app.</p>
         <input type="password" id="lock-pin-input" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="••••••" />
+        <label class="checkbox-label"><input type="checkbox" id="lock-remember" /> Remember for today</label>
         <button id="lock-unlock-btn" type="button">Unlock</button>
         <p id="lock-error" class="lock-error"></p>
         <p id="lock-recovery-link" class="lock-recovery-link"><a href="#" id="show-recovery-btn">Forgot PIN? Use recovery code</a></p>
@@ -142,6 +143,7 @@
           <div class="report-toolbar">
             <button id="report-expand-all" type="button" class="report-toolbar-btn">Expand All</button>
             <button id="report-collapse-all" type="button" class="report-toolbar-btn">Collapse All</button>
+            <button id="report-default-view" type="button" class="report-toolbar-btn">Default View</button>
           </div>
           <div class="report-table-wrap" id="report-table-wrap"></div>
         </section>
@@ -246,6 +248,9 @@
         </form>
       </div>
     </div>
+
+    <!-- Scroll to Top Button -->
+    <button id="scroll-top-btn" class="scroll-top-btn" title="Scroll to top" aria-label="Scroll to top">↑</button>
 
     <script src="/app.js"></script>
   </body>

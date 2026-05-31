@@ -146,6 +146,7 @@ async function fetchExpenses() {
 function renderRows(rows) {
   currentRows = rows;
   rowsEl.innerHTML = "";
+  const fragment = document.createDocumentFragment();
   for (const row of rows) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -157,8 +158,9 @@ function renderRows(rows) {
         <button class="btn-edit" data-id="${row.id}" title="Edit">✏️</button>
         <button class="btn-delete" data-id="${row.id}" title="Delete">🗑️</button>
       </td>`;
-    rowsEl.appendChild(tr);
+    fragment.appendChild(tr);
   }
+  rowsEl.appendChild(fragment);
 }
 
 function renderSummary(pieData) {
@@ -180,34 +182,50 @@ function renderSummary(pieData) {
 }
 
 async function refreshAll() {
-  const rows = await fetchExpenses();
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const year = now.getFullYear();
+
+  // Fetch expenses and summary in parallel
+  const [rows, summaryRes] = await Promise.all([
+    fetchExpenses(),
+    fetch(`/api/charts?month=${month}&year=${year}`).then(r => r.ok ? r.json() : null).catch(() => null)
+  ]);
+
   renderRows(rows);
-  // Update summary for current month
-  try {
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
-    const res = await fetch(`/api/charts?month=${month}&year=${year}`);
-    if (res.ok) {
-      const data = await res.json();
-      const mn = MONTH_NAMES[month - 1];
-      summaryHeading.textContent = `${mn} ${year} Summary`;
-      renderSummary(data.pie);
-    }
-  } catch {}
+
+  if (summaryRes) {
+    const mn = MONTH_NAMES[month - 1];
+    summaryHeading.textContent = `${mn} ${year} Summary`;
+    renderSummary(summaryRes.pie);
+  }
 }
 
 async function populateDetailsList() {
   try { const res = await fetch("/api/details"); if (res.ok) allDetails = await res.json(); } catch {}
 }
 
+let detailsDebounce = null;
 function filterDetailsList() {
   const q = detailsInput.value.trim().toLowerCase();
   detailsList.innerHTML = "";
-  if (!q) return;
-  for (const d of allDetails) { if (d.toLowerCase().includes(q)) { const o = document.createElement("option"); o.value = d; detailsList.appendChild(o); } }
+  if (!q || q.length < 2) return; // Skip filtering on single char
+  const fragment = document.createDocumentFragment();
+  let count = 0;
+  for (const d of allDetails) {
+    if (d.toLowerCase().includes(q)) {
+      const o = document.createElement("option");
+      o.value = d;
+      fragment.appendChild(o);
+      if (++count >= 8) break; // Cap suggestions for mobile perf
+    }
+  }
+  detailsList.appendChild(fragment);
 }
-detailsInput.addEventListener("input", filterDetailsList);
+detailsInput.addEventListener("input", () => {
+  clearTimeout(detailsDebounce);
+  detailsDebounce = setTimeout(filterDetailsList, 250);
+});
 
 // Edit modal
 function openEditModal(row) {
@@ -287,7 +305,11 @@ expenseForm.addEventListener("submit", async e => {
 startDateInput.addEventListener("change", refreshAll);
 endDateInput.addEventListener("change", refreshAll);
 categoryFilterInput.addEventListener("change", refreshAll);
-searchInput.addEventListener("input", refreshAll);
+let searchDebounce = null;
+searchInput.addEventListener("input", () => {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(refreshAll, 300);
+});
 clearRangeButton.addEventListener("click", () => { categoryFilterInput.value = "all"; searchInput.value = ""; setDateRangeToCurrentMonth(); refreshAll(); });
 
 document.addEventListener("keydown", e => { if (e.key === "Escape") { closeEditModal(); batchModal.classList.remove("open"); } });
@@ -471,12 +493,10 @@ reportWrap.addEventListener("click", async e => {
   const editBtn = e.target.closest(".rpt-edit-btn");
   if (editBtn) {
     const id = parseInt(editBtn.dataset.id, 10);
-    // Fetch the expense to get full data
-    const res = await fetch(`/api/expenses?search=`);
+    const res = await fetch(`/api/expenses/${id}`);
     if (res.ok) {
-      const all = await res.json();
-      const row = all.find(r => r.id === id);
-      if (row) openEditModal(row);
+      const row = await res.json();
+      openEditModal(row);
     }
     return;
   }
@@ -516,6 +536,35 @@ document.getElementById("report-collapse-all").addEventListener("click", () => {
   reportWrap.querySelectorAll(".rpt-children").forEach(el => el.classList.add("collapsed"));
   reportWrap.querySelectorAll(".rpt-chevron").forEach(el => el.classList.remove("expanded"));
   reportWrap.querySelectorAll(".rpt-preview").forEach(el => el.style.display = "inline");
+});
+
+document.getElementById("report-default-view").addEventListener("click", () => {
+  // Collapse everything first
+  reportWrap.querySelectorAll(".rpt-children").forEach(el => el.classList.add("collapsed"));
+  reportWrap.querySelectorAll(".rpt-chevron").forEach(el => el.classList.remove("expanded"));
+  reportWrap.querySelectorAll(".rpt-preview").forEach(el => el.style.display = "inline");
+
+  // Expand year-level and month-level (but keep days collapsed)
+  reportWrap.querySelectorAll(".rpt-year[data-toggle]").forEach(yearRow => {
+    const targetId = yearRow.dataset.toggle;
+    const children = document.getElementById(targetId);
+    if (children) {
+      children.classList.remove("collapsed");
+      const chevron = yearRow.querySelector(".rpt-chevron");
+      if (chevron) chevron.classList.add("expanded");
+    }
+  });
+  reportWrap.querySelectorAll(".rpt-month[data-toggle]").forEach(monthRow => {
+    const targetId = monthRow.dataset.toggle;
+    const children = document.getElementById(targetId);
+    if (children) {
+      children.classList.remove("collapsed");
+      const chevron = monthRow.querySelector(".rpt-chevron");
+      if (chevron) chevron.classList.add("expanded");
+      const preview = monthRow.querySelector(".rpt-preview");
+      if (preview) preview.style.display = "none";
+    }
+  });
 });
 
 document.getElementById("report-apply").addEventListener("click", loadReports);
@@ -859,7 +908,7 @@ document.getElementById("settings-lock-disable").addEventListener("click", async
   const msg = document.getElementById("settings-disable-message");
   const res = await fetch("/api/lock/disable", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
   const data = await res.json();
-  if (data.success) { msg.textContent = "Lock disabled."; msg.className = "settings-msg success"; document.getElementById("settings-disable-pin").value = ""; loadLockSettings(); }
+  if (data.success) { localStorage.removeItem("lock-remembered"); msg.textContent = "Lock disabled."; msg.className = "settings-msg success"; document.getElementById("settings-disable-pin").value = ""; loadLockSettings(); }
   else { msg.textContent = data.error || "Incorrect PIN"; msg.className = "settings-msg error"; }
 });
 
@@ -882,8 +931,16 @@ const lockOverlay = document.getElementById("lock-overlay");
 document.getElementById("lock-unlock-btn").addEventListener("click", async () => {
   const pin = document.getElementById("lock-pin-input").value;
   const err = document.getElementById("lock-error");
+  const remember = document.getElementById("lock-remember").checked;
   const res = await fetch("/api/lock/unlock", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
-  if (res.ok) { lockOverlay.style.display = "none"; initApp(); }
+  if (res.ok) {
+    if (remember) {
+      // Store today's date so we skip the lock for the rest of the day
+      localStorage.setItem("lock-remembered", new Date().toISOString().slice(0, 10));
+    }
+    lockOverlay.style.display = "none";
+    initApp();
+  }
   else { err.textContent = "Incorrect PIN."; err.style.display = "block"; }
 });
 
@@ -908,6 +965,25 @@ document.getElementById("lock-recovery-input").addEventListener("keydown", e => 
   if (e.key === "Enter") { e.preventDefault(); document.getElementById("lock-recovery-submit").click(); }
 });
 
+// ===== SCROLL TO TOP BUTTON =====
+const scrollTopBtn = document.getElementById("scroll-top-btn");
+window.addEventListener("scroll", () => {
+  if (window.scrollY > 100) {
+    scrollTopBtn.classList.add("visible");
+  } else {
+    scrollTopBtn.classList.remove("visible");
+  }
+}, { passive: true });
+scrollTopBtn.addEventListener("click", () => {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  // Fallback: hide after animation completes in case scroll event doesn't fire at 0
+  setTimeout(() => {
+    if (window.scrollY <= 100) scrollTopBtn.classList.remove("visible");
+  }, 600);
+});
+
+// ===== SWIPE TO DELETE removed =====
+
 // ===== APP INIT =====
 async function initApp() {
   dateInput.value = todayStr();
@@ -924,7 +1000,18 @@ async function checkLockAndInit() {
     const res = await fetch("/api/lock/status");
     const { locked } = await res.json();
     if (locked) {
-      lockOverlay.style.display = "flex";
+      // Check if user chose "remember for today"
+      const remembered = localStorage.getItem("lock-remembered");
+      const today = new Date().toISOString().slice(0, 10);
+      if (remembered === today) {
+        // Already authenticated today, skip lock
+        lockOverlay.style.display = "none";
+        initApp();
+      } else {
+        // Clear stale remembered value (from a previous day)
+        if (remembered) localStorage.removeItem("lock-remembered");
+        lockOverlay.style.display = "flex";
+      }
     } else {
       lockOverlay.style.display = "none";
       initApp();

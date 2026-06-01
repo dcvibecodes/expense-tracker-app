@@ -400,6 +400,63 @@ app.patch("/api/expenses/batch", (req, res) => {
   });
 });
 
+// --- Batch Category Reassignment ---
+app.patch("/api/expenses/batch-category", (req, res) => {
+  const { oldCategory, newCategory } = req.body;
+  if (typeof oldCategory !== "string" || !oldCategory.trim()) {
+    return res.status(400).json({ error: "oldCategory is required." });
+  }
+  if (typeof newCategory !== "string" || !newCategory.trim()) {
+    return res.status(400).json({ error: "newCategory is required." });
+  }
+
+  isValidCategory(newCategory.trim(), (valid) => {
+    if (!valid) return res.status(400).json({ error: "Target category does not exist." });
+    const sql = "UPDATE expenses SET category = ? WHERE category = ?";
+    db.run(sql, [newCategory.trim(), oldCategory.trim()], function(err) {
+      if (err) return res.status(500).json({ error: "Failed to batch reassign." });
+      return res.json({ updated: this.changes });
+    });
+  });
+});
+
+// --- Copy Expense to Date(s) ---
+app.post("/api/expenses/copy", (req, res) => {
+  const { id, dates } = req.body;
+  if (!id) return res.status(400).json({ error: "Expense id is required." });
+  if (!Array.isArray(dates) || dates.length === 0) return res.status(400).json({ error: "At least one target date is required." });
+  if (dates.length > 365) return res.status(400).json({ error: "Cannot copy to more than 365 dates at once." });
+
+  for (const d of dates) {
+    if (!isValidDate(d)) return res.status(400).json({ error: `Invalid date: ${d}` });
+  }
+
+  db.get("SELECT date, details, category, amount FROM expenses WHERE id = ?", [id], (err, row) => {
+    if (err) return res.status(500).json({ error: "DB error." });
+    if (!row) return res.status(404).json({ error: "Expense not found." });
+
+    const stmt = db.prepare("INSERT INTO expenses (date, details, category, amount) VALUES (?, ?, ?, ?)");
+    let inserted = 0;
+    for (const d of dates) {
+      stmt.run(d, row.details, row.category, row.amount);
+      inserted++;
+    }
+    stmt.finalize();
+    return res.json({ success: true, inserted });
+  });
+});
+
+// --- Duplicate Check ---
+app.post("/api/expenses/check-duplicate", (req, res) => {
+  const { date, details, amount } = req.body;
+  if (!date || !details) return res.json({ duplicate: false });
+  const sql = "SELECT COUNT(*) AS cnt FROM expenses WHERE date = ? AND lower(details) = ? AND amount = ?";
+  db.get(sql, [date, details.trim().toLowerCase(), Number(amount)], (err, row) => {
+    if (err) return res.json({ duplicate: false });
+    return res.json({ duplicate: row.cnt > 0 });
+  });
+});
+
 app.get("/api/charts", (req, res) => {
   const month = Number(req.query.month);
   const year = Number(req.query.year);
@@ -505,11 +562,17 @@ app.get("/api/reports", (req, res) => {
     }
 
     const result = [];
-    for (const [yr, months] of Object.entries(yearMap)) {
+    const sortedYears = Object.keys(yearMap).sort();
+    for (const yr of sortedYears) {
+      const months = yearMap[yr];
       const yearObj = { year: yr, total: 0, months: [] };
-      for (const [mo, days] of Object.entries(months)) {
+      const sortedMonths = Object.keys(months).sort();
+      for (const mo of sortedMonths) {
+        const days = months[mo];
         const monthObj = { month: mo, total: 0, days: [] };
-        for (const [dy, expenses] of Object.entries(days)) {
+        const sortedDays = Object.keys(days).sort();
+        for (const dy of sortedDays) {
+          const expenses = days[dy];
           const dayTotal = expenses.reduce((s, e) => s + e.amount, 0);
           monthObj.days.push({ day: dy, total: dayTotal, expenses });
           monthObj.total += dayTotal;

@@ -2,20 +2,31 @@
 
 A personal expense tracking app built with **Node.js**, **Express**, and **SQLite**. Deploy it on a VPS or run locally — your data stays on your server.
 
-**Version 2.1**
+**Version 2.2**
 
 ## Features
 
 ### ➕ Add Expenses
 Quickly add expenses with date, details, category, and amount. Success confirmation shown after each entry. Supports backdating — pick any past date and the entry sits in its correct chronological position.
 
+- **Duplicate detection** — If you try to add an expense with the same date, details, and amount as an existing entry, the app warns you and asks for confirmation before proceeding.
+- **Double-click prevention** — The Add button disables while the request is in flight, preventing accidental duplicate submissions on slow networks.
+
+### 📋 Copy Expenses
+Copy any expense to one or more dates — ideal for recurring monthly expenses.
+- Click the 📋 icon on any expense row (tracker or reports)
+- Pick a single date or a date range
+- The expense is duplicated to every date in the range
+- Example: Copy your rent entry from June 1st to July 1st, Aug 1st, Sep 1st, etc.
+
 ### 📊 Reports & Charts
 - **2 Pie Charts** — Category breakdown for the selected month and the previous month, side by side
 - **Bar Chart** — Yearly overview with monthly totals (double-width for better readability)
 - **Drill-down Report Table** — Year → Month → Day → Individual expenses, fully expandable/collapsible
-- **Edit & Delete from Reports** — Edit or delete any expense across any time period directly from the report view
+- **Copy, Edit & Delete from Reports** — Copy, edit, or delete any expense across any time period directly from the report view
 - **Category Filter** — Filter reports by category alongside year, month, and date range selectors
 - **Default View** — Reset button to restore the default hierarchy (year/month expanded, days collapsed)
+- **Auto-refresh** — Switching to the Reports tab automatically loads the latest data
 
 ### 📋 Monthly Summary
 Shows a **Total** plus a breakdown by all configured categories for the current month.
@@ -26,6 +37,7 @@ Shows a **Total** plus a breakdown by all configured categories for the current 
 - **Rename** categories inline — propagates to all historical expenses in the database
 - **Change color** — click the color dot to pick a new one
 - **Delete** categories (with warning about historical impact)
+- **Batch Category Reassignment** — Move all expenses from one category to another before deleting
 
 ### 🌙 Dark Mode
 Toggle between light and dark themes via the header icon. Preference saved in localStorage.
@@ -48,6 +60,7 @@ Filter the expense table by:
 - **Date range** — Start and End date
 - **Category** — Any configured category or All
 - **Search** — Text search across expense details
+- **Collapsible** — Filters are hidden by default behind a toggle button so the table is immediately visible
 
 ### ✨ Autocomplete Details
 Start typing in the Details field and it suggests previously used entries.
@@ -55,8 +68,9 @@ Start typing in the Details field and it suggests previously used entries.
 - **Recency-based** — most recently used phrases appear first
 - **Debounced** — waits 250ms after typing stops, shows max 8 suggestions (optimized for mobile)
 
-### 🔄 Batch Rename
-Rename all entries with the same detail string in one go.
+### 🔄 Batch Operations
+- **Batch Rename** — Rename all entries with the same detail string in one go (suggestions capped at 8, same as tracker)
+- **Batch Category Reassignment** — Move all expenses from one category to another (useful before deleting a category)
 
 ### 📱 Mobile-Responsive Design
 Fully responsive from desktop down to 400px screens:
@@ -66,6 +80,7 @@ Fully responsive from desktop down to 400px screens:
 - **Stacked form fields** — Single column on phones
 - **Charts stack vertically** on small screens
 - **Scroll-to-top button** — Appears on scroll, disappears at top
+- **No iOS zoom on focus** — Input font-size set to 16px to prevent Safari auto-zoom
 
 ## Getting Started
 
@@ -93,9 +108,13 @@ The app will be available at [http://localhost:3000](http://localhost:3000).
 
 The database file is created automatically at `data/expenses.db` on first run.
 
-### Upgrading from v2.0
+### Upgrading from v2.1
 
 Deploy the updated files (`server.js`, `public/app.js`, `public/styles.css`, `public/index.html`, `package.json`, `README.md`) and restart the server. No database changes — fully backward compatible.
+
+### Upgrading from v2.0
+
+Deploy the updated files and restart the server. No database changes — fully backward compatible.
 
 ### Upgrading from v1
 
@@ -142,9 +161,12 @@ expense-tracker-app/
 | GET | `/api/expenses` | List expenses (with filters) |
 | GET | `/api/expenses/:id` | Get single expense |
 | POST | `/api/expenses` | Add expense |
+| POST | `/api/expenses/copy` | Copy expense to date(s) |
+| POST | `/api/expenses/check-duplicate` | Check for duplicate entry |
 | PUT | `/api/expenses/:id` | Update expense |
 | DELETE | `/api/expenses/:id` | Delete expense |
 | PATCH | `/api/expenses/batch` | Batch rename details |
+| PATCH | `/api/expenses/batch-category` | Batch reassign category |
 | GET | `/api/categories` | List categories |
 | POST | `/api/categories` | Add category |
 | PUT | `/api/categories/:id` | Update category (rename/recolor) |
@@ -158,3 +180,28 @@ expense-tracker-app/
 | POST | `/api/lock/unlock` | Unlock with PIN |
 | POST | `/api/lock/disable` | Disable lock |
 | POST | `/api/lock/recovery` | Unlock with recovery code |
+
+## Changelog
+
+### v2.2 (June 2026)
+- **Copy expense** — Copy any expense to one or more dates (recurring expense support)
+- **Batch category reassignment** — Move all expenses between categories
+- **Duplicate detection** — Warns before adding identical entries
+- **Double-click prevention** — Add button disables during submission
+- **Collapsible filters** — Filters hidden by default, table immediately visible
+- **Reports auto-refresh** — No manual refresh needed after adding expenses
+- **Batch rename suggestions capped** — Now shows max 8 like the tracker field
+- **Reports sorting fixed** — Months and days now sort correctly in all cases
+- **iOS zoom fix** — Input font-size bumped to 16px to prevent Safari auto-zoom
+
+### v2.1 (May 2026)
+- Pie charts, bar chart, drill-down report table
+- Category filter on reports
+- Expand All / Collapse All / Default View toolbar
+- CSV export with date range and "All Years" option
+- Mobile card-style table, scroll-to-top button
+
+### v2.0 (May 2026)
+- Configurable categories (up to 15) with color palette
+- Batch rename, dark mode, app lock with recovery
+- Autocomplete with smart splitting and recency ordering

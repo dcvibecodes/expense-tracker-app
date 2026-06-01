@@ -60,7 +60,7 @@
               <select id="category" required></select>
             </label>
             <label>Amount <input type="number" id="amount" step="0.01" required /></label>
-            <button type="submit" class="add-btn">+ Add</button>
+            <button type="submit" class="add-btn" id="add-btn">+ Add</button>
           </form>
           <p id="add-expense-msg" class="form-msg"></p>
         </section>
@@ -72,18 +72,22 @@
 
         <section class="card">
           <h2>Expenses</h2>
-          <div class="filters">
-            <label>Start Date <input type="date" id="start-date" /></label>
-            <label>End Date <input type="date" id="end-date" /></label>
-            <label>Category
-              <select id="category-filter">
-                <option value="all">All</option>
-              </select>
-            </label>
-            <label>Search <input type="text" id="search" placeholder="Search" /></label>
-            <div class="buttons">
-              <button id="clear-range" type="button">Reset</button>
-              <button id="batch-edit-btn" type="button" class="batch-btn">Batch Rename</button>
+          <button id="filters-toggle" type="button" class="filters-toggle-btn" aria-expanded="false">🔍 Filters & Batch Actions</button>
+          <div id="filters-content" class="filters-collapsible" style="display:none;">
+            <div class="filters">
+              <label>Start Date <input type="date" id="start-date" /></label>
+              <label>End Date <input type="date" id="end-date" /></label>
+              <label>Category
+                <select id="category-filter">
+                  <option value="all">All</option>
+                </select>
+              </label>
+              <label>Search <input type="text" id="search" placeholder="Search" /></label>
+              <div class="buttons">
+                <button id="clear-range" type="button">Reset</button>
+                <button id="batch-edit-btn" type="button" class="batch-btn">Batch Rename</button>
+                <button id="batch-cat-btn" type="button" class="batch-btn">Batch Category</button>
+              </div>
             </div>
           </div>
           <div class="table-wrap">
@@ -244,6 +248,43 @@
           <div class="modal-buttons">
             <button type="submit" class="save-btn">Rename All</button>
             <button type="button" id="batch-cancel" class="cancel-btn">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Batch Category Reassignment Modal -->
+    <div id="batch-cat-modal" class="modal-overlay" role="dialog">
+      <div class="modal-content">
+        <h2>Batch Category Reassignment</h2>
+        <p class="batch-desc">Move all expenses from one category to another. Useful before deleting a category.</p>
+        <form id="batch-cat-form" class="grid batch-grid">
+          <label>From Category
+            <select id="batch-cat-old" required></select>
+          </label>
+          <label>To Category
+            <select id="batch-cat-new" required></select>
+          </label>
+          <div class="modal-buttons">
+            <button type="submit" class="save-btn">Reassign All</button>
+            <button type="button" id="batch-cat-cancel" class="cancel-btn">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Copy Expense Modal -->
+    <div id="copy-modal" class="modal-overlay" role="dialog">
+      <div class="modal-content">
+        <h2>Copy Expense</h2>
+        <p class="batch-desc">Copy this expense to one or more dates. Select a date range for recurring entries.</p>
+        <p id="copy-info" style="font-weight:600; margin-bottom:12px;"></p>
+        <form id="copy-form" class="grid batch-grid">
+          <label>Start Date <input type="date" id="copy-date-start" required /></label>
+          <label>End Date (optional — for range) <input type="date" id="copy-date-end" /></label>
+          <div class="modal-buttons">
+            <button type="submit" class="save-btn">Copy</button>
+            <button type="button" id="copy-cancel" class="cancel-btn">Cancel</button>
           </div>
         </form>
       </div>

@@ -79,6 +79,10 @@ tabBtns.forEach(btn => {
     tabContents.forEach(c => c.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+    // Auto-refresh reports when switching to reports tab
+    if (btn.dataset.tab === "reports") {
+      loadReports();
+    }
   });
 });
 
@@ -119,6 +123,17 @@ let pieCharts = [null, null];
 let barChart;
 let allDetails = [];
 
+// ===== COLLAPSIBLE FILTERS =====
+const filtersToggle = document.getElementById("filters-toggle");
+const filtersContent = document.getElementById("filters-content");
+
+filtersToggle.addEventListener("click", () => {
+  const isExpanded = filtersContent.style.display !== "none";
+  filtersContent.style.display = isExpanded ? "none" : "block";
+  filtersToggle.setAttribute("aria-expanded", String(!isExpanded));
+  filtersToggle.textContent = isExpanded ? "🔍 Filters & Batch Actions" : "🔍 Hide Filters";
+});
+
 function setDateRangeToCurrentMonth() {
   const now = new Date();
   const month = now.getMonth() + 1, year = now.getFullYear();
@@ -155,6 +170,7 @@ function renderRows(rows) {
       <td data-label="Category"><span class="cat-badge" style="background:${getCategoryColor(row.category)}20;color:${getCategoryColor(row.category)}">${formatCategory(row.category)}</span></td>
       <td data-label="Amount">${formatAmount(row.amount)}</td>
       <td class="actions-cell" data-label="">
+        <button class="btn-copy" data-id="${row.id}" title="Copy to date">📋</button>
         <button class="btn-edit" data-id="${row.id}" title="Edit">✏️</button>
         <button class="btn-delete" data-id="${row.id}" title="Delete">🗑️</button>
       </td>`;
@@ -209,7 +225,7 @@ let detailsDebounce = null;
 function filterDetailsList() {
   const q = detailsInput.value.trim().toLowerCase();
   detailsList.innerHTML = "";
-  if (!q || q.length < 2) return; // Skip filtering on single char
+  if (!q || q.length < 2) return;
   const fragment = document.createDocumentFragment();
   let count = 0;
   for (const d of allDetails) {
@@ -217,7 +233,7 @@ function filterDetailsList() {
       const o = document.createElement("option");
       o.value = d;
       fragment.appendChild(o);
-      if (++count >= 8) break; // Cap suggestions for mobile perf
+      if (++count >= 8) break;
     }
   }
   detailsList.appendChild(fragment);
@@ -236,11 +252,75 @@ function openEditModal(row) {
 }
 function closeEditModal() { editModal.classList.remove("open"); }
 
+// ===== COPY MODAL =====
+const copyModal = document.getElementById("copy-modal");
+const copyForm = document.getElementById("copy-form");
+const copyInfo = document.getElementById("copy-info");
+const copyDateStart = document.getElementById("copy-date-start");
+const copyDateEnd = document.getElementById("copy-date-end");
+const copyCancel = document.getElementById("copy-cancel");
+let copyExpenseId = null;
+
+function openCopyModal(row) {
+  copyExpenseId = row.id;
+  copyInfo.textContent = `${row.details} — ${formatAmount(row.amount)}`;
+  copyDateStart.value = "";
+  copyDateEnd.value = "";
+  copyModal.classList.add("open");
+  copyDateStart.focus();
+}
+function closeCopyModal() { copyModal.classList.remove("open"); copyExpenseId = null; }
+
+copyCancel.addEventListener("click", closeCopyModal);
+copyModal.addEventListener("click", e => { if (e.target === copyModal) closeCopyModal(); });
+
+copyForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!copyExpenseId) return;
+  const startDate = copyDateStart.value;
+  const endDate = copyDateEnd.value;
+  if (!startDate) { alert("Please select at least a start date."); return; }
+
+  // Generate array of dates from start to end (or just start if no end)
+  const dates = [];
+  const start = new Date(startDate + "T00:00:00");
+  const end = endDate ? new Date(endDate + "T00:00:00") : start;
+  if (end < start) { alert("End date must be on or after start date."); return; }
+
+  const diffDays = Math.round((end - start) / (1000 * 60 * 60 * 24));
+  if (diffDays > 365) { alert("Cannot copy to more than 365 days at once."); return; }
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    dates.push(localDateStr(d));
+  }
+
+  if (!confirm(`Copy this expense to ${dates.length} date${dates.length > 1 ? "s" : ""}?`)) return;
+
+  const res = await fetch("/api/expenses/copy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: copyExpenseId, dates })
+  });
+  if (res.ok) {
+    const r = await res.json();
+    closeCopyModal();
+    await refreshAll();
+    await loadReports();
+    populateDetailsList();
+    alert(`Copied to ${r.inserted} date${r.inserted > 1 ? "s" : ""}.`);
+  } else {
+    const err = await res.json();
+    alert(err.error || "Failed to copy expense.");
+  }
+});
+
+// Tracker table click handlers
 rowsEl.addEventListener("click", async e => {
   const btn = e.target.closest("button"); if (!btn) return;
   const id = parseInt(btn.dataset.id, 10);
   const row = currentRows.find(r => r.id === id); if (!row) return;
   if (btn.classList.contains("btn-edit")) { openEditModal(row); }
+  else if (btn.classList.contains("btn-copy")) { openCopyModal(row); }
   else if (btn.classList.contains("btn-delete")) {
     if (!confirm(`Delete this expense?\n\n${formatDate(row.date)} — ${row.details} — ${formatAmount(row.amount)}`)) return;
     const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
@@ -264,9 +344,31 @@ const batchOld = document.getElementById("batch-old");
 const batchNew = document.getElementById("batch-new");
 const batchList = document.getElementById("batch-list");
 
+// Batch rename datalist filtering (cap at 8 like tracker)
+let batchDebounce = null;
+function filterBatchList() {
+  const q = batchOld.value.trim().toLowerCase();
+  batchList.innerHTML = "";
+  if (!q || q.length < 2) return;
+  const fragment = document.createDocumentFragment();
+  let count = 0;
+  for (const d of allDetails) {
+    if (d.toLowerCase().includes(q)) {
+      const o = document.createElement("option");
+      o.value = d;
+      fragment.appendChild(o);
+      if (++count >= 8) break;
+    }
+  }
+  batchList.appendChild(fragment);
+}
+batchOld.addEventListener("input", () => {
+  clearTimeout(batchDebounce);
+  batchDebounce = setTimeout(filterBatchList, 250);
+});
+
 document.getElementById("batch-edit-btn").addEventListener("click", () => {
   batchList.innerHTML = "";
-  for (const d of allDetails) { const o = document.createElement("option"); o.value = d; batchList.appendChild(o); }
   batchOld.value = ""; batchNew.value = "";
   batchModal.classList.add("open"); batchOld.focus();
 });
@@ -279,26 +381,96 @@ batchForm.addEventListener("submit", async e => {
   if (!oldVal || !newVal) return;
   if (!confirm(`Rename all "${oldVal}" entries to "${newVal}"?`)) return;
   const res = await fetch("/api/expenses/batch", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oldDetails: oldVal, newDetails: newVal }) });
-  if (res.ok) { const r = await res.json(); batchModal.classList.remove("open"); await refreshAll(); populateDetailsList(); alert(`Renamed ${r.updated} entr${r.updated===1?"y":"ies"}.`); }
+  if (res.ok) { const r = await res.json(); batchModal.classList.remove("open"); await refreshAll(); await loadReports(); populateDetailsList(); alert(`Renamed ${r.updated} entr${r.updated===1?"y":"ies"}.`); }
   else { alert("Failed to batch rename"); }
 });
 
-// Event listeners
+// ===== BATCH CATEGORY REASSIGNMENT MODAL =====
+const batchCatModal = document.getElementById("batch-cat-modal");
+const batchCatForm = document.getElementById("batch-cat-form");
+const batchCatOld = document.getElementById("batch-cat-old");
+const batchCatNew = document.getElementById("batch-cat-new");
+const batchCatCancel = document.getElementById("batch-cat-cancel");
+
+document.getElementById("batch-cat-btn").addEventListener("click", () => {
+  populateCategorySelect(batchCatOld, false);
+  populateCategorySelect(batchCatNew, false);
+  batchCatModal.classList.add("open");
+});
+batchCatCancel.addEventListener("click", () => batchCatModal.classList.remove("open"));
+batchCatModal.addEventListener("click", e => { if (e.target === batchCatModal) batchCatModal.classList.remove("open"); });
+
+batchCatForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  const oldCat = batchCatOld.value, newCat = batchCatNew.value;
+  if (!oldCat || !newCat) return;
+  if (oldCat === newCat) { alert("Source and target categories must be different."); return; }
+  if (!confirm(`Reassign all "${formatCategory(oldCat)}" expenses to "${formatCategory(newCat)}"?`)) return;
+  const res = await fetch("/api/expenses/batch-category", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oldCategory: oldCat, newCategory: newCat }) });
+  if (res.ok) {
+    const r = await res.json();
+    batchCatModal.classList.remove("open");
+    await refreshAll();
+    await loadReports();
+    alert(`Reassigned ${r.updated} expense${r.updated===1?"":"s"}.`);
+  } else {
+    const err = await res.json();
+    alert(err.error || "Failed to reassign.");
+  }
+});
+
+// Event listeners — Add expense with double-click prevention and duplicate check
 const addExpenseMsg = document.getElementById("add-expense-msg");
+const addBtn = document.getElementById("add-btn");
+let isSubmitting = false;
 
 expenseForm.addEventListener("submit", async e => {
   e.preventDefault();
-  const res = await fetch("/api/expenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: dateInput.value, details: detailsInput.value, category: categoryInput.value, amount: amountInput.value }) });
-  if (res.ok) {
-    addExpenseMsg.textContent = "Expense added successfully.";
-    addExpenseMsg.className = "form-msg success";
-    detailsInput.value = ""; amountInput.value = "";
-    await refreshAll(); populateDetailsList();
-    setTimeout(() => { addExpenseMsg.textContent = ""; addExpenseMsg.className = "form-msg"; }, 3000);
-  } else {
-    const err = await res.json();
-    addExpenseMsg.textContent = err.error || "Failed to add expense.";
-    addExpenseMsg.className = "form-msg error";
+  if (isSubmitting) return; // Prevent double-click
+
+  const date = dateInput.value;
+  const details = detailsInput.value.trim();
+  const category = categoryInput.value;
+  const amount = amountInput.value;
+
+  if (!date || !details || !category || !amount) return;
+
+  // Duplicate check
+  try {
+    const dupRes = await fetch("/api/expenses/check-duplicate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date, details, amount })
+    });
+    if (dupRes.ok) {
+      const { duplicate } = await dupRes.json();
+      if (duplicate) {
+        if (!confirm(`A similar entry already exists:\n\n${formatDate(date)} — ${details} — ${amount}\n\nThis may be a duplicate. Add anyway?`)) return;
+      }
+    }
+  } catch {}
+
+  isSubmitting = true;
+  addBtn.disabled = true;
+  addBtn.textContent = "Adding...";
+
+  try {
+    const res = await fetch("/api/expenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date, details, category, amount }) });
+    if (res.ok) {
+      addExpenseMsg.textContent = "Expense added successfully.";
+      addExpenseMsg.className = "form-msg success";
+      detailsInput.value = ""; amountInput.value = "";
+      await refreshAll(); populateDetailsList();
+      setTimeout(() => { addExpenseMsg.textContent = ""; addExpenseMsg.className = "form-msg"; }, 3000);
+    } else {
+      const err = await res.json();
+      addExpenseMsg.textContent = err.error || "Failed to add expense.";
+      addExpenseMsg.className = "form-msg error";
+    }
+  } finally {
+    isSubmitting = false;
+    addBtn.disabled = false;
+    addBtn.textContent = "+ Add";
   }
 });
 
@@ -312,7 +484,14 @@ searchInput.addEventListener("input", () => {
 });
 clearRangeButton.addEventListener("click", () => { categoryFilterInput.value = "all"; searchInput.value = ""; setDateRangeToCurrentMonth(); refreshAll(); });
 
-document.addEventListener("keydown", e => { if (e.key === "Escape") { closeEditModal(); batchModal.classList.remove("open"); } });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    closeEditModal();
+    closeCopyModal();
+    batchModal.classList.remove("open");
+    batchCatModal.classList.remove("open");
+  }
+});
 
 // ===== REPORTS TAB =====
 const reportYear = document.getElementById("report-year");
@@ -474,7 +653,7 @@ function renderReportTable(data) {
           html += `  <span class="rpt-label">${exp.details}</span>`;
           html += `  <span class="rpt-cat"><span class="cat-badge" style="background:${getCategoryColor(exp.category)}20;color:${getCategoryColor(exp.category)}">${formatCategory(exp.category)}</span></span>`;
           html += `  <span class="rpt-amt">${formatAmount(exp.amount)}</span>`;
-          html += `  <span class="rpt-actions"><button class="rpt-edit-btn" data-id="${exp.id}" title="Edit">✏️</button><button class="rpt-delete-btn" data-id="${exp.id}" title="Delete">🗑️</button></span>`;
+          html += `  <span class="rpt-actions"><button class="rpt-copy-btn" data-id="${exp.id}" title="Copy to date">📋</button><button class="rpt-edit-btn" data-id="${exp.id}" title="Edit">✏️</button><button class="rpt-delete-btn" data-id="${exp.id}" title="Delete">🗑️</button></span>`;
           html += `</div>`;
         }
         html += `</div>`; // day children
@@ -487,8 +666,20 @@ function renderReportTable(data) {
   reportWrap.innerHTML = html;
 }
 
-// Report table click handlers (expand/collapse + edit/delete)
+// Report table click handlers (expand/collapse + edit/delete/copy)
 reportWrap.addEventListener("click", async e => {
+  // Copy button
+  const copyBtn = e.target.closest(".rpt-copy-btn");
+  if (copyBtn) {
+    const id = parseInt(copyBtn.dataset.id, 10);
+    const res = await fetch(`/api/expenses/${id}`);
+    if (res.ok) {
+      const row = await res.json();
+      openCopyModal(row);
+    }
+    return;
+  }
+
   // Edit button
   const editBtn = e.target.closest(".rpt-edit-btn");
   if (editBtn) {
@@ -635,7 +826,6 @@ function getAvailableColors() {
 function renderColorSwatches(container, selectedColor, onSelect) {
   container.innerHTML = "";
   const available = getAvailableColors();
-  // If selected color is no longer available, pick first available
   if (!available.includes(selectedColor) && available.length > 0) {
     selectedColor = available[0];
     onSelect(selectedColor);
@@ -764,7 +954,6 @@ categoriesList.addEventListener("click", async e => {
     const nameSpan = item.querySelector(".category-name");
     const deleteBtn = item.querySelector(".cat-delete-btn");
 
-    // Replace name span with input + save/cancel buttons
     const input = document.createElement("input");
     input.type = "text";
     input.className = "category-name-input";
@@ -782,7 +971,6 @@ categoriesList.addEventListener("click", async e => {
     cancelBtn.textContent = "✕";
 
     nameSpan.replaceWith(input);
-    // Hide rename and delete buttons, show save/cancel
     renameBtn.style.display = "none";
     deleteBtn.style.display = "none";
     item.insertBefore(saveBtn, item.querySelector(".cat-rename-btn") || null);
@@ -811,7 +999,6 @@ categoriesList.addEventListener("click", async e => {
       resolved = true;
       const newName = input.value.trim();
       if (!newName || newName.toLowerCase() === cat.name) {
-        // No change — revert
         const span = document.createElement("span");
         span.className = "category-name";
         span.textContent = formatCategory(cat.name);
@@ -877,7 +1064,6 @@ async function loadLockSettings() {
   lockSetupSection.style.display = locked ? "none" : "block";
   lockDisableSection.style.display = locked ? "block" : "none";
   document.getElementById("lock-recovery-alert-section").style.display = "none";
-  // Clear PIN fields when switching views
   document.getElementById("settings-pin").value = "";
   document.getElementById("settings-pin-confirm").value = "";
   document.getElementById("settings-lock-message").textContent = "";
@@ -894,7 +1080,6 @@ document.getElementById("settings-lock-enable").addEventListener("click", async 
   const res = await fetch("/api/lock/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
   const data = await res.json();
   if (data.success) {
-    // Hide setup form, show recovery code + disable section
     lockSetupSection.style.display = "none";
     const alertSection = document.getElementById("lock-recovery-alert-section");
     alertSection.innerHTML = `<div class="recovery-alert"><div class="recovery-alert-header">✓ Lock enabled successfully</div><div class="recovery-alert-body"><p>Your recovery code:</p><code class="recovery-code">${data.recoveryCode}</code><p class="recovery-warning">⚠️ Save this code now. This is the only time it will be shown. If you forget your PIN and don't have this code, you will permanently lose access to the app.</p><p class="recovery-tips">Tips: Save it in your notes app, email it to yourself, or store it in your password manager.</p></div></div>`;
@@ -921,7 +1106,6 @@ document.getElementById("settings-disable-pin").addEventListener("keydown", e =>
 });
 
 // ===== LOCK OVERLAY =====
-// Restrict all PIN inputs to digits only
 document.querySelectorAll('#settings-pin, #settings-pin-confirm, #settings-disable-pin, #lock-pin-input').forEach(input => {
   input.addEventListener("input", () => { input.value = input.value.replace(/\D/g, ""); });
 });
@@ -935,7 +1119,6 @@ document.getElementById("lock-unlock-btn").addEventListener("click", async () =>
   const res = await fetch("/api/lock/unlock", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
   if (res.ok) {
     if (remember) {
-      // Store today's date so we skip the lock for the rest of the day
       localStorage.setItem("lock-remembered", new Date().toISOString().slice(0, 10));
     }
     lockOverlay.style.display = "none";
@@ -976,13 +1159,10 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 scrollTopBtn.addEventListener("click", () => {
   window.scrollTo({ top: 0, behavior: "smooth" });
-  // Fallback: hide after animation completes in case scroll event doesn't fire at 0
   setTimeout(() => {
     if (window.scrollY <= 100) scrollTopBtn.classList.remove("visible");
   }, 600);
 });
-
-// ===== SWIPE TO DELETE removed =====
 
 // ===== APP INIT =====
 async function initApp() {
@@ -1000,15 +1180,12 @@ async function checkLockAndInit() {
     const res = await fetch("/api/lock/status");
     const { locked } = await res.json();
     if (locked) {
-      // Check if user chose "remember for today"
       const remembered = localStorage.getItem("lock-remembered");
       const today = new Date().toISOString().slice(0, 10);
       if (remembered === today) {
-        // Already authenticated today, skip lock
         lockOverlay.style.display = "none";
         initApp();
       } else {
-        // Clear stale remembered value (from a previous day)
         if (remembered) localStorage.removeItem("lock-remembered");
         lockOverlay.style.display = "flex";
       }

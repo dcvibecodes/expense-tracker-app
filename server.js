@@ -435,14 +435,31 @@ app.post("/api/expenses/copy", (req, res) => {
     if (err) return res.status(500).json({ error: "DB error." });
     if (!row) return res.status(404).json({ error: "Expense not found." });
 
-    const stmt = db.prepare("INSERT INTO expenses (date, details, category, amount) VALUES (?, ?, ?, ?)");
-    let inserted = 0;
-    for (const d of dates) {
-      stmt.run(d, row.details, row.category, row.amount);
-      inserted++;
-    }
-    stmt.finalize();
-    return res.json({ success: true, inserted });
+    // Check for existing duplicates at each target date
+    const placeholders = dates.map(() => "?").join(",");
+    const dupSql = `SELECT date FROM expenses WHERE date IN (${placeholders}) AND lower(details) = ? AND amount = ?`;
+    const dupParams = [...dates, row.details.trim().toLowerCase(), row.amount];
+
+    db.all(dupSql, dupParams, (dupErr, dupRows) => {
+      if (dupErr) return res.status(500).json({ error: "DB error checking duplicates." });
+
+      const existingDates = new Set(dupRows.map(r => r.date));
+      const datesToInsert = dates.filter(d => !existingDates.has(d));
+      const skipped = dates.length - datesToInsert.length;
+
+      if (datesToInsert.length === 0) {
+        return res.json({ success: true, inserted: 0, skipped, message: "All target dates already have this expense." });
+      }
+
+      const stmt = db.prepare("INSERT INTO expenses (date, details, category, amount) VALUES (?, ?, ?, ?)");
+      let inserted = 0;
+      for (const d of datesToInsert) {
+        stmt.run(d, row.details, row.category, row.amount);
+        inserted++;
+      }
+      stmt.finalize();
+      return res.json({ success: true, inserted, skipped });
+    });
   });
 });
 

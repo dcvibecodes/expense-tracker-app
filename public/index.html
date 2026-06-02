@@ -66,7 +66,12 @@
         <section class="card">
           <h2>Add Expense</h2>
           <form id="expense-form" class="grid add-grid">
-            <label>Date <input type="date" id="date" required /></label>
+            <label>Date
+              <div class="date-with-today">
+                <input type="date" id="date" required />
+                <button type="button" id="date-today-btn" class="today-btn" title="Reset to today">Today</button>
+              </div>
+            </label>
             <label>Details
               <input type="text" id="details" placeholder="e.g. Milk, Wifi Recharge" list="details-list" autocomplete="off" required />
               <datalist id="details-list"></datalist>
@@ -228,7 +233,7 @@
 
         <section class="card">
           <h2>About</h2>
-          <p class="settings-desc">Expense Tracker v2.3.1</p>
+          <p class="settings-desc">Expense Tracker v2.4.0</p>
         </section>
       </div>
 
@@ -297,10 +302,10 @@
     <div id="copy-modal" class="modal-overlay" role="dialog">
       <div class="modal-content">
         <h2>Copy Expense (Monthly)</h2>
-        <p class="batch-desc">Copy this expense to the same day-of-month for multiple months. E.g. set a bill on the 2nd of each month.</p>
+        <p class="batch-desc">Copy this expense to the same day-of-month for the next N months. Months that already have this expense will be skipped.</p>
         <p id="copy-info" style="font-weight:600; margin-bottom:12px;"></p>
         <form id="copy-form" class="grid batch-grid">
-          <label>First Occurrence <input type="date" id="copy-date-start" required /></label>
+          <label>Current Occurrence <input type="date" id="copy-date-start" required /></label>
           <label>Number of Months
             <input type="number" id="copy-months" min="1" max="60" value="1" required />
           </label>
@@ -311,9 +316,6 @@
         </form>
       </div>
     </div>
-
-    <!-- Scroll to Top Button -->
-    <button id="scroll-top-btn" class="scroll-top-btn" title="Scroll to top" aria-label="Scroll to top">↑</button>
 
     <script src="/app.js"></script>
   </body>

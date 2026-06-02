@@ -14,6 +14,22 @@ function applyTheme(theme) {
 applyTheme(localStorage.getItem("theme") || "light");
 
 // ===== HELPERS =====
+
+// ---- Date-optional inputs: toggle "is-empty" class for cross-browser consistency ----
+// Safari shows a ghost date when value is empty; hiding text via CSS + this class solves it.
+function syncDateOptionalClass(input) {
+  if (input.value) {
+    input.classList.remove("is-empty");
+  } else {
+    input.classList.add("is-empty");
+  }
+}
+document.querySelectorAll("input.date-optional").forEach(input => {
+  syncDateOptionalClass(input);
+  input.addEventListener("change", () => syncDateOptionalClass(input));
+  input.addEventListener("input", () => syncDateOptionalClass(input));
+});
+
 function localDateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
@@ -80,7 +96,18 @@ function switchToTab(tabId) {
   tabBtns.forEach(b => b.classList.remove("active"));
   tabContents.forEach(c => c.classList.remove("active"));
   btn.classList.add("active");
-  document.getElementById(`tab-${tabId}`).classList.add("active");
+  const tabEl = document.getElementById(`tab-${tabId}`);
+  tabEl.classList.add("active");
+
+  // On mobile, scroll the container to the correct panel
+  if (window.innerWidth <= 640) {
+    const container = document.querySelector(".container");
+    const idx = TAB_ORDER.indexOf(tabId);
+    if (container && idx >= 0) {
+      container.scrollTo({ left: idx * container.offsetWidth, behavior: "smooth" });
+    }
+  }
+
   if (tabId === "reports") loadReports();
 }
 
@@ -88,58 +115,41 @@ tabBtns.forEach(btn => {
   btn.addEventListener("click", () => switchToTab(btn.dataset.tab));
 });
 
-// ---- Swipe left/right to change tabs (mobile only) ----
-let swipeStartX = 0;
-let swipeStartY = 0;
-let swipeActive = false;
-
-document.addEventListener("touchstart", e => {
-  // Only on mobile-width screens
+// ---- Mobile: sync tab buttons with scroll-snap position ----
+(function setupMobileScrollSync() {
   if (window.innerWidth > 640) return;
-  // Don't interfere with modals, selects, or the pull-to-refresh
-  if (e.target.closest(".modal-overlay") ||
-      e.target.closest(".notification-panel") ||
-      e.target.closest("select") ||
-      e.target.closest("input") ||
-      e.target.closest(".table-wrap table tbody tr")) return;
+  const container = document.querySelector(".container");
+  if (!container) return;
 
-  const touch = e.touches[0];
-  swipeStartX = touch.clientX;
-  swipeStartY = touch.clientY;
-  swipeActive = true;
-}, { passive: true });
+  let scrollTimeout = null;
+  container.addEventListener("scroll", () => {
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      const idx = Math.round(container.scrollLeft / container.offsetWidth);
+      const clampedIdx = Math.max(0, Math.min(idx, TAB_ORDER.length - 1));
+      const tabId = TAB_ORDER[clampedIdx];
+      const currentActive = document.querySelector(".tab-btn.active");
+      if (currentActive && currentActive.dataset.tab === tabId) return;
+      tabBtns.forEach(b => b.classList.remove("active"));
+      tabContents.forEach(c => c.classList.remove("active"));
+      const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+      if (btn) btn.classList.add("active");
+      document.getElementById(`tab-${tabId}`).classList.add("active");
+      if (tabId === "reports") loadReports();
+    }, 50);
+  }, { passive: true });
 
-document.addEventListener("touchmove", e => {
-  if (!swipeActive) return;
-  const touch = e.touches[0];
-  const dx = touch.clientX - swipeStartX;
-  const dy = touch.clientY - swipeStartY;
-
-  // Only horizontal swipes, more horizontal than vertical
-  if (Math.abs(dx) < 30 || Math.abs(dy) > Math.abs(dx) * 1.5) return;
-
-  swipeActive = false; // fire only once
-
-  const currentTab = document.querySelector(".tab-btn.active");
-  if (!currentTab) return;
-  const currentIdx = TAB_ORDER.indexOf(currentTab.dataset.tab);
-  if (currentIdx === -1) return;
-
-  let nextIdx;
-  if (dx > 0) {
-    // Swipe right → go to previous tab
-    nextIdx = Math.max(0, currentIdx - 1);
-  } else {
-    // Swipe left → go to next tab
-    nextIdx = Math.min(TAB_ORDER.length - 1, currentIdx + 1);
-  }
-
-  if (nextIdx !== currentIdx) {
-    switchToTab(TAB_ORDER[nextIdx]);
-  }
-}, { passive: true });
-
-document.addEventListener("touchend", () => { swipeActive = false; }, { passive: true });
+  // Also re-setup on resize (e.g. orientation change)
+  window.addEventListener("resize", () => {
+    if (window.innerWidth <= 640) {
+      const currentTab = document.querySelector(".tab-btn.active");
+      if (currentTab) {
+        const idx = TAB_ORDER.indexOf(currentTab.dataset.tab);
+        if (idx >= 0) container.scrollLeft = idx * container.offsetWidth;
+      }
+    }
+  });
+})();
 
 // Theme toggle
 document.getElementById("theme-toggle").addEventListener("click", () => {
@@ -359,6 +369,10 @@ copyForm.addEventListener("submit", async e => {
 
   if (!confirm(`Copy this expense to ${dates.length} date${dates.length > 1 ? "s" : ""} (${dates[0]} – ${dates[dates.length-1]})?`)) return;
 
+  const copySaveBtn = copyForm.querySelector(".save-btn");
+  copySaveBtn.disabled = true;
+  copySaveBtn.textContent = "Copying...";
+
   const res = await fetch("/api/expenses/copy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -366,6 +380,8 @@ copyForm.addEventListener("submit", async e => {
   });
   if (res.ok) {
     const r = await res.json();
+    copySaveBtn.disabled = false;
+    copySaveBtn.textContent = "Copy";
     closeCopyModal();
     await refreshAll();
     await loadReports();
@@ -373,6 +389,8 @@ copyForm.addEventListener("submit", async e => {
     alert(`Copied to ${r.inserted} month${r.inserted > 1 ? "s" : ""}.`);
   } else {
     const err = await res.json();
+    copySaveBtn.disabled = false;
+    copySaveBtn.textContent = "Copy";
     alert(err.error || "Failed to copy expense.");
   }
 });
@@ -386,8 +404,15 @@ rowsEl.addEventListener("click", async e => {
   else if (btn.classList.contains("btn-copy")) { openCopyModal(row); }
   else if (btn.classList.contains("btn-delete")) {
     if (!confirm(`Delete this expense?\n\n${formatDate(row.date)} — ${row.details} — ${formatAmount(row.amount)}`)) return;
+    btn.disabled = true;
+    btn.textContent = "⏳";
+    btn.style.opacity = "0.5";
+    btn.style.pointerEvents = "none";
+    // Also disable sibling action buttons to prevent misclicks
+    const siblings = btn.parentElement.querySelectorAll("button");
+    siblings.forEach(s => { s.disabled = true; s.style.pointerEvents = "none"; });
     const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
-    if (res.ok) { await refreshAll(); populateDetailsList(); } else { alert("Failed to delete"); }
+    if (res.ok) { await refreshAll(); populateDetailsList(); } else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); btn.textContent = "🗑️"; btn.style.opacity = ""; }
   }
 });
 
@@ -397,8 +422,13 @@ editForm.addEventListener("submit", async e => {
   const amountVal = editAmount.value.trim();
   const amountNum = parseFloat(amountVal);
   if (isNaN(amountNum) || amountNum <= 0) { alert("Please enter a valid amount."); return; }
+  const saveBtn = editForm.querySelector(".save-btn");
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Saving...";
   const res = await fetch(`/api/expenses/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: editDate.value, details: editDetails.value.trim(), category: editCategory.value, amount: amountNum }) });
   if (res.ok) { closeEditModal(); await refreshAll(); await loadReports(); populateDetailsList(); } else { const err = await res.json(); alert(err.error || "Failed to update"); }
+  saveBtn.disabled = false;
+  saveBtn.textContent = "Save";
 });
 editCancel.addEventListener("click", closeEditModal);
 editModal.addEventListener("click", e => { if (e.target === editModal) closeEditModal(); });
@@ -446,7 +476,12 @@ batchForm.addEventListener("submit", async e => {
   const oldVal = batchOld.value.trim(), newVal = batchNew.value.trim();
   if (!oldVal || !newVal) return;
   if (!confirm(`Rename all "${oldVal}" entries to "${newVal}"?`)) return;
+  const batchSaveBtn = batchForm.querySelector(".save-btn");
+  batchSaveBtn.disabled = true;
+  batchSaveBtn.textContent = "Renaming...";
   const res = await fetch("/api/expenses/batch", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oldDetails: oldVal, newDetails: newVal }) });
+  batchSaveBtn.disabled = false;
+  batchSaveBtn.textContent = "Rename All";
   if (res.ok) { const r = await res.json(); batchModal.classList.remove("open"); await refreshAll(); await loadReports(); populateDetailsList(); alert(`Renamed ${r.updated} entr${r.updated===1?"y":"ies"}.`); }
   else { alert("Failed to batch rename"); }
 });
@@ -472,7 +507,12 @@ batchCatForm.addEventListener("submit", async e => {
   if (!oldCat || !newCat) return;
   if (oldCat === newCat) { alert("Source and target categories must be different."); return; }
   if (!confirm(`Reassign all "${formatCategory(oldCat)}" expenses to "${formatCategory(newCat)}"?`)) return;
+  const batchCatSaveBtn = batchCatForm.querySelector(".save-btn");
+  batchCatSaveBtn.disabled = true;
+  batchCatSaveBtn.textContent = "Reassigning...";
   const res = await fetch("/api/expenses/batch-category", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oldCategory: oldCat, newCategory: newCat }) });
+  batchCatSaveBtn.disabled = false;
+  batchCatSaveBtn.textContent = "Reassign All";
   if (res.ok) {
     const r = await res.json();
     batchCatModal.classList.remove("open");
@@ -494,17 +534,30 @@ expenseForm.addEventListener("submit", async e => {
   e.preventDefault();
   if (isSubmitting) return; // Prevent double-click
 
+  // Disable immediately on click — before any async work
+  isSubmitting = true;
+  addBtn.disabled = true;
+  addBtn.textContent = "Adding...";
+
   const date = dateInput.value;
   const details = detailsInput.value.trim();
   const category = categoryInput.value;
   const amount = amountInput.value.trim();
 
-  if (!date || !details || !category || !amount) return;
+  if (!date || !details || !category || !amount) {
+    isSubmitting = false;
+    addBtn.disabled = false;
+    addBtn.textContent = "+ Add";
+    return;
+  }
   // Validate amount is a valid decimal number
   const amountNum = parseFloat(amount);
   if (isNaN(amountNum) || amountNum <= 0) {
     addExpenseMsg.textContent = "Please enter a valid amount (e.g. 10.50).";
     addExpenseMsg.className = "form-msg error";
+    isSubmitting = false;
+    addBtn.disabled = false;
+    addBtn.textContent = "+ Add";
     return;
   }
 
@@ -518,14 +571,15 @@ expenseForm.addEventListener("submit", async e => {
     if (dupRes.ok) {
       const { duplicate } = await dupRes.json();
       if (duplicate) {
-        if (!confirm(`A similar entry already exists:\n\n${formatDate(date)} — ${details} — ${amount}\n\nThis may be a duplicate. Add anyway?`)) return;
+        if (!confirm(`A similar entry already exists:\n\n${formatDate(date)} — ${details} — ${amount}\n\nThis may be a duplicate. Add anyway?`)) {
+          isSubmitting = false;
+          addBtn.disabled = false;
+          addBtn.textContent = "+ Add";
+          return;
+        }
       }
     }
   } catch {}
-
-  isSubmitting = true;
-  addBtn.disabled = true;
-  addBtn.textContent = "Adding...";
 
   try {
     const res = await fetch("/api/expenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date, details, category, amount: amountNum }) });
@@ -770,9 +824,16 @@ reportWrap.addEventListener("click", async e => {
   if (delBtn) {
     const id = parseInt(delBtn.dataset.id, 10);
     if (!confirm("Delete this expense?")) return;
+    delBtn.disabled = true;
+    delBtn.textContent = "⏳";
+    delBtn.style.opacity = "0.5";
+    delBtn.style.pointerEvents = "none";
+    // Disable sibling action buttons
+    const siblings = delBtn.parentElement.querySelectorAll("button");
+    siblings.forEach(s => { s.disabled = true; s.style.pointerEvents = "none"; });
     const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
     if (res.ok) { await loadReports(); await refreshAll(); populateDetailsList(); }
-    else { alert("Failed to delete"); }
+    else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); delBtn.textContent = "🗑️"; delBtn.style.opacity = ""; }
     return;
   }
 
@@ -846,6 +907,8 @@ function setReportDefaults() {
   // Leave from/to empty so year/month selectors drive the query
   reportFrom.value = "";
   reportTo.value = "";
+  syncDateOptionalClass(reportFrom);
+  syncDateOptionalClass(reportTo);
 }
 
 // ===== DOWNLOADS TAB =====
@@ -1379,7 +1442,11 @@ function renderNotificationPanel() {
   const dismissed = getDismissedIds();
 
   if (!notifs.length) {
-    list.innerHTML = `<div class="notification-item" style="color:var(--text-muted);text-align:center;padding:24px;">No notifications yet.</div>`;
+    list.innerHTML = `<div class="notification-item" style="color:var(--text-muted);text-align:center;padding:24px;">
+      <div style="font-size:20px;margin-bottom:8px;">🔔</div>
+      <div style="font-weight:600;margin-bottom:6px;">No notifications</div>
+      <div style="font-size:12px;line-height:1.5;">Recurring expense reminders will appear here when a copied series is approaching its last occurrence.</div>
+    </div>`;
     return;
   }
 

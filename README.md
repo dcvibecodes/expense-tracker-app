@@ -2,7 +2,7 @@
 
 A personal expense tracking app built with **Node.js**, **Express**, and **SQLite**. Deploy it on a VPS or run locally — your data stays on your server.
 
-**Version 2.3.1**
+**Version 2.4.0**
 
 ## Features
 
@@ -15,8 +15,9 @@ Quickly add expenses with date, details, category, and amount. Success confirmat
 ### 📋 Copy Expenses (Monthly Recurring)
 Copy any expense to the same day-of-month across multiple months — ideal for recurring bills.
 - Click the 📋 icon on any expense row (tracker or reports)
-- Enter the **first occurrence date** and **number of months**
-- The expense is duplicated to the same day-of-month (e.g., the 2nd) for each consecutive month
+- The **current occurrence date** is pre-filled; enter the **number of months** to copy forward
+- Copies start from the **next month** after the current occurrence (never duplicates in the same month)
+- **Duplicate detection** — If a target month already has this expense (same date, details, amount), it's skipped and you're told how many were skipped
 - Smart **month overflow handling** — Jan 31 + 1 month = Feb 28 (last valid day)
 
 ### 🔔 Recurring End Notification
@@ -88,13 +89,12 @@ Start typing in the Details field and it suggests previously used entries.
 Fully responsive from desktop down to 400px screens:
 - **Scrollable tabs** on narrow screens
 - **Slide between tabs** — Touch and slide anywhere on screen to page-turn between Tracker, Reports, Downloads, Settings (native scroll-snap)
-- **Pull-to-refresh** — Pull down on iPhone PWA (Add to Home Screen) to refresh all data
+- **Pull-to-refresh** — Pull down on iPhone PWA (Add to Home Screen) to refresh all data — only triggers when already at the top of the screen
 - **Touch-friendly targets** — 44px minimum tap areas
 - **Card-style table on mobile** — Expense rows become stacked cards
 - **Stacked form fields** — Single column on phones
 - **Charts stack vertically** on small screens
 - **Reports stacked layout** — No horizontal scroll on the report table
-- **Scroll-to-top button** — Appears on scroll, disappears at top
 - **No iOS zoom on focus** — Input font-size set to 16px to prevent Safari auto-zoom
 
 ## Getting Started
@@ -122,6 +122,10 @@ npm start
 The app will be available at [http://localhost:3000](http://localhost:3000).
 
 The database file is created automatically at `data/expenses.db` on first run.
+
+### Upgrading from v2.3.1
+
+Deploy the updated files (`server.js`, `public/app.js`, `public/styles.css`, `public/index.html`, `public/sw.js`, `package.json`, `README.md`) and restart the server. No database changes — fully backward compatible.
 
 ### Upgrading from v2.3.0
 
@@ -205,6 +209,16 @@ expense-tracker-app/
 | POST | `/api/lock/recovery` | Unlock with recovery code |
 
 ## Changelog
+
+### v2.4.0 (June 2026)
+- **Dark mode button fix** — Copy, edit, and delete buttons on tracker, reports, and settings pages no longer have blue background in dark mode; now transparent like light mode
+- **Pull-to-refresh mobile fix** — Only triggers when at the actual top of the screen; scrolling up from the middle no longer causes a refresh
+- **Scroll-to-top button removed** — Removed entirely (not needed with current UX)
+- **Copy expense rewrite** — "Current Occurrence" label with date pre-filled; copies start from next month only; server checks for duplicates and skips existing entries (reports how many were skipped)
+- **Today button** — Small "Today" button next to the date picker on Add Expense to quickly reset to today's date
+- **Dark mode calendar icon** — Date picker calendar icon now visible in dark mode (was invisible on dark backgrounds)
+- **Settings pencil icon** — Category rename button now uses ✏️ (consistent with tracker/reports); transparent background in dark mode
+- **Service worker** — Added `sw.js` for offline support and cache busting (v5)
 
 ### v2.3.1 (June 2026)
 - **Safari date field fix** — From/To date inputs no longer show Safari's ghost placeholder date; consistent blank appearance across Chrome, Safari desktop, Safari mobile, and Chromium browsers (Edge, Comet)

@@ -402,7 +402,7 @@ button {
   color: #fff;
   background: var(--primary);
   box-shadow: none;
-  min-height: 40px;
+  min-height: 46px;
 }
 button:hover { background: var(--primary-hover); }
 button:active { transform: none; }
@@ -424,7 +424,7 @@ button:disabled {
   padding: 6px 10px;
   font-size: 11px;
   font-weight: 600;
-  min-height: 34px;
+  min-height: 46px;
   white-space: nowrap;
   background: #f0f2f5;
   color: var(--text-secondary);
@@ -762,7 +762,7 @@ tbody tr:hover td { background: #fafbff; }
 .cat-cancel-btn:hover { background: #fee2e2; box-shadow: none; transform: none; }
 .category-add-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .category-add-row input[type="text"] { flex: 1; min-height: 36px; min-width: 140px; }
-.category-add-row button { white-space: nowrap; }
+.category-add-row button { white-space: nowrap; min-height: 46px; }
 .color-swatches { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .color-swatch {
   width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent;

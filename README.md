@@ -2,7 +2,7 @@
 
 A personal expense tracking app built with **Node.js**, **Express**, and **SQLite**. Deploy it on a VPS or run locally — your data stays on your server.
 
-**Version 2.4.0**
+**Version 2.4.1**
 
 ## Features
 
@@ -123,6 +123,10 @@ The app will be available at [http://localhost:3000](http://localhost:3000).
 
 The database file is created automatically at `data/expenses.db` on first run.
 
+### Upgrading from v2.4.0
+
+Deploy the updated files (`public/styles.css`, `public/index.html`, `package.json`, `README.md`) and restart the server. No database changes — fully backward compatible.
+
 ### Upgrading from v2.3.1
 
 Deploy the updated files (`server.js`, `public/app.js`, `public/styles.css`, `public/index.html`, `public/sw.js`, `package.json`, `README.md`) and restart the server. No database changes — fully backward compatible.
@@ -209,6 +213,10 @@ expense-tracker-app/
 | POST | `/api/lock/recovery` | Unlock with recovery code |
 
 ## Changelog
+
+### v2.4.1 (June 2026)
+- **Button height alignment** — All buttons now render at 46px to match the ~45.4px computed height of adjacent `<input>`/`<select>` elements, fixing visual misalignment in the Add Expense form, Filters, Reports selector, Downloads selector, and Settings category row
+- **Version bump** — Updated to v2.4.1 across `index.html`, `package.json`, and `README`
 
 ### v2.4.0 (June 2026)
 - **Dark mode button fix** — Copy, edit, and delete buttons on tracker, reports, and settings pages no longer have blue background in dark mode; now transparent like light mode

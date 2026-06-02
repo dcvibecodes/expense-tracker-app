@@ -1,0 +1,27 @@
+<!-- Helper to generate PNG icons - open in browser and right-click save -->
+<!DOCTYPE html>
+<html>
+<body>
+<canvas id="c192" width="192" height="192"></canvas>
+<canvas id="c512" width="512" height="512"></canvas>
+<script>
+function drawIcon(canvas) {
+  const ctx = canvas.getContext('2d');
+  const s = canvas.width;
+  // Background
+  ctx.fillStyle = '#1a1a2e';
+  ctx.beginPath();
+  ctx.roundRect(0, 0, s, s, s * 0.15);
+  ctx.fill();
+  // Dollar sign
+  ctx.fillStyle = '#4ade80';
+  ctx.font = `bold ${s * 0.55}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('₹', s/2, s/2);
+}
+drawIcon(document.getElementById('c192'));
+drawIcon(document.getElementById('c512'));
+</script>
+</body>
+</html>

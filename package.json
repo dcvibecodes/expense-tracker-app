@@ -1,6 +1,6 @@
 {
   "name": "expense-tracker",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "description": "Expense tracker app with SQLite database",
   "main": "server.js",
   "scripts": {

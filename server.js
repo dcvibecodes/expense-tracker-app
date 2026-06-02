@@ -174,7 +174,7 @@ app.delete("/api/categories/:id", (req, res) => {
     // Check if expenses use this category
     db.get("SELECT COUNT(*) AS cnt FROM expenses WHERE category = ?", [row.name], (cntErr, cntRow) => {
       if (cntErr) return res.status(500).json({ error: "DB error." });
-      if (cntRow.cnt > 0) return res.status(400).json({ error: `Cannot delete: ${cntRow.cnt} expense(s) use this category. Reassign them first.` });
+      if (cntRow.cnt > 0) return res.status(400).json({ error: `Cannot delete: ${cntRow.cnt} expense(s) are using this category. Reassign them first using the "Batch Category" option under "Filters & Batch Actions" on the Tracker tab.` });
 
       db.run("DELETE FROM categories WHERE id = ?", [id], function(delErr) {
         if (delErr) return res.status(500).json({ error: "Failed to delete category." });

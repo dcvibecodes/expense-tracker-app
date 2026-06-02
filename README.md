@@ -2,7 +2,7 @@
 
 A personal expense tracking app built with **Node.js**, **Express**, and **SQLite**. Deploy it on a VPS or run locally — your data stays on your server.
 
-**Version 2.3.0**
+**Version 2.3.1**
 
 ## Features
 
@@ -87,7 +87,7 @@ Start typing in the Details field and it suggests previously used entries.
 ### 📱 Mobile-Responsive Design
 Fully responsive from desktop down to 400px screens:
 - **Scrollable tabs** on narrow screens
-- **Swipe left/right** to change between tabs (Tracker, Reports, Downloads, Settings)
+- **Slide between tabs** — Touch and slide anywhere on screen to page-turn between Tracker, Reports, Downloads, Settings (native scroll-snap)
 - **Pull-to-refresh** — Pull down on iPhone PWA (Add to Home Screen) to refresh all data
 - **Touch-friendly targets** — 44px minimum tap areas
 - **Card-style table on mobile** — Expense rows become stacked cards
@@ -122,6 +122,10 @@ npm start
 The app will be available at [http://localhost:3000](http://localhost:3000).
 
 The database file is created automatically at `data/expenses.db` on first run.
+
+### Upgrading from v2.3.0
+
+Deploy the updated files (`public/app.js`, `public/styles.css`, `public/index.html`, `public/sw.js`, `package.json`, `README.md`) and restart the server. No database changes — fully backward compatible.
 
 ### Upgrading from v2.2
 
@@ -201,6 +205,17 @@ expense-tracker-app/
 | POST | `/api/lock/recovery` | Unlock with recovery code |
 
 ## Changelog
+
+### v2.3.1 (June 2026)
+- **Safari date field fix** — From/To date inputs no longer show Safari's ghost placeholder date; consistent blank appearance across Chrome, Safari desktop, Safari mobile, and Chromium browsers (Edge, Comet)
+- **Add button instant disable** — Button grays out and shows "Adding..." immediately on click (before duplicate check network call), eliminating false duplicate popups on slow networks
+- **Delete loading indicator** — Delete buttons show ⏳ and disable all row actions while the request is in flight, preventing accidental double-deletes
+- **Modal button loading states** — Save, Copy, Rename, and Reassign buttons show progress text while submitting
+- **Global disabled button style** — All disabled buttons are visually grayed out (opacity 0.5)
+- **Notification empty state** — Panel now explains that recurring expense reminders will appear here, so users understand its purpose
+- **Theme toggle visual fix** — Removed persistent background highlight; matched icon size and brightness to the notification bell; reduced gap between header icons
+- **Mobile sliding panels** — Replaced swipe-to-switch with native CSS scroll-snap; touch-and-slide works from anywhere on screen (including inputs and table rows); smooth page-turn feel
+- **Mobile panel height fix** — Shorter tabs (Reports, Downloads, Settings) no longer inherit empty space from the tallest tab
 
 ### v2.3.0 (June 2026)
 - **Dark theme complete audit** — Fixed select dropdown patterned overlay bug (background shorthand resetting background-repeat); refactored all borders to CSS variables; softened border colors; added focus rings; card surfaces use subtle box-shadows instead of outlines; premium SaaS-style dark theme

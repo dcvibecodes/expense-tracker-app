@@ -2,7 +2,7 @@
 
 A personal expense tracking app built with **Node.js**, **Express**, and **SQLite**. Deploy it on a VPS or run locally — your data stays on your server.
 
-**Version 2.2**
+**Version 2.2.1**
 
 ## Features
 
@@ -182,6 +182,13 @@ expense-tracker-app/
 | POST | `/api/lock/recovery` | Unlock with recovery code |
 
 ## Changelog
+
+### v2.2.1 (June 2026)
+- **Night mode fixes** — Chart panels and mobile table cards now respect dark theme; reports text contrast improved for dark backgrounds
+- **Safari dropdown alignment** — Unified select/input height via custom styling; added custom dropdown arrow for consistent cross-browser appearance
+- **Amount field** — Removed up/down spinner arrows; switched to plain text input with decimal keyboard on mobile; added client-side validation
+- **Date defaults** — Reports From/To fields now pre-filled with current month range for consistent behavior across Chrome, Safari desktop, and iOS Safari
+- **Category delete message** — Error now directs users to the "Batch Category" option under Filters & Batch Actions for reassignment
 
 ### v2.2 (June 2026)
 - **Copy expense** — Copy any expense to one or more dates (recurring expense support)

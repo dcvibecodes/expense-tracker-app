@@ -59,7 +59,7 @@
             <label>Category
               <select id="category" required></select>
             </label>
-            <label>Amount <input type="number" id="amount" step="0.01" required /></label>
+            <label>Amount <input type="text" id="amount" inputmode="decimal" placeholder="0.00" autocomplete="off" required /></label>
             <button type="submit" class="add-btn" id="add-btn">+ Add</button>
           </form>
           <p id="add-expense-msg" class="form-msg"></p>
@@ -225,7 +225,7 @@
           <label>Category
             <select id="edit-category" required></select>
           </label>
-          <label>Amount <input type="number" id="edit-amount" step="0.01" required /></label>
+          <label>Amount <input type="text" id="edit-amount" inputmode="decimal" placeholder="0.00" autocomplete="off" required /></label>
           <div class="modal-buttons">
             <button type="submit" class="save-btn">Save</button>
             <button type="button" id="edit-cancel" class="cancel-btn">Cancel</button>

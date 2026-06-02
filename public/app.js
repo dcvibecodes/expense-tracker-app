@@ -331,7 +331,10 @@ rowsEl.addEventListener("click", async e => {
 editForm.addEventListener("submit", async e => {
   e.preventDefault();
   const id = parseInt(editId.value, 10);
-  const res = await fetch(`/api/expenses/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: editDate.value, details: editDetails.value.trim(), category: editCategory.value, amount: editAmount.value }) });
+  const amountVal = editAmount.value.trim();
+  const amountNum = parseFloat(amountVal);
+  if (isNaN(amountNum) || amountNum <= 0) { alert("Please enter a valid amount."); return; }
+  const res = await fetch(`/api/expenses/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: editDate.value, details: editDetails.value.trim(), category: editCategory.value, amount: amountNum }) });
   if (res.ok) { closeEditModal(); await refreshAll(); await loadReports(); populateDetailsList(); } else { const err = await res.json(); alert(err.error || "Failed to update"); }
 });
 editCancel.addEventListener("click", closeEditModal);
@@ -431,9 +434,16 @@ expenseForm.addEventListener("submit", async e => {
   const date = dateInput.value;
   const details = detailsInput.value.trim();
   const category = categoryInput.value;
-  const amount = amountInput.value;
+  const amount = amountInput.value.trim();
 
   if (!date || !details || !category || !amount) return;
+  // Validate amount is a valid decimal number
+  const amountNum = parseFloat(amount);
+  if (isNaN(amountNum) || amountNum <= 0) {
+    addExpenseMsg.textContent = "Please enter a valid amount (e.g. 10.50).";
+    addExpenseMsg.className = "form-msg error";
+    return;
+  }
 
   // Duplicate check
   try {
@@ -455,7 +465,7 @@ expenseForm.addEventListener("submit", async e => {
   addBtn.textContent = "Adding...";
 
   try {
-    const res = await fetch("/api/expenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date, details, category, amount }) });
+    const res = await fetch("/api/expenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date, details, category, amount: amountNum }) });
     if (res.ok) {
       addExpenseMsg.textContent = "Expense added successfully.";
       addExpenseMsg.className = "form-msg success";
@@ -770,6 +780,14 @@ function setReportDefaults() {
   const now = new Date();
   reportYear.value = now.getFullYear();
   reportMonth.value = String(now.getMonth() + 1);
+  // Set from/to to current month for consistent cross-browser behavior
+  const month = now.getMonth() + 1;
+  const year = now.getFullYear();
+  const start = new Date(year, month - 1, 1);
+  const end = lastDayOfMonth(year, month);
+  const effectiveEnd = end > now ? now : end;
+  reportFrom.value = localDateStr(start);
+  reportTo.value = localDateStr(effectiveEnd);
 }
 
 // ===== DOWNLOADS TAB =====

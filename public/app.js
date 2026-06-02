@@ -329,10 +329,10 @@ let copyExpenseId = null;
 function openCopyModal(row) {
   copyExpenseId = row.id;
   copyInfo.textContent = `${row.details} — ${formatAmount(row.amount)}`;
-  copyDateStart.value = "";
+  copyDateStart.value = row.date; // Pre-fill with the expense's date (latest occurrence)
   copyMonths.value = "1";
   copyModal.classList.add("open");
-  copyDateStart.focus();
+  copyMonths.focus();
 }
 function closeCopyModal() { copyModal.classList.remove("open"); copyExpenseId = null; }
 
@@ -344,15 +344,15 @@ copyForm.addEventListener("submit", async e => {
   if (!copyExpenseId) return;
   const startDate = copyDateStart.value;
   const months = parseInt(copyMonths.value, 10);
-  if (!startDate) { alert("Please select the first occurrence date."); return; }
+  if (!startDate) { alert("Please select the current occurrence date."); return; }
   if (!months || months < 1 || months > 60) { alert("Please enter a number of months between 1 and 60."); return; }
 
-  // Generate array of dates on the same day-of-month for N consecutive months
+  // Generate dates starting from the NEXT month after the latest occurrence
   const dates = [];
   const start = new Date(startDate + "T00:00:00");
   const targetDay = start.getDate(); // e.g. 2nd of the month
 
-  for (let i = 0; i < months; i++) {
+  for (let i = 1; i <= months; i++) {
     const d = new Date(start);
     d.setMonth(d.getMonth() + i);
 
@@ -365,9 +365,10 @@ copyForm.addEventListener("submit", async e => {
     dates.push(localDateStr(d));
   }
 
+  if (dates.length === 0) { alert("No valid months to copy to."); return; }
   if (dates.length > 365) { alert("Cannot copy to more than 365 dates at once."); return; }
 
-  if (!confirm(`Copy this expense to ${dates.length} date${dates.length > 1 ? "s" : ""} (${dates[0]} – ${dates[dates.length-1]})?`)) return;
+  if (!confirm(`Copy this expense to ${dates.length} month${dates.length > 1 ? "s" : ""} (${dates[0]} – ${dates[dates.length-1]})?`)) return;
 
   const copySaveBtn = copyForm.querySelector(".save-btn");
   copySaveBtn.disabled = true;
@@ -386,7 +387,11 @@ copyForm.addEventListener("submit", async e => {
     await refreshAll();
     await loadReports();
     populateDetailsList();
-    alert(`Copied to ${r.inserted} month${r.inserted > 1 ? "s" : ""}.`);
+    let msg = `Copied to ${r.inserted} month${r.inserted > 1 ? "s" : ""}.`;
+    if (r.skipped > 0) {
+      msg += `\n${r.skipped} date${r.skipped > 1 ? "s were" : " was"} skipped (duplicate already exists).`;
+    }
+    alert(msg);
   } else {
     const err = await res.json();
     copySaveBtn.disabled = false;
@@ -610,6 +615,11 @@ searchInput.addEventListener("input", () => {
   searchDebounce = setTimeout(refreshAll, 300);
 });
 clearRangeButton.addEventListener("click", () => { categoryFilterInput.value = "all"; searchInput.value = ""; setDateRangeToCurrentMonth(); refreshAll(); });
+
+// Today button resets add-expense date to today
+document.getElementById("date-today-btn").addEventListener("click", () => {
+  dateInput.value = todayStr();
+});
 
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
@@ -1009,7 +1019,7 @@ function renderCategoriesList() {
     div.innerHTML = `
       <span class="category-color-dot" style="background:${cat.color}" data-id="${cat.id}" title="Change color"></span>
       <span class="category-name">${formatCategory(cat.name)}</span>
-      <button class="cat-rename-btn" data-id="${cat.id}" title="Rename category">✎</button>
+      <button class="cat-rename-btn" data-id="${cat.id}" title="Rename category">✏️</button>
       <button class="cat-delete-btn" data-id="${cat.id}" title="Delete category">🗑️</button>
     `;
     categoriesList.appendChild(div);
@@ -1285,22 +1295,6 @@ document.getElementById("lock-recovery-submit").addEventListener("click", async 
 
 document.getElementById("lock-recovery-input").addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); document.getElementById("lock-recovery-submit").click(); }
-});
-
-// ===== SCROLL TO TOP BUTTON =====
-const scrollTopBtn = document.getElementById("scroll-top-btn");
-window.addEventListener("scroll", () => {
-  if (window.scrollY > 100) {
-    scrollTopBtn.classList.add("visible");
-  } else {
-    scrollTopBtn.classList.remove("visible");
-  }
-}, { passive: true });
-scrollTopBtn.addEventListener("click", () => {
-  window.scrollTo({ top: 0, behavior: "smooth" });
-  setTimeout(() => {
-    if (window.scrollY <= 100) scrollTopBtn.classList.remove("visible");
-  }, 600);
 });
 
 // ===== APP INIT =====
@@ -1588,9 +1582,18 @@ if (container) {
   container.parentNode.insertBefore(pullIndicator, container);
 }
 
+function isAtTopOfScroll() {
+  // On mobile with scroll-snap panels, scrolling happens inside .tab-content
+  if (window.innerWidth <= 640) {
+    const activePanel = document.querySelector(".tab-content.active");
+    if (activePanel) return activePanel.scrollTop <= 10;
+  }
+  return window.scrollY <= 10;
+}
+
 document.addEventListener("touchstart", e => {
-  // Only activate pull-to-refresh when at top of page
-  if (window.scrollY > 10) return;
+  // Only activate pull-to-refresh when at top of page/panel
+  if (!isAtTopOfScroll()) return;
   const target = e.target;
   if (target.closest(".modal-overlay") || target.closest(".notification-panel")) return;
   pullStartY = e.touches[0].clientY;

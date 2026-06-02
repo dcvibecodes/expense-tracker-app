@@ -72,19 +72,74 @@ function populateCategorySelect(sel, includeAll) {
 // ===== TAB NAVIGATION =====
 const tabBtns = document.querySelectorAll(".tab-btn");
 const tabContents = document.querySelectorAll(".tab-content");
+const TAB_ORDER = ["tracker", "reports", "downloads", "settings"];
+
+function switchToTab(tabId) {
+  const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+  if (!btn) return;
+  tabBtns.forEach(b => b.classList.remove("active"));
+  tabContents.forEach(c => c.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById(`tab-${tabId}`).classList.add("active");
+  if (tabId === "reports") loadReports();
+}
 
 tabBtns.forEach(btn => {
-  btn.addEventListener("click", () => {
-    tabBtns.forEach(b => b.classList.remove("active"));
-    tabContents.forEach(c => c.classList.remove("active"));
-    btn.classList.add("active");
-    document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
-    // Auto-refresh reports when switching to reports tab
-    if (btn.dataset.tab === "reports") {
-      loadReports();
-    }
-  });
+  btn.addEventListener("click", () => switchToTab(btn.dataset.tab));
 });
+
+// ---- Swipe left/right to change tabs (mobile only) ----
+let swipeStartX = 0;
+let swipeStartY = 0;
+let swipeActive = false;
+
+document.addEventListener("touchstart", e => {
+  // Only on mobile-width screens
+  if (window.innerWidth > 640) return;
+  // Don't interfere with modals, selects, or the pull-to-refresh
+  if (e.target.closest(".modal-overlay") ||
+      e.target.closest(".notification-panel") ||
+      e.target.closest("select") ||
+      e.target.closest("input") ||
+      e.target.closest(".table-wrap table tbody tr")) return;
+
+  const touch = e.touches[0];
+  swipeStartX = touch.clientX;
+  swipeStartY = touch.clientY;
+  swipeActive = true;
+}, { passive: true });
+
+document.addEventListener("touchmove", e => {
+  if (!swipeActive) return;
+  const touch = e.touches[0];
+  const dx = touch.clientX - swipeStartX;
+  const dy = touch.clientY - swipeStartY;
+
+  // Only horizontal swipes, more horizontal than vertical
+  if (Math.abs(dx) < 30 || Math.abs(dy) > Math.abs(dx) * 1.5) return;
+
+  swipeActive = false; // fire only once
+
+  const currentTab = document.querySelector(".tab-btn.active");
+  if (!currentTab) return;
+  const currentIdx = TAB_ORDER.indexOf(currentTab.dataset.tab);
+  if (currentIdx === -1) return;
+
+  let nextIdx;
+  if (dx > 0) {
+    // Swipe right → go to previous tab
+    nextIdx = Math.max(0, currentIdx - 1);
+  } else {
+    // Swipe left → go to next tab
+    nextIdx = Math.min(TAB_ORDER.length - 1, currentIdx + 1);
+  }
+
+  if (nextIdx !== currentIdx) {
+    switchToTab(TAB_ORDER[nextIdx]);
+  }
+}, { passive: true });
+
+document.addEventListener("touchend", () => { swipeActive = false; }, { passive: true });
 
 // Theme toggle
 document.getElementById("theme-toggle").addEventListener("click", () => {
@@ -257,7 +312,7 @@ const copyModal = document.getElementById("copy-modal");
 const copyForm = document.getElementById("copy-form");
 const copyInfo = document.getElementById("copy-info");
 const copyDateStart = document.getElementById("copy-date-start");
-const copyDateEnd = document.getElementById("copy-date-end");
+const copyMonths = document.getElementById("copy-months");
 const copyCancel = document.getElementById("copy-cancel");
 let copyExpenseId = null;
 
@@ -265,7 +320,7 @@ function openCopyModal(row) {
   copyExpenseId = row.id;
   copyInfo.textContent = `${row.details} — ${formatAmount(row.amount)}`;
   copyDateStart.value = "";
-  copyDateEnd.value = "";
+  copyMonths.value = "1";
   copyModal.classList.add("open");
   copyDateStart.focus();
 }
@@ -278,23 +333,31 @@ copyForm.addEventListener("submit", async e => {
   e.preventDefault();
   if (!copyExpenseId) return;
   const startDate = copyDateStart.value;
-  const endDate = copyDateEnd.value;
-  if (!startDate) { alert("Please select at least a start date."); return; }
+  const months = parseInt(copyMonths.value, 10);
+  if (!startDate) { alert("Please select the first occurrence date."); return; }
+  if (!months || months < 1 || months > 60) { alert("Please enter a number of months between 1 and 60."); return; }
 
-  // Generate array of dates from start to end (or just start if no end)
+  // Generate array of dates on the same day-of-month for N consecutive months
   const dates = [];
   const start = new Date(startDate + "T00:00:00");
-  const end = endDate ? new Date(endDate + "T00:00:00") : start;
-  if (end < start) { alert("End date must be on or after start date."); return; }
+  const targetDay = start.getDate(); // e.g. 2nd of the month
 
-  const diffDays = Math.round((end - start) / (1000 * 60 * 60 * 24));
-  if (diffDays > 365) { alert("Cannot copy to more than 365 days at once."); return; }
+  for (let i = 0; i < months; i++) {
+    const d = new Date(start);
+    d.setMonth(d.getMonth() + i);
 
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    // Handle month overflow (e.g. Jan 31 + 1 month → Mar 3 if Feb has 28 days)
+    // If the day changed due to month length, clamp to last day of target month
+    if (d.getDate() !== targetDay) {
+      d.setDate(0); // go to last day of previous month
+    }
+
     dates.push(localDateStr(d));
   }
 
-  if (!confirm(`Copy this expense to ${dates.length} date${dates.length > 1 ? "s" : ""}?`)) return;
+  if (dates.length > 365) { alert("Cannot copy to more than 365 dates at once."); return; }
+
+  if (!confirm(`Copy this expense to ${dates.length} date${dates.length > 1 ? "s" : ""} (${dates[0]} – ${dates[dates.length-1]})?`)) return;
 
   const res = await fetch("/api/expenses/copy", {
     method: "POST",
@@ -307,7 +370,7 @@ copyForm.addEventListener("submit", async e => {
     await refreshAll();
     await loadReports();
     populateDetailsList();
-    alert(`Copied to ${r.inserted} date${r.inserted > 1 ? "s" : ""}.`);
+    alert(`Copied to ${r.inserted} month${r.inserted > 1 ? "s" : ""}.`);
   } else {
     const err = await res.json();
     alert(err.error || "Failed to copy expense.");
@@ -780,14 +843,9 @@ function setReportDefaults() {
   const now = new Date();
   reportYear.value = now.getFullYear();
   reportMonth.value = String(now.getMonth() + 1);
-  // Set from/to to current month for consistent cross-browser behavior
-  const month = now.getMonth() + 1;
-  const year = now.getFullYear();
-  const start = new Date(year, month - 1, 1);
-  const end = lastDayOfMonth(year, month);
-  const effectiveEnd = end > now ? now : end;
-  reportFrom.value = localDateStr(start);
-  reportTo.value = localDateStr(effectiveEnd);
+  // Leave from/to empty so year/month selectors drive the query
+  reportFrom.value = "";
+  reportTo.value = "";
 }
 
 // ===== DOWNLOADS TAB =====
@@ -1218,3 +1276,301 @@ async function checkLockAndInit() {
 }
 
 checkLockAndInit();
+
+// ===== NOTIFICATION SYSTEM (Recurring Expense Ending) =====
+const NOTIFICATIONS_KEY = "expense-notifications";
+const DISMISSED_KEY = "expense-dismissed-notifs";
+
+function getNotifications() {
+  try { return JSON.parse(localStorage.getItem(NOTIFICATIONS_KEY) || "[]"); } catch { return []; }
+}
+function saveNotifications(notifs) {
+  localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifs));
+}
+function getDismissedIds() {
+  try { return JSON.parse(localStorage.getItem(DISMISSED_KEY) || "[]"); } catch { return []; }
+}
+function saveDismissedIds(ids) {
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids));
+}
+
+function createNotification(title, desc, { dates, details, amount }) {
+  const notifs = getNotifications();
+  // deduplicate: if same details+amount already exists with same end date range, skip
+  const isDup = notifs.some(n =>
+    n.details === details &&
+    n.amount === amount &&
+    n.dates.length === dates.length
+  );
+  if (isDup) return;
+  notifs.push({
+    id: Date.now(),
+    title,
+    desc,
+    details,
+    amount,
+    dates,
+    createdAt: new Date().toISOString()
+  });
+  saveNotifications(notifs);
+  updateNotificationBadge();
+}
+
+function checkNotifications() {
+  let notifs = getNotifications();
+  const dismissed = getDismissedIds();
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // normalize to start of day
+
+  // Auto-delete expired notifications (past the 14-day window)
+  const activeNotifs = [];
+  const expiredIds = [];
+  let unreadCount = 0;
+
+  for (const n of notifs) {
+    const lastDateStr = n.dates[n.dates.length - 1];
+    if (!lastDateStr) { expiredIds.push(n.id); continue; }
+
+    const lastDate = new Date(lastDateStr + "T00:00:00");
+    const expiresAt = new Date(lastDate);
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    if (now > expiresAt) {
+      // Past the 14-day window — auto-delete
+      expiredIds.push(n.id);
+      continue;
+    }
+
+    // Within the 14-day window: check if today is on or after the last date
+    if (now >= lastDate && now <= expiresAt) {
+      if (!dismissed.includes(n.id)) {
+        unreadCount++;
+      }
+    }
+
+    activeNotifs.push(n);
+  }
+
+  // Clean up expired notifications and their dismissed ids
+  if (expiredIds.length) {
+    saveNotifications(activeNotifs);
+    saveDismissedIds(dismissed.filter(id => !expiredIds.includes(id)));
+  }
+
+  const badge = document.getElementById("notification-badge");
+  const bell = document.getElementById("notification-bell");
+  if (badge && bell) {
+    if (unreadCount > 0) {
+      badge.textContent = unreadCount;
+      badge.style.display = "flex";
+      bell.title = `${unreadCount} notification${unreadCount > 1 ? "s" : ""}`;
+    } else {
+      badge.style.display = "none";
+      bell.title = "Notifications";
+    }
+  }
+  renderNotificationPanel();
+}
+
+function renderNotificationPanel() {
+  const list = document.getElementById("notification-list");
+  if (!list) return;
+  const notifs = getNotifications();
+  const dismissed = getDismissedIds();
+
+  if (!notifs.length) {
+    list.innerHTML = `<div class="notification-item" style="color:var(--text-muted);text-align:center;padding:24px;">No notifications yet.</div>`;
+    return;
+  }
+
+  list.innerHTML = "";
+  // Show most recent first
+  for (const n of [...notifs].reverse()) {
+    const isDismissed = dismissed.includes(n.id);
+    const div = document.createElement("div");
+    div.className = `notification-item ${isDismissed ? "read" : "unread"}`;
+    const lastDate = n.dates[n.dates.length - 1] || "";
+    const formattedLast = lastDate ? formatDate(lastDate) : "";
+
+    div.innerHTML = `
+      <div class="notification-item-title">${n.title}</div>
+      <div class="notification-item-desc">${n.desc}${formattedLast ? ` (ends ${formattedLast})` : ""}</div>
+      <button class="dismiss-btn" data-nid="${n.id}">${isDismissed ? "Remove" : "Dismiss"}</button>
+    `;
+    list.appendChild(div);
+  }
+}
+
+const notifOverlay = document.createElement("div");
+notifOverlay.className = "notif-overlay";
+document.body.appendChild(notifOverlay);
+
+document.getElementById("notification-bell")?.addEventListener("click", () => {
+  const panel = document.getElementById("notification-panel");
+  if (!panel) return;
+  // Mark all as read when opening
+  const dismissed = getDismissedIds();
+  const notifs = getNotifications();
+  const newlyRead = notifs.filter(n => !dismissed.includes(n.id)).map(n => n.id);
+  if (newlyRead.length) {
+    saveDismissedIds([...dismissed, ...newlyRead]);
+    updateNotificationBadge();
+    renderNotificationPanel();
+  }
+  panel.classList.add("open");
+  notifOverlay.classList.add("open");
+});
+
+document.getElementById("notification-close")?.addEventListener("click", () => {
+  document.getElementById("notification-panel")?.classList.remove("open");
+  notifOverlay.classList.remove("open");
+});
+
+notifOverlay.addEventListener("click", () => {
+  document.getElementById("notification-panel")?.classList.remove("open");
+  notifOverlay.classList.remove("open");
+});
+
+document.addEventListener("click", e => {
+  const dismissBtn = e.target.closest(".dismiss-btn");
+  if (!dismissBtn) return;
+  const nid = parseInt(dismissBtn.dataset.nid, 10);
+  if (!nid) return;
+  const dismissed = getDismissedIds();
+  if (dismissed.includes(nid)) {
+    // Remove permanently
+    saveDismissedIds(dismissed.filter(id => id !== nid));
+    let notifs = getNotifications();
+    notifs = notifs.filter(n => n.id !== nid);
+    saveNotifications(notifs);
+  } else {
+    // Mark as dismissed (read)
+    saveDismissedIds([...dismissed, nid]);
+  }
+  updateNotificationBadge();
+  renderNotificationPanel();
+});
+
+// Hook into fetch to create notification after copy success
+const _origFetch = window.fetch;
+window.fetch = function(...args) {
+  return _origFetch.apply(this, args).then(async response => {
+    const url = typeof args[0] === "string" ? args[0] : args[0]?.url;
+    const method = typeof args[1] === "object" && args[1]?.method ? args[1].method : "GET";
+
+    if (url?.includes("/api/expenses/copy") && method === "POST" && response.ok) {
+      // Clone the response so we can read body
+      const cloned = response.clone();
+      try {
+        const body = await cloned.json();
+        if (body.inserted && body.inserted > 0) {
+          // Find the last date from the request body
+          try {
+            const reqBody = typeof args[1]?.body === "string" ? JSON.parse(args[1].body) : args[1]?.body;
+            if (reqBody?.dates?.length) {
+              const dates = reqBody.dates;
+              const lastDate = dates[dates.length - 1];
+              const firstDate = dates[0];
+              const months = dates.length;
+              // Get details from the copied expense info (from the button data)
+              const copyInfoEl = document.getElementById("copy-info");
+              const infoText = copyInfoEl?.textContent || "";
+              const [details = "Expense", amount = ""] = infoText.split(" — ");
+              createNotification(
+                "Recurring Expense Created",
+                `${details} — Recurring for ${months} month${months > 1 ? "s" : ""}`,
+                { dates, details, amount: amount.trim() }
+              );
+            }
+          } catch {}
+        }
+      } catch {}
+      return response;
+    }
+    return response;
+  }).catch(err => { throw err; });
+};
+
+function updateNotificationBadge() {
+  checkNotifications();
+}
+
+// Initial check
+checkNotifications();
+
+// Re-check when switching to tracker tab
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (btn.dataset.tab === "tracker") {
+      checkNotifications();
+    }
+  });
+});
+
+// ===== PULL TO REFRESH (iPhone PWA) =====
+let pullStartY = 0;
+let pullMoveY = 0;
+let isPulling = false;
+const PULL_THRESHOLD = 80;
+
+const pullIndicator = document.createElement("div");
+pullIndicator.className = "pull-indicator";
+pullIndicator.id = "pull-indicator";
+const container = document.querySelector(".container");
+if (container) {
+  container.parentNode.insertBefore(pullIndicator, container);
+}
+
+document.addEventListener("touchstart", e => {
+  // Only activate pull-to-refresh when at top of page
+  if (window.scrollY > 10) return;
+  const target = e.target;
+  if (target.closest(".modal-overlay") || target.closest(".notification-panel")) return;
+  pullStartY = e.touches[0].clientY;
+  pullMoveY = pullStartY;
+  isPulling = true;
+}, { passive: true });
+
+document.addEventListener("touchmove", e => {
+  if (!isPulling) return;
+  pullMoveY = e.touches[0].clientY;
+  const dist = pullMoveY - pullStartY;
+  if (dist < 0) { isPulling = false; pullIndicator.classList.remove("visible"); return; }
+
+  const indicator = document.getElementById("pull-indicator");
+  if (dist > 20) {
+    indicator.innerHTML = dist > PULL_THRESHOLD
+      ? `<span class="spinner"></span>Release to refresh...`
+      : `<span class="spinner"></span>Pull down to refresh...`;
+    indicator.classList.add("visible");
+  }
+}, { passive: true });
+
+document.addEventListener("touchend", async e => {
+  if (!isPulling) return;
+  isPulling = false;
+  const dist = pullMoveY - pullStartY;
+  const indicator = document.getElementById("pull-indicator");
+
+  if (dist > PULL_THRESHOLD) {
+    indicator.innerHTML = `<span class="spinner"></span>Refreshing...`;
+    try {
+      await Promise.all([
+        refreshAll(),
+        loadReports().catch(() => {}),
+        loadCategories()
+      ]);
+      populateDetailsList();
+      indicator.innerHTML = `✓ Updated`;
+    } catch {
+      indicator.innerHTML = `✗ Failed`;
+    }
+    setTimeout(() => {
+      indicator.classList.remove("visible");
+      indicator.innerHTML = "";
+    }, 1500);
+  } else {
+    indicator.classList.remove("visible");
+    indicator.innerHTML = "";
+  }
+}, { passive: true });

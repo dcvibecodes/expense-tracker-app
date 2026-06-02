@@ -2,7 +2,7 @@
 
 A personal expense tracking app built with **Node.js**, **Express**, and **SQLite**. Deploy it on a VPS or run locally — your data stays on your server.
 
-**Version 2.2.1**
+**Version 2.3.0**
 
 ## Features
 
@@ -12,17 +12,26 @@ Quickly add expenses with date, details, category, and amount. Success confirmat
 - **Duplicate detection** — If you try to add an expense with the same date, details, and amount as an existing entry, the app warns you and asks for confirmation before proceeding.
 - **Double-click prevention** — The Add button disables while the request is in flight, preventing accidental duplicate submissions on slow networks.
 
-### 📋 Copy Expenses
-Copy any expense to one or more dates — ideal for recurring monthly expenses.
+### 📋 Copy Expenses (Monthly Recurring)
+Copy any expense to the same day-of-month across multiple months — ideal for recurring bills.
 - Click the 📋 icon on any expense row (tracker or reports)
-- Pick a single date or a date range
-- The expense is duplicated to every date in the range
-- Example: Copy your rent entry from June 1st to July 1st, Aug 1st, Sep 1st, etc.
+- Enter the **first occurrence date** and **number of months**
+- The expense is duplicated to the same day-of-month (e.g., the 2nd) for each consecutive month
+- Smart **month overflow handling** — Jan 31 + 1 month = Feb 28 (last valid day)
+
+### 🔔 Recurring End Notification
+When a recurring series is approaching its end, you get notified.
+- **Bell icon** in the header with badge count
+- **Notification panel** slides in showing which series is ending and on what date
+- Badge appears on the **last occurrence date** and stays for **7 days**
+- Auto-deletes after 7 days — no stale notifications
+- Mark as read (badge disappears) or dismiss permanently
 
 ### 📊 Reports & Charts
 - **2 Pie Charts** — Category breakdown for the selected month and the previous month, side by side
 - **Bar Chart** — Yearly overview with monthly totals (double-width for better readability)
 - **Drill-down Report Table** — Year → Month → Day → Individual expenses, fully expandable/collapsible
+- **Mobile stacked layout** — On phones, the report table converts to a vertical card layout — no horizontal scrolling needed
 - **Copy, Edit & Delete from Reports** — Copy, edit, or delete any expense across any time period directly from the report view
 - **Category Filter** — Filter reports by category alongside year, month, and date range selectors
 - **Default View** — Reset button to restore the default hierarchy (year/month expanded, days collapsed)
@@ -41,6 +50,9 @@ Shows a **Total** plus a breakdown by all configured categories for the current 
 
 ### 🌙 Dark Mode
 Toggle between light and dark themes via the header icon. Preference saved in localStorage.
+- **Premium SaaS-style dark theme** — Softer borders, layered surfaces, reduced visual noise
+- **Consistent design system** — CSS variables for backgrounds, borders, text colors
+- **All components themed** — Cards, tables, forms, modals, settings, charts, reports
 
 ### 🔒 App Lock
 - Set a **6-digit numeric PIN** to lock the app
@@ -75,10 +87,13 @@ Start typing in the Details field and it suggests previously used entries.
 ### 📱 Mobile-Responsive Design
 Fully responsive from desktop down to 400px screens:
 - **Scrollable tabs** on narrow screens
+- **Swipe left/right** to change between tabs (Tracker, Reports, Downloads, Settings)
+- **Pull-to-refresh** — Pull down on iPhone PWA (Add to Home Screen) to refresh all data
 - **Touch-friendly targets** — 44px minimum tap areas
 - **Card-style table on mobile** — Expense rows become stacked cards
 - **Stacked form fields** — Single column on phones
 - **Charts stack vertically** on small screens
+- **Reports stacked layout** — No horizontal scroll on the report table
 - **Scroll-to-top button** — Appears on scroll, disappears at top
 - **No iOS zoom on focus** — Input font-size set to 16px to prevent Safari auto-zoom
 
@@ -108,9 +123,13 @@ The app will be available at [http://localhost:3000](http://localhost:3000).
 
 The database file is created automatically at `data/expenses.db` on first run.
 
-### Upgrading from v2.1
+### Upgrading from v2.2
 
 Deploy the updated files (`server.js`, `public/app.js`, `public/styles.css`, `public/index.html`, `package.json`, `README.md`) and restart the server. No database changes — fully backward compatible.
+
+### Upgrading from v2.1
+
+Deploy the updated files and restart the server. No database changes — fully backward compatible.
 
 ### Upgrading from v2.0
 
@@ -183,6 +202,16 @@ expense-tracker-app/
 
 ## Changelog
 
+### v2.3.0 (June 2026)
+- **Dark theme complete audit** — Fixed select dropdown patterned overlay bug (background shorthand resetting background-repeat); refactored all borders to CSS variables; softened border colors; added focus rings; card surfaces use subtle box-shadows instead of outlines; premium SaaS-style dark theme
+- **Monthly recurring copy** — Copy expenses to the same day-of-month for N consecutive months (e.g., bill on the 2nd for 14 months); handles month overflow (Jan 31 → Feb 28)
+- **Recurring end notifications** — Bell icon with badge count; notification panel slides in; badge appears on last recurrence date for 7 days then auto-deletes; mark as read or dismiss permanently
+- **Pull-to-refresh** — Pull down gesture refreshes all data on iPhone PWA (Add to Home Screen)
+- **Swipe to change tabs** — Swipe left/right to navigate between Tracker, Reports, Downloads, Settings on mobile
+- **Reports mobile redesign** — Stacked card layout replaces horizontal-scroll table; all actions (copy/edit/delete) retained
+- **Report defaults** — From/To date fields left empty by default; year + month selectors drive the query directly
+- **Settings version** — Version number displayed in the Settings About card
+
 ### v2.2.1 (June 2026)
 - **Night mode fixes** — Chart panels and mobile table cards now respect dark theme; reports text contrast improved for dark backgrounds
 - **Safari dropdown alignment** — Unified select/input height via custom styling; added custom dropdown arrow for consistent cross-browser appearance
@@ -198,17 +227,3 @@ expense-tracker-app/
 - **Collapsible filters** — Filters hidden by default, table immediately visible
 - **Reports auto-refresh** — No manual refresh needed after adding expenses
 - **Batch rename suggestions capped** — Now shows max 8 like the tracker field
-- **Reports sorting fixed** — Months and days now sort correctly in all cases
-- **iOS zoom fix** — Input font-size bumped to 16px to prevent Safari auto-zoom
-
-### v2.1 (May 2026)
-- Pie charts, bar chart, drill-down report table
-- Category filter on reports
-- Expand All / Collapse All / Default View toolbar
-- CSV export with date range and "All Years" option
-- Mobile card-style table, scroll-to-top button
-
-### v2.0 (May 2026)
-- Configurable categories (up to 15) with color palette
-- Batch rename, dark mode, app lock with recovery
-- Autocomplete with smart splitting and recency ordering

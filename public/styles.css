@@ -792,12 +792,12 @@ tbody tr:hover td { background: #fafbff; }
 
 /* ---- Dark Theme ---- */
 [data-theme="dark"] {
-  --bg: #0f0f1e;
-  --surface: #1a1a2e;
-  --surface-elevated: #22223a;
-  --surface-border: #2a2a45;
-  --border-color: #2a2a45;
-  --border-color-strong: #3a3a55;
+  --bg: #000000;
+  --surface: #111111;
+  --surface-elevated: #1a1a1a;
+  --surface-border: #222222;
+  --border-color: #222222;
+  --border-color-strong: #333333;
   --border-focus: #4a9eff;
   --hover-bg: rgba(74, 158, 255, 0.08);
   --text-primary: #e8e8e8;
@@ -808,14 +808,14 @@ tbody tr:hover td { background: #fafbff; }
   --primary-hover: #3b8ae8;
   --accent: #e94560;
   --success: #4ade80;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
-  --shadow-md: 0 2px 8px rgba(0,0,0,0.3);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
 }
 
 [data-theme="dark"] body { background: var(--bg); color: var(--text-primary); }
-[data-theme="dark"] .app-header { background: #0a0a16; }
-[data-theme="dark"] .tab-nav { background: rgba(15, 15, 30, 0.92); }
+[data-theme="dark"] .app-header { background: #000000; }
+[data-theme="dark"] .tab-nav { background: rgba(0, 0, 0, 0.92); }
 [data-theme="dark"] .tab-btn { background: var(--surface); color: var(--text-secondary); border-color: var(--surface-border); }
 [data-theme="dark"] .tab-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--surface); }
 [data-theme="dark"] .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
@@ -825,7 +825,7 @@ tbody tr:hover td { background: #fafbff; }
 /* ---- Dark Form Controls ---- */
 [data-theme="dark"] input,
 [data-theme="dark"] select {
-  background-color: #12122a;
+  background-color: #1a1a1a;
   border-color: var(--border-color);
   color: var(--text-primary);
 }
@@ -865,7 +865,7 @@ tbody tr:hover td { background: #fafbff; }
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 10px;
-  background-color: #12122a;
+  background-color: #1a1a1a;
 }
 
 [data-theme="dark"] button { background: var(--primary); color: #fff; }
@@ -926,7 +926,7 @@ tbody tr:hover td { background: #fafbff; }
 [data-theme="dark"] .settings-desc { color: var(--text-muted); }
 [data-theme="dark"] .category-item { background: var(--surface); border-color: var(--border-color); }
 [data-theme="dark"] .category-name { color: var(--text-primary); }
-[data-theme="dark"] .category-name-input { background: #12122a; border-color: var(--border-color); color: var(--text-primary); }
+[data-theme="dark"] .category-name-input { background: #1a1a1a; border-color: var(--border-color); color: var(--text-primary); }
 [data-theme="dark"] .category-name-input:focus { border-color: var(--border-focus); }
 [data-theme="dark"] .cat-rename-btn, [data-theme="dark"] .cat-delete-btn { background: transparent; }
 [data-theme="dark"] .cat-rename-btn:hover { background: rgba(74, 158, 255, 0.15); color: var(--primary); }

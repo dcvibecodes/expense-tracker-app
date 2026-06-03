@@ -2,7 +2,7 @@
 
 A personal expense tracking app built with **Node.js**, **Express**, and **SQLite**. Deploy it on a VPS or run locally — your data stays on your server.
 
-**Version 2.4.1**
+**Version 2.5.0**
 
 ## Features
 
@@ -213,6 +213,19 @@ expense-tracker-app/
 | POST | `/api/lock/recovery` | Unlock with recovery code |
 
 ## Changelog
+
+### v2.5.0 (June 2026)
+- **🔒 Server-side authentication gate** — the app lock is now enforced on the server before any code is served
+- Previous client-side-only lock was unsecured (bypassable); now all requests require a valid session cookie
+- Server returns a minimal inline lock page for unauthenticated browser requests (no app code leaked)
+- API requests without authentication return HTTP 401
+- Session middleware with cryptographically random secret, httpOnly cookies, 24-hour expiry
+- Uses a `lockConfigured` memory cache since the app uses callback-based `sqlite3` (async DB driver)
+- New `/api/lock/config` endpoint returns real lock state (used by Settings)
+- `/api/lock/status` returns `{ locked: false }` when session is valid (prevents double lock screen)
+- `/api/lock/logout` endpoint to destroy session and re-lock the app
+- Lock page uses the app's theme colors: `#0f3460` navy buttons, `#e94560` error text
+- Server restart invalidates all sessions — must re-enter PIN
 
 ### v2.4.1 (June 2026)
 - **Button height alignment** — All buttons now render at 46px to match the ~45.4px computed height of adjacent `<input>`/`<select>` elements, fixing visual misalignment in the Add Expense form, Filters, Reports selector, Downloads selector, and Settings category row

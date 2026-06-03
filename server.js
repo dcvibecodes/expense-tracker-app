@@ -3,6 +3,7 @@ const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
+const session = require("express-session");
 
 const app = express();
 const PORT = 3000;
@@ -82,6 +83,12 @@ db.serialize(() => {
   });
 });
 
+// --- Lock status cache (sqlite3 is async, cache in memory for sync middleware) ---
+let lockConfigured = false;
+db.get("SELECT id FROM app_lock WHERE id = 1", (err, row) => {
+  lockConfigured = !!row;
+});
+
 function hashPin(pin) {
   return crypto.createHash("sha256").update(pin).digest("hex");
 }
@@ -91,6 +98,113 @@ function generateRecoveryCode() {
 }
 
 app.use(express.json());
+
+// --- Session & Auth middleware ---
+const SESSION_SECRET = crypto.randomBytes(32).toString("hex");
+
+app.use(session({
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    maxAge: 24 * 60 * 60 * 1000
+  }
+}));
+
+function authMiddleware(req, res, next) {
+  const openPaths = [
+    "/api/lock/status",
+    "/api/lock/config",
+    "/api/lock/unlock",
+    "/api/lock/recovery",
+    "/api/lock/setup"
+  ];
+
+  if (openPaths.includes(req.path)) {
+    return next();
+  }
+
+  // If no lock is configured, allow all access
+  if (!lockConfigured) {
+    return next();
+  }
+
+  // If session is authenticated, allow through
+  if (req.session && req.session.authenticated) {
+    return next();
+  }
+
+  // Not authenticated — block
+  if (req.path.startsWith("/api/")) {
+    return res.status(401).json({ error: "Unauthorized. Please unlock the app first." });
+  }
+
+  // For browser requests, serve minimal lock page
+  return res.send(getLoginPage());
+}
+
+function getLoginPage() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Expense Tracker - Locked</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .lock-modal { background: #fff; border-radius: 16px; padding: 48px 40px; width: 100%; max-width: 380px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    h2 { margin-bottom: 8px; font-size: 20px; color: #1a1a2e; }
+    .subtitle { color: #666; font-size: 13px; margin: 0 0 20px; }
+    input[type="password"], input[type="text"] { display: block; width: 100%; text-align: center; font-family: monospace; font-size: 1.4rem; letter-spacing: 0.3em; margin-bottom: 12px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; }
+    button { width: 100%; padding: 12px; background: #0f3460; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
+    button:hover { background: #16213e; }
+    .error { color: #e94560; font-size: 13px; display: none; margin: 8px 0; }
+    .recovery-link { font-size: 13px; margin-top: 8px; }
+    .recovery-link a { color: #0f3460; font-weight: 600; text-decoration: none; cursor: pointer; }
+    .recovery-section { display: none; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div class="lock-modal">
+    <h2>Expense Tracker Locked</h2>
+    <p class="subtitle">Enter your 6-digit PIN to access the app.</p>
+    <input type="password" id="pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="••••••" />
+    <button id="unlock-btn" type="button">Unlock</button>
+    <p class="error" id="error"></p>
+    <p class="recovery-link"><a id="show-recovery">Forgot PIN? Use recovery code</a></p>
+    <div class="recovery-section" id="recovery-section">
+      <input type="text" id="recovery-input" placeholder="Recovery code" />
+      <button id="recovery-btn" type="button">Recover</button>
+    </div>
+  </div>
+  <script>
+    const errorEl = document.getElementById("error");
+    document.getElementById("unlock-btn").addEventListener("click", async () => {
+      const pin = document.getElementById("pin").value;
+      if (!pin) return;
+      const resp = await fetch("/api/lock/unlock", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
+      if (resp.ok) { window.location.reload(); }
+      else { const d = await resp.json(); errorEl.textContent = d.error || "Incorrect PIN"; errorEl.style.display = "block"; }
+    });
+    document.getElementById("pin").addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("unlock-btn").click(); });
+    document.getElementById("show-recovery").addEventListener("click", () => { document.getElementById("recovery-section").style.display = "block"; });
+    document.getElementById("recovery-btn").addEventListener("click", async () => {
+      const code = document.getElementById("recovery-input").value;
+      if (!code) return;
+      const resp = await fetch("/api/lock/recovery", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+      if (resp.ok) { window.location.reload(); }
+      else { const d = await resp.json(); errorEl.textContent = d.error || "Invalid code"; errorEl.style.display = "block"; }
+    });
+  </script>
+</body>
+</html>`;
+}
+
+app.use(authMiddleware);
 app.use(express.static(path.join(__dirname, "public")));
 
 function isValidDate(v) {
@@ -655,6 +769,18 @@ app.get("/api/export/csv", (req, res) => {
 // --- Lock APIs ---
 
 app.get("/api/lock/status", (req, res) => {
+  // If session is already authenticated, tell the frontend the app is unlocked
+  if (req.session && req.session.authenticated) {
+    return res.json({ locked: false });
+  }
+  db.get("SELECT locked FROM app_lock WHERE id = 1", (err, row) => {
+    if (err) return res.status(500).json({ error: "DB error" });
+    return res.json({ locked: row ? Boolean(row.locked) : false });
+  });
+});
+
+app.get("/api/lock/config", (req, res) => {
+  // Always returns the real lock configuration state (used by Settings tab)
   db.get("SELECT locked FROM app_lock WHERE id = 1", (err, row) => {
     if (err) return res.status(500).json({ error: "DB error" });
     return res.json({ locked: row ? Boolean(row.locked) : false });
@@ -676,6 +802,7 @@ app.post("/api/lock/setup", (req, res) => {
     [pinHash, recoveryHash],
     (err) => {
       if (err) return res.status(500).json({ error: "Failed to setup lock." });
+      lockConfigured = true;
       return res.json({ success: true, recoveryCode });
     }
   );
@@ -691,6 +818,7 @@ app.post("/api/lock/unlock", (req, res) => {
     if (hashPin(pin) !== row.pin_hash) {
       return res.status(401).json({ error: "Incorrect PIN." });
     }
+    req.session.authenticated = true;
     return res.json({ success: true });
   });
 });
@@ -707,6 +835,7 @@ app.post("/api/lock/disable", (req, res) => {
     }
     db.run("DELETE FROM app_lock WHERE id = 1", (delErr) => {
       if (delErr) return res.status(500).json({ error: "Failed to disable lock." });
+      lockConfigured = false;
       return res.json({ success: true });
     });
   });
@@ -724,8 +853,18 @@ app.post("/api/lock/recovery", (req, res) => {
     }
     db.run("DELETE FROM app_lock WHERE id = 1", (delErr) => {
       if (delErr) return res.status(500).json({ error: "Failed to recover." });
+      lockConfigured = false;
+      req.session.authenticated = true;
       return res.json({ success: true });
     });
+  });
+});
+
+app.post("/api/lock/logout", (req, res) => {
+  req.session.destroy((err) => {
+    if (err) return res.status(500).json({ error: "Failed to logout." });
+    res.clearCookie("connect.sid");
+    return res.json({ success: true });
   });
 });
 

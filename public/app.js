@@ -2,13 +2,14 @@
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 let categories = []; // loaded from server
+let dateFormat = "MM/DD/YYYY"; // configurable date display format
 
 // ===== THEME =====
 function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
   localStorage.setItem("theme", theme);
   const btn = document.getElementById("theme-toggle");
-  if (btn) btn.textContent = theme === "dark" ? "☀️" : "🌙";
+  if (btn) btn.textContent = theme === "dark" ? "☀" : "🌙";
 }
 // Apply saved theme immediately
 applyTheme(localStorage.getItem("theme") || "light");
@@ -37,7 +38,9 @@ function todayStr() { return localDateStr(new Date()); }
 function formatDate(isoStr) {
   if (!isoStr) return "";
   const [y,m,d] = isoStr.split("-");
-  return `${d}-${m}-${y}`;
+  if (dateFormat === "DD/MM/YYYY") return `${d}/${m}/${y}`;
+  if (dateFormat === "YYYY-MM-DD") return isoStr;
+  return `${m}/${d}/${y}`; // MM/DD/YYYY default
 }
 function formatAmount(value) {
   const num = Number(value);
@@ -236,8 +239,8 @@ function renderRows(rows) {
       <td data-label="Amount">${formatAmount(row.amount)}</td>
       <td class="actions-cell" data-label="">
         <button class="btn-copy" data-id="${row.id}" title="Copy to date">📋</button>
-        <button class="btn-edit" data-id="${row.id}" title="Edit">✏️</button>
-        <button class="btn-delete" data-id="${row.id}" title="Delete">🗑️</button>
+        <button class="btn-edit" data-id="${row.id}" title="Edit">✏</button>
+        <button class="btn-delete" data-id="${row.id}" title="Delete">🗑</button>
       </td>`;
     fragment.appendChild(tr);
   }
@@ -417,7 +420,7 @@ rowsEl.addEventListener("click", async e => {
     const siblings = btn.parentElement.querySelectorAll("button");
     siblings.forEach(s => { s.disabled = true; s.style.pointerEvents = "none"; });
     const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
-    if (res.ok) { await refreshAll(); populateDetailsList(); } else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); btn.textContent = "🗑️"; btn.style.opacity = ""; }
+    if (res.ok) { await refreshAll(); populateDetailsList(); } else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); btn.textContent = "🗑"; btn.style.opacity = ""; }
   }
 });
 
@@ -790,7 +793,7 @@ function renderReportTable(data) {
           html += `  <span class="rpt-label">${exp.details}</span>`;
           html += `  <span class="rpt-cat"><span class="cat-badge" style="background:${getCategoryColor(exp.category)}20;color:${getCategoryColor(exp.category)}">${formatCategory(exp.category)}</span></span>`;
           html += `  <span class="rpt-amt">${formatAmount(exp.amount)}</span>`;
-          html += `  <span class="rpt-actions"><button class="rpt-copy-btn" data-id="${exp.id}" title="Copy to date">📋</button><button class="rpt-edit-btn" data-id="${exp.id}" title="Edit">✏️</button><button class="rpt-delete-btn" data-id="${exp.id}" title="Delete">🗑️</button></span>`;
+          html += `  <span class="rpt-actions"><button class="rpt-copy-btn" data-id="${exp.id}" title="Copy to date">📋</button><button class="rpt-edit-btn" data-id="${exp.id}" title="Edit">✏</button><button class="rpt-delete-btn" data-id="${exp.id}" title="Delete">🗑</button></span>`;
           html += `</div>`;
         }
         html += `</div>`; // day children
@@ -843,7 +846,7 @@ reportWrap.addEventListener("click", async e => {
     siblings.forEach(s => { s.disabled = true; s.style.pointerEvents = "none"; });
     const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
     if (res.ok) { await loadReports(); await refreshAll(); populateDetailsList(); }
-    else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); delBtn.textContent = "🗑️"; delBtn.style.opacity = ""; }
+    else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); delBtn.textContent = "🗑"; delBtn.style.opacity = ""; }
     return;
   }
 
@@ -1019,8 +1022,8 @@ function renderCategoriesList() {
     div.innerHTML = `
       <span class="category-color-dot" style="background:${cat.color}" data-id="${cat.id}" title="Change color"></span>
       <span class="category-name">${formatCategory(cat.name)}</span>
-      <button class="cat-rename-btn" data-id="${cat.id}" title="Rename category">✏️</button>
-      <button class="cat-delete-btn" data-id="${cat.id}" title="Delete category">🗑️</button>
+      <button class="cat-rename-btn" data-id="${cat.id}" title="Rename category">✏</button>
+      <button class="cat-delete-btn" data-id="${cat.id}" title="Delete category">🗑</button>
     `;
     categoriesList.appendChild(div);
   }
@@ -1190,7 +1193,7 @@ categoriesList.addEventListener("click", async e => {
   if (!delBtn) return;
   const id = parseInt(delBtn.dataset.id, 10);
   const cat = categories.find(c => c.id === id);
-  if (!confirm(`⚠️ Delete category "${formatCategory(cat.name)}"?\n\nThis will permanently remove the category. Any historical expenses using it will lose their category assignment.\n\nConsider renaming the category instead if you want to preserve historical records.`)) return;
+  if (!confirm(`⚠ Delete category "${formatCategory(cat.name)}"?\n\nThis will permanently remove the category. Any historical expenses using it will lose their category assignment.\n\nConsider renaming the category instead if you want to preserve historical records.`)) return;
   const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
   const data = await res.json();
   if (res.ok) {
@@ -1203,12 +1206,60 @@ categoriesList.addEventListener("click", async e => {
   }
 });
 
+// Date format settings
+async function loadDateFormatSetting() {
+  try {
+    const res = await fetch("/api/settings");
+    if (res.ok) {
+      const data = await res.json();
+      if (data.date_format) {
+        dateFormat = data.date_format;
+        const sel = document.getElementById("settings-date-format");
+        if (sel) sel.value = data.date_format;
+      }
+    }
+  } catch(e) {}
+}
+
+document.getElementById("settings-date-format-save").addEventListener("click", async function() {
+  const btn = this;
+  const sel = document.getElementById("settings-date-format");
+  const msg = document.getElementById("date-format-message");
+  const selectedFormat = sel.value;
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+  try {
+    const res = await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date_format: selectedFormat })
+    });
+    if (res.ok) {
+      dateFormat = selectedFormat;
+      msg.textContent = "Date format saved.";
+      msg.className = "settings-msg success";
+      renderRows(currentRows);
+      await loadReports();
+    } else {
+      const err = await res.json();
+      msg.textContent = err.error || "Failed to save.";
+      msg.className = "settings-msg error";
+    }
+  } catch(e) {
+    msg.textContent = "Failed to save.";
+    msg.className = "settings-msg error";
+  }
+  btn.disabled = false;
+  btn.textContent = "Save";
+  setTimeout(() => { msg.textContent = ""; msg.className = "settings-msg"; }, 3000);
+});
+
 // Lock settings
 const lockSetupSection = document.getElementById("lock-setup-section");
 const lockDisableSection = document.getElementById("lock-disable-section");
 
 async function loadLockSettings() {
-  const res = await fetch("/api/lock/config");
+  const res = await fetch("/api/lock/status");
   const { locked } = await res.json();
   lockSetupSection.style.display = locked ? "none" : "block";
   lockDisableSection.style.display = locked ? "block" : "none";
@@ -1231,7 +1282,9 @@ document.getElementById("settings-lock-enable").addEventListener("click", async 
   if (data.success) {
     lockSetupSection.style.display = "none";
     const alertSection = document.getElementById("lock-recovery-alert-section");
-    alertSection.innerHTML = `<div class="recovery-alert"><div class="recovery-alert-header">✓ Lock enabled successfully</div><div class="recovery-alert-body"><p>Your recovery code:</p><code class="recovery-code">${data.recoveryCode}</code><p class="recovery-warning">⚠️ Save this code now. This is the only time it will be shown. If you forget your PIN and don't have this code, you will permanently lose access to the app.</p><p class="recovery-tips">Tips: Save it in your notes app, email it to yourself, or store it in your password manager.</p></div></div>`;
+    alertSection.innerHTML = `<div class="recovery-alert"><div class="recovery-alert-header">✓ Lock enabled successfully</div><div class="recovery-alert-body">
+<p>Your recovery code:</p><code class="recovery-code">${data.recoveryCode}</code>
+<p class="recovery-warning">⚠ Save this code now. This is the only time it will be shown. If you forget your PIN and don't have this code, you will permanently lose access to the app.</p><p class="recovery-tips">Tips: Save it in your notes app, email it to yourself, or store it in your password manager.</p></div></div>`;
     alertSection.style.display = "block";
     lockDisableSection.style.display = "block";
   } else { msg.textContent = data.error || "Failed"; msg.className = "settings-msg error"; }
@@ -1254,53 +1307,16 @@ document.getElementById("settings-disable-pin").addEventListener("keydown", e =>
   if (e.key === "Enter") { e.preventDefault(); document.getElementById("settings-lock-disable").click(); }
 });
 
-// ===== LOCK OVERLAY =====
-document.querySelectorAll('#settings-pin, #settings-pin-confirm, #settings-disable-pin, #lock-pin-input').forEach(input => {
+// ===== PIN INPUT FILTERING =====
+document.querySelectorAll('#settings-pin, #settings-pin-confirm, #settings-disable-pin').forEach(input => {
   input.addEventListener("input", () => { input.value = input.value.replace(/\D/g, ""); });
-});
-
-const lockOverlay = document.getElementById("lock-overlay");
-
-document.getElementById("lock-unlock-btn").addEventListener("click", async () => {
-  const pin = document.getElementById("lock-pin-input").value;
-  const err = document.getElementById("lock-error");
-  const remember = document.getElementById("lock-remember").checked;
-  const res = await fetch("/api/lock/unlock", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
-  if (res.ok) {
-    if (remember) {
-      localStorage.setItem("lock-remembered", new Date().toISOString().slice(0, 10));
-    }
-    lockOverlay.style.display = "none";
-    initApp();
-  }
-  else { err.textContent = "Incorrect PIN."; err.style.display = "block"; }
-});
-
-document.getElementById("lock-pin-input").addEventListener("keydown", e => {
-  if (e.key === "Enter") { e.preventDefault(); document.getElementById("lock-unlock-btn").click(); }
-});
-
-document.getElementById("show-recovery-btn").addEventListener("click", e => {
-  e.preventDefault();
-  document.getElementById("lock-recovery-section").style.display = "block";
-});
-
-document.getElementById("lock-recovery-submit").addEventListener("click", async () => {
-  const code = document.getElementById("lock-recovery-input").value;
-  const err = document.getElementById("lock-error");
-  const res = await fetch("/api/lock/recovery", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
-  if (res.ok) { lockOverlay.style.display = "none"; initApp(); }
-  else { err.textContent = "Invalid recovery code."; err.style.display = "block"; }
-});
-
-document.getElementById("lock-recovery-input").addEventListener("keydown", e => {
-  if (e.key === "Enter") { e.preventDefault(); document.getElementById("lock-recovery-submit").click(); }
 });
 
 // ===== APP INIT =====
 async function initApp() {
   dateInput.value = todayStr();
   await loadCategories();
+  await loadDateFormatSetting();
   setDateRangeToCurrentMonth();
   populateDetailsList();
   await refreshAll();
@@ -1308,31 +1324,7 @@ async function initApp() {
   loadLockSettings();
 }
 
-async function checkLockAndInit() {
-  try {
-    const res = await fetch("/api/lock/status");
-    const { locked } = await res.json();
-    if (locked) {
-      const remembered = localStorage.getItem("lock-remembered");
-      const today = new Date().toISOString().slice(0, 10);
-      if (remembered === today) {
-        lockOverlay.style.display = "none";
-        initApp();
-      } else {
-        if (remembered) localStorage.removeItem("lock-remembered");
-        lockOverlay.style.display = "flex";
-      }
-    } else {
-      lockOverlay.style.display = "none";
-      initApp();
-    }
-  } catch {
-    lockOverlay.style.display = "none";
-    initApp();
-  }
-}
-
-checkLockAndInit();
+initApp();
 
 // ===== NOTIFICATION SYSTEM (Recurring Expense Ending) =====
 const NOTIFICATIONS_KEY = "expense-notifications";

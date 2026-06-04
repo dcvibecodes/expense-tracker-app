@@ -1,14 +1,14 @@
 {
-  "name": "expense-tracker",
+  "name": "expense-tracker-plus",
   "version": "2.5.0",
-  "description": "Expense tracker app with SQLite database",
+  "description": "Expense Tracker+ app with SQLite database",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.19.2",
-    "express-session": "^1.19.0",
+    "express-session": "^1.18.0",
     "sqlite3": "^5.1.7"
   }
 }

@@ -2,8 +2,8 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
-const sqlite3 = require("sqlite3").verbose();
 const session = require("express-session");
+const sqlite3 = require("sqlite3").verbose();
 
 const app = express();
 const PORT = 3000;
@@ -24,6 +24,20 @@ db.serialize(() => {
       sort_order INTEGER NOT NULL DEFAULT 0
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    )
+  `);
+
+  // Seed default date_format setting
+  db.get("SELECT value FROM settings WHERE key = 'date_format'", (err, row) => {
+    if (!err && !row) {
+      db.run("INSERT INTO settings (key, value) VALUES ('date_format', 'MM/DD/YYYY')");
+    }
+  });
 
   // Check if expenses table has the old CHECK constraint by trying to create the new schema
   // If the table already exists, we need to migrate it to remove the CHECK constraint
@@ -83,12 +97,6 @@ db.serialize(() => {
   });
 });
 
-// --- Lock status cache (sqlite3 is async, cache in memory for sync middleware) ---
-let lockConfigured = false;
-db.get("SELECT id FROM app_lock WHERE id = 1", (err, row) => {
-  lockConfigured = !!row;
-});
-
 function hashPin(pin) {
   return crypto.createHash("sha256").update(pin).digest("hex");
 }
@@ -117,7 +125,6 @@ app.use(session({
 function authMiddleware(req, res, next) {
   const openPaths = [
     "/api/lock/status",
-    "/api/lock/config",
     "/api/lock/unlock",
     "/api/lock/recovery",
     "/api/lock/setup"
@@ -128,31 +135,33 @@ function authMiddleware(req, res, next) {
   }
 
   // If no lock is configured, allow all access
-  if (!lockConfigured) {
-    return next();
-  }
+  db.get("SELECT id FROM app_lock WHERE id = 1", (err, lockRow) => {
+    if (err || !lockRow) {
+      return next();
+    }
 
-  // If session is authenticated, allow through
-  if (req.session && req.session.authenticated) {
-    return next();
-  }
+    // If session is authenticated, allow through
+    if (req.session && req.session.authenticated) {
+      return next();
+    }
 
-  // Not authenticated — block
-  if (req.path.startsWith("/api/")) {
-    return res.status(401).json({ error: "Unauthorized. Please unlock the app first." });
-  }
+    // Not authenticated — block
+    if (req.path.startsWith("/api/")) {
+      return res.status(401).json({ error: "Unauthorized. Please unlock the app first." });
+    }
 
-  // For browser requests, serve minimal lock page
-  return res.send(getLoginPage());
+    // For browser requests, serve the lock page
+    return res.send(getLockPage());
+  });
 }
 
-function getLoginPage() {
+function getLockPage() {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Expense Tracker - Locked</title>
+  <title>Expense Tracker+ - Locked</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
@@ -160,17 +169,17 @@ function getLoginPage() {
     h2 { margin-bottom: 8px; font-size: 20px; color: #1a1a2e; }
     .subtitle { color: #666; font-size: 13px; margin: 0 0 20px; }
     input[type="password"], input[type="text"] { display: block; width: 100%; text-align: center; font-family: monospace; font-size: 1.4rem; letter-spacing: 0.3em; margin-bottom: 12px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; }
-    button { width: 100%; padding: 12px; background: #0f3460; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
-    button:hover { background: #16213e; }
-    .error { color: #e94560; font-size: 13px; display: none; margin: 8px 0; }
+    button { width: 100%; padding: 12px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
+    button:hover { background: #2563eb; }
+    .error { color: #e74c3c; font-size: 13px; display: none; margin: 8px 0; }
     .recovery-link { font-size: 13px; margin-top: 8px; }
-    .recovery-link a { color: #0f3460; font-weight: 600; text-decoration: none; cursor: pointer; }
+    .recovery-link a { color: #3b82f6; font-weight: 600; text-decoration: none; cursor: pointer; }
     .recovery-section { display: none; margin-top: 12px; }
   </style>
 </head>
 <body>
   <div class="lock-modal">
-    <h2>Expense Tracker Locked</h2>
+    <h2>Expense Tracker+ Locked</h2>
     <p class="subtitle">Enter your 6-digit PIN to access the app.</p>
     <input type="password" id="pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="••••••" />
     <button id="unlock-btn" type="button">Unlock</button>
@@ -678,7 +687,8 @@ app.get("/api/reports", (req, res) => {
     params.push(category);
   }
 
-  const sql = `SELECT id, date, details, category, amount FROM expenses ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY date ASC, id ASC`;
+  const sql = `SELECT id, date, details, category, amount FROM expenses
+${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY date ASC, id ASC`;
 
   db.all(sql, params, (err, rows) => {
     if (err) return res.status(500).json({ error: "Failed to fetch report data." });
@@ -769,18 +779,6 @@ app.get("/api/export/csv", (req, res) => {
 // --- Lock APIs ---
 
 app.get("/api/lock/status", (req, res) => {
-  // If session is already authenticated, tell the frontend the app is unlocked
-  if (req.session && req.session.authenticated) {
-    return res.json({ locked: false });
-  }
-  db.get("SELECT locked FROM app_lock WHERE id = 1", (err, row) => {
-    if (err) return res.status(500).json({ error: "DB error" });
-    return res.json({ locked: row ? Boolean(row.locked) : false });
-  });
-});
-
-app.get("/api/lock/config", (req, res) => {
-  // Always returns the real lock configuration state (used by Settings tab)
   db.get("SELECT locked FROM app_lock WHERE id = 1", (err, row) => {
     if (err) return res.status(500).json({ error: "DB error" });
     return res.json({ locked: row ? Boolean(row.locked) : false });
@@ -802,7 +800,6 @@ app.post("/api/lock/setup", (req, res) => {
     [pinHash, recoveryHash],
     (err) => {
       if (err) return res.status(500).json({ error: "Failed to setup lock." });
-      lockConfigured = true;
       return res.json({ success: true, recoveryCode });
     }
   );
@@ -835,7 +832,6 @@ app.post("/api/lock/disable", (req, res) => {
     }
     db.run("DELETE FROM app_lock WHERE id = 1", (delErr) => {
       if (delErr) return res.status(500).json({ error: "Failed to disable lock." });
-      lockConfigured = false;
       return res.json({ success: true });
     });
   });
@@ -851,24 +847,42 @@ app.post("/api/lock/recovery", (req, res) => {
     if (hashPin(code.toUpperCase()) !== row.recovery_hash) {
       return res.status(401).json({ error: "Invalid recovery code." });
     }
+    req.session.authenticated = true;
     db.run("DELETE FROM app_lock WHERE id = 1", (delErr) => {
       if (delErr) return res.status(500).json({ error: "Failed to recover." });
-      lockConfigured = false;
-      req.session.authenticated = true;
       return res.json({ success: true });
     });
   });
 });
 
-app.post("/api/lock/logout", (req, res) => {
-  req.session.destroy((err) => {
-    if (err) return res.status(500).json({ error: "Failed to logout." });
-    res.clearCookie("connect.sid");
-    return res.json({ success: true });
+// --- Settings APIs ---
+
+app.get("/api/settings", (req, res) => {
+  db.get("SELECT value FROM settings WHERE key = 'date_format'", (err, row) => {
+    if (err) return res.status(500).json({ error: "DB error" });
+    res.json({
+      date_format: (row && row.value) || "MM/DD/YYYY"
+    });
   });
 });
 
+app.put("/api/settings", (req, res) => {
+  const { date_format } = req.body;
+  if (date_format !== undefined) {
+    const allowed = ["MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"];
+    if (!allowed.includes(date_format)) {
+      return res.status(400).json({ error: "Invalid date format." });
+    }
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('date_format', ?)", [date_format], (err) => {
+      if (err) return res.status(500).json({ error: "Failed to save setting." });
+      res.json({ success: true, date_format });
+    });
+  } else {
+    res.status(400).json({ error: "No settings provided." });
+  }
+});
+
 app.listen(PORT, () => {
-  console.log(`Expense tracker running at http://localhost:${PORT}`);
+  console.log(`Expense Tracker+ running at http://localhost:${PORT}`);
   console.log(`Database path: ${dbPath}`);
 });

@@ -1,322 +1,316 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Expense Tracker</title>
-    <link rel="stylesheet" href="/styles.css" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  </head>
-  <body>
+<html lang="en"> 
+  <head> 
+    <meta charset="UTF-8" /> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /> 
+    <title>Expense Tracker+</title> 
+    <link rel="stylesheet" href="/styles.css" /> 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
+  </head> 
+  <body> 
 
-    <!-- Lock Overlay -->
-    <div id="lock-overlay" class="lock-overlay">
-      <div class="lock-modal">
-        <h2>Expense Tracker Locked</h2>
-        <p class="lock-subtitle">Enter your 6-digit PIN to access the app.</p>
-        <input type="password" id="lock-pin-input" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="••••••" />
-        <label class="checkbox-label"><input type="checkbox" id="lock-remember" /> Remember for today</label>
-        <button id="lock-unlock-btn" type="button">Unlock</button>
-        <p id="lock-error" class="lock-error"></p>
-        <p id="lock-recovery-link" class="lock-recovery-link"><a href="#" id="show-recovery-btn">Forgot PIN? Use recovery code</a></p>
-        <div id="lock-recovery-section" class="lock-recovery-section">
-          <input type="text" id="lock-recovery-input" placeholder="Recovery code" />
-          <button id="lock-recovery-submit" type="button">Recover</button>
-        </div>
-      </div>
-    </div>
+    <!-- App Header --> 
+    <header class="app-header"> 
+      <span class="app-title">Expense Tracker+</span> 
+      <div class="header-actions"> 
+        <span id="notification-bell" class="notification-bell" title="Notifications"> 
+          🔔 
+          <span id="notification-badge" class="notification-badge" style="display:none;">0</span> 
+        </span> 
+        <button id="theme-toggle" class="theme-toggle-btn" title="Toggle dark mode">🌙</button> 
+      </div> 
+    </header> 
 
-    <!-- Tab Navigation -->
-    <!-- App Header -->
-    <header class="app-header">
-      <span class="app-title">Expense Tracker</span>
-      <div class="header-actions">
-        <span id="notification-bell" class="notification-bell" title="Notifications">
-          🔔
-          <span id="notification-badge" class="notification-badge" style="display:none;">0</span>
-        </span>
-        <button id="theme-toggle" class="theme-toggle-btn" title="Toggle dark mode">🌙</button>
-      </div>
-    </header>
+    <!-- Notification Panel --> 
+    <div id="notification-panel" class="notification-panel"> 
+      <div class="notification-panel-header"> 
+        <span>Notifications</span> 
+        <button id="notification-close" type="button">✕</button> 
+      </div> 
+      <div id="notification-list" class="notification-list"></div> 
+    </div> 
 
-    <!-- Notification Panel -->
-    <div id="notification-panel" class="notification-panel">
-      <div class="notification-panel-header">
-        <span>Notifications</span>
-        <button id="notification-close" type="button">✕</button>
-      </div>
-      <div id="notification-list" class="notification-list"></div>
-    </div>
+    <!-- Tab Navigation --> 
+    <nav class="tab-nav" id="tab-nav"> 
+      <div class="tab-nav-tabs"> 
+        <button class="tab-btn active" data-tab="tracker">Tracker</button> 
+        <button class="tab-btn" data-tab="reports">Reports</button> 
+        <button class="tab-btn" data-tab="downloads">Downloads</button> 
+        <button class="tab-btn" data-tab="settings">Settings</button> 
+      </div> 
+    </nav> 
 
-    <!-- Tab Navigation -->
-    <nav class="tab-nav" id="tab-nav">
-      <div class="tab-nav-tabs">
-        <button class="tab-btn active" data-tab="tracker">Tracker</button>
-        <button class="tab-btn" data-tab="reports">Reports</button>
-        <button class="tab-btn" data-tab="downloads">Downloads</button>
-        <button class="tab-btn" data-tab="settings">Settings</button>
-      </div>
-    </nav>
+    <main class="container"> 
 
-    <main class="container">
+      <!-- ===== TRACKER TAB ===== --> 
+      <div id="tab-tracker" class="tab-content active"> 
 
-      <!-- ===== TRACKER TAB ===== -->
-      <div id="tab-tracker" class="tab-content active">
+        <section class="card"> 
+          <h2>Add Expense</h2> 
+          <form id="expense-form" class="grid add-grid"> 
+            <label>Date 
+              <div class="date-with-today"> 
+                <input type="date" id="date" required /> 
+                <button type="button" id="date-today-btn" class="today-btn" title="Reset to today">Today</button> 
+              </div> 
+            </label> 
+            <label>Details 
+              <input type="text" id="details" placeholder="e.g. Milk, Wifi Recharge" list="details-list" autocomplete="off" required /> 
+              <datalist id="details-list"></datalist> 
+            </label> 
+            <label>Category 
+              <select id="category" required></select> 
+            </label> 
+            <label>Amount <input type="text" id="amount" inputmode="decimal" placeholder="0.00" autocomplete="off" required /></label> 
+            <button type="submit" class="add-btn" id="add-btn">+ Add</button> 
+          </form> 
+          <p id="add-expense-msg" class="form-msg"></p> 
+        </section> 
 
-        <section class="card">
-          <h2>Add Expense</h2>
-          <form id="expense-form" class="grid add-grid">
-            <label>Date
-              <div class="date-with-today">
-                <input type="date" id="date" required />
-                <button type="button" id="date-today-btn" class="today-btn" title="Reset to today">Today</button>
-              </div>
-            </label>
-            <label>Details
-              <input type="text" id="details" placeholder="e.g. Milk, Wifi Recharge" list="details-list" autocomplete="off" required />
-              <datalist id="details-list"></datalist>
-            </label>
-            <label>Category
-              <select id="category" required></select>
-            </label>
-            <label>Amount <input type="text" id="amount" inputmode="decimal" placeholder="0.00" autocomplete="off" required /></label>
-            <button type="submit" class="add-btn" id="add-btn">+ Add</button>
-          </form>
-          <p id="add-expense-msg" class="form-msg"></p>
-        </section>
+        <section class="card summary-card" id="summary-panel"> 
+          <h2 id="summary-heading">This Month Summary</h2> 
+          <div class="summary-grid" id="summary-grid"></div> 
+        </section> 
 
-        <section class="card summary-card" id="summary-panel">
-          <h2 id="summary-heading">This Month Summary</h2>
-          <div class="summary-grid" id="summary-grid"></div>
-        </section>
+        <section class="card"> 
+          <h2>Expenses</h2> 
+          <button id="filters-toggle" type="button" class="filters-toggle-btn" aria-expanded="false">🔍 Filters & Batch Actions</button> 
+          <div id="filters-content" class="filters-collapsible" style="display:none;"> 
+            <div class="filters"> 
+              <label>Start Date <input type="date" id="start-date" /></label> 
+              <label>End Date <input type="date" id="end-date" /></label> 
+              <label>Category 
+                <select id="category-filter"> 
+                  <option value="all">All</option> 
+                </select> 
+              </label> 
+              <label>Search <input type="text" id="search" placeholder="Search" /> </label> 
+              <div class="buttons"> 
+                <button id="clear-range" type="button">Reset</button> 
+                <button id="batch-edit-btn" type="button" class="batch-btn">Batch Rename</button> 
+                <button id="batch-cat-btn" type="button" class="batch-btn">Batch Category</button> 
+              </div> 
+            </div> 
+          </div> 
+          <div class="table-wrap"> 
+            <table> 
+              <thead><tr> 
+                <th class="col-date">Date</th><th>Details</th><th>Category</th><th class="col-amount">Amount</th><th class="col-actions">Actions</th> 
+              </tr></thead> 
+              <tbody id="expense-rows"></tbody> 
+            </table> 
+          </div> 
+        </section> 
+      </div> 
 
-        <section class="card">
-          <h2>Expenses</h2>
-          <button id="filters-toggle" type="button" class="filters-toggle-btn" aria-expanded="false">🔍 Filters & Batch Actions</button>
-          <div id="filters-content" class="filters-collapsible" style="display:none;">
-            <div class="filters">
-              <label>Start Date <input type="date" id="start-date" /></label>
-              <label>End Date <input type="date" id="end-date" /></label>
-              <label>Category
-                <select id="category-filter">
-                  <option value="all">All</option>
-                </select>
-              </label>
-              <label>Search <input type="text" id="search" placeholder="Search" /></label>
-              <div class="buttons">
-                <button id="clear-range" type="button">Reset</button>
-                <button id="batch-edit-btn" type="button" class="batch-btn">Batch Rename</button>
-                <button id="batch-cat-btn" type="button" class="batch-btn">Batch Category</button>
-              </div>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr>
-                <th class="col-date">Date</th><th>Details</th><th>Category</th><th class="col-amount">Amount</th><th class="col-actions">Actions</th>
-              </tr></thead>
-              <tbody id="expense-rows"></tbody>
-            </table>
-          </div>
-        </section>
-      </div>
+      <!-- ===== REPORTS TAB ===== --> 
+      <div id="tab-reports" class="tab-content"> 
+        <section class="card"> 
+          <div class="report-range"> 
+            <label>Year <select id="report-year"></select></label> 
+            <label>Month 
+              <select id="report-month"> 
+                <option value="">All Months</option> 
+                <option value="1">January</option><option value="2">February</option><option value="3">March</option> 
+                <option value="4">April</option><option value="5">May</option><option value="6">June</option> 
+                <option value="7">July</option><option value="8">August</option><option value="9">September</option> 
+                <option value="10">October</option><option value="11">November</option><option value="12">December</option> 
+              </select> 
+            </label> 
+            <label>From <input type="date" id="report-from" class="date-optional" /></label> 
+            <label>To <input type="date" id="report-to" class="date-optional" /> </label> 
+            <label>Category 
+              <select id="report-category"> 
+                <option value="all">All Categories</option> 
+              </select> 
+            </label> 
+            <div class="report-range-btns"> 
+              <button id="report-apply" type="button">Apply</button> 
+              <button id="report-reset" type="button" class="btn-secondary">Reset</button> 
+            </div> 
+          </div> 
+        </section> 
 
-      <!-- ===== REPORTS TAB ===== -->
-      <div id="tab-reports" class="tab-content">
-        <section class="card">
-          <div class="report-range">
-            <label>Year <select id="report-year"></select></label>
-            <label>Month
-              <select id="report-month">
-                <option value="">All Months</option>
-                <option value="1">January</option><option value="2">February</option><option value="3">March</option>
-                <option value="4">April</option><option value="5">May</option><option value="6">June</option>
-                <option value="7">July</option><option value="8">August</option><option value="9">September</option>
-                <option value="10">October</option><option value="11">November</option><option value="12">December</option>
-              </select>
-            </label>
-            <label>From <input type="date" id="report-from" class="date-optional" /></label>
-            <label>To <input type="date" id="report-to" class="date-optional" /></label>
-            <label>Category
-              <select id="report-category">
-                <option value="all">All Categories</option>
-              </select>
-            </label>
-            <div class="report-range-btns">
-              <button id="report-apply" type="button">Apply</button>
-              <button id="report-reset" type="button" class="btn-secondary">Reset</button>
-            </div>
-          </div>
-        </section>
+        <section class="card charts-card" id="charts-panel"> 
+          <div class="charts-header"> 
+            <h2 id="charts-heading">Monthly & Yearly Charts</h2> 
+            <button id="toggle-charts" type="button" aria-expanded="true" title="Collapse charts">▼</button> 
+          </div> 
+          <div id="charts-content" class="charts-content"> 
+            <div class="charts"> 
+              <div class="chart-panel" id="pie-panel-1"><h3 id="pie-heading-1"></h3><div class="chart-wrapper"><canvas id="pie-chart-1"></canvas></div></div> 
+              <div class="chart-panel" id="pie-panel-0"><h3 id="pie-heading-0"></h3><div class="chart-wrapper"><canvas id="pie-chart-0"></canvas></div></div> 
+              <div class="chart-panel chart-panel-bar"><h3>Year Overview</h3><div class="chart-wrapper"><canvas id="bar-chart"></canvas></div></div> 
+            </div> 
+          </div> 
+        </section> 
 
-        <section class="card charts-card" id="charts-panel">
-          <div class="charts-header">
-            <h2 id="charts-heading">Monthly & Yearly Charts</h2>
-            <button id="toggle-charts" type="button" aria-expanded="true" title="Collapse charts">▼</button>
-          </div>
-          <div id="charts-content" class="charts-content">
-            <div class="charts">
-              <div class="chart-panel" id="pie-panel-1"><h3 id="pie-heading-1"></h3><div class="chart-wrapper"><canvas id="pie-chart-1"></canvas></div></div>
-              <div class="chart-panel" id="pie-panel-0"><h3 id="pie-heading-0"></h3><div class="chart-wrapper"><canvas id="pie-chart-0"></canvas></div></div>
-              <div class="chart-panel chart-panel-bar"><h3>Year Overview</h3><div class="chart-wrapper"><canvas id="bar-chart"></canvas></div></div>
-            </div>
-          </div>
-        </section>
+        <section class="card report-table-card"> 
+          <div class="report-toolbar"> 
+            <button id="report-expand-all" type="button" class="report-toolbar-btn">Expand All</button> 
+            <button id="report-collapse-all" type="button" class="report-toolbar-btn">Collapse All</button> 
+            <button id="report-default-view" type="button" class="report-toolbar-btn">Default View</button> 
+          </div> 
+          <div class="report-table-wrap" id="report-table-wrap"></div> 
+        </section> 
+      </div> 
 
-        <section class="card report-table-card">
-          <div class="report-toolbar">
-            <button id="report-expand-all" type="button" class="report-toolbar-btn">Expand All</button>
-            <button id="report-collapse-all" type="button" class="report-toolbar-btn">Collapse All</button>
-            <button id="report-default-view" type="button" class="report-toolbar-btn">Default View</button>
-          </div>
-          <div class="report-table-wrap" id="report-table-wrap"></div>
-        </section>
-      </div>
+      <!-- ===== DOWNLOADS TAB ===== --> 
+      <div id="tab-downloads" class="tab-content"> 
+        <section class="card"> 
+          <div class="report-range"> 
+            <label>Year <select id="dl-year"></select></label> 
+            <label>Month 
+              <select id="dl-month"> 
+                <option value="">All Months</option> 
+                <option value="1">January</option><option value="2">February</option><option value="3">March</option> 
+                <option value="4">April</option><option value="5">May</option><option value="6">June</option> 
+                <option value="7">July</option><option value="8">August</option><option value="9">September</option> 
+                <option value="10">October</option><option value="11">November</option><option value="12">December</option> 
+              </select> 
+            </label> 
+            <label>From <input type="date" id="dl-from" class="date-optional" /> </label> 
+            <label>To <input type="date" id="dl-to" class="date-optional" /> </label> 
+            <button id="dl-csv-btn" type="button">Download CSV</button> 
+          </div> 
+        </section> 
+      </div> 
 
-      <!-- ===== DOWNLOADS TAB ===== -->
-      <div id="tab-downloads" class="tab-content">
-        <section class="card">
-          <div class="report-range">
-            <label>Year <select id="dl-year"></select></label>
-            <label>Month
-              <select id="dl-month">
-                <option value="">All Months</option>
-                <option value="1">January</option><option value="2">February</option><option value="3">March</option>
-                <option value="4">April</option><option value="5">May</option><option value="6">June</option>
-                <option value="7">July</option><option value="8">August</option><option value="9">September</option>
-                <option value="10">October</option><option value="11">November</option><option value="12">December</option>
-              </select>
-            </label>
-            <label>From <input type="date" id="dl-from" class="date-optional" /></label>
-            <label>To <input type="date" id="dl-to" class="date-optional" /></label>
-            <button id="dl-csv-btn" type="button">Download CSV</button>
-          </div>
-        </section>
-      </div>
+      <!-- ===== SETTINGS TAB ===== --> 
+      <div id="tab-settings" class="tab-content"> 
 
-      <!-- ===== SETTINGS TAB ===== -->
-      <div id="tab-settings" class="tab-content">
+        <section class="card"> 
+          <h2>Categories</h2> 
+          <p class="settings-desc">Manage expense categories (max 15). Changes apply to new and existing expenses.</p> 
+          <div id="categories-list" class="categories-list"></div> 
+          <div class="category-add-row" id="category-add-row"> 
+            <input type="text" id="new-category-name" placeholder="New category name" maxlength="30" /> 
+            <div class="color-swatches" id="new-category-swatches"></div> 
+            <button id="add-category-btn" type="button">+ Add</button> 
+          </div> 
+          <p id="category-message" class="settings-msg"></p> 
+        </section> 
 
-        <section class="card">
-          <h2>Categories</h2>
-          <p class="settings-desc">Manage expense categories (max 15). Changes apply to new and existing expenses.</p>
-          <div id="categories-list" class="categories-list"></div>
-          <div class="category-add-row" id="category-add-row">
-            <input type="text" id="new-category-name" placeholder="New category name" maxlength="30" />
-            <div class="color-swatches" id="new-category-swatches"></div>
-            <button id="add-category-btn" type="button">+ Add</button>
-          </div>
-          <p id="category-message" class="settings-msg"></p>
-        </section>
+        <section class="card"> 
+          <h2>Date Format</h2> 
+          <p class="settings-desc">Choose how dates are displayed throughout the app.</p> 
+          <div class="date-format-row"> 
+            <label>Display Format 
+              <select id="settings-date-format"> 
+                <option value="MM/DD/YYYY">MM/DD/YYYY</option> 
+                <option value="DD/MM/YYYY">DD/MM/YYYY</option> 
+                <option value="YYYY-MM-DD">YYYY-MM-DD</option> 
+              </select> 
+            </label> 
+            <button id="settings-date-format-save" type="button">Save</button> 
+          </div> 
+          <p id="date-format-message" class="settings-msg"></p> 
+        </section> 
 
-        <section class="card">
-          <h2>App Lock</h2>
-          <div id="lock-setup-section">
-            <p>Set a 6-digit PIN to lock the app.</p>
-            <div class="lock-form-row">
-              <label>PIN <input type="password" id="settings-pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="6 digits" /></label>
-              <label>Confirm PIN <input type="password" id="settings-pin-confirm" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="Confirm" /></label>
-            </div>
-            <button id="settings-lock-enable" type="button">Enable Lock</button>
-            <p id="settings-lock-message" class="settings-msg"></p>
-          </div>
-          <div id="lock-recovery-alert-section" style="display:none;"></div>
-          <div id="lock-disable-section" style="display:none;">
-            <p class="lock-active-badge">🔒 App is currently locked</p>
-            <div class="lock-form-row">
-              <label>PIN <input type="password" id="settings-disable-pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="Enter PIN" /></label>
-            </div>
-            <button id="settings-lock-disable" type="button" class="btn-secondary">Disable Lock</button>
-            <p id="settings-disable-message" class="settings-msg"></p>
-          </div>
-        </section>
+        <section class="card"> 
+          <h2>App Lock</h2> 
+          <div id="lock-setup-section"> 
+            <p>Set a 6-digit PIN to lock the app.</p> 
+            <div class="lock-form-row"> 
+              <label>PIN <input type="password" id="settings-pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="6 digits" /></label> 
+              <label>Confirm PIN <input type="password" id="settings-pin-confirm" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="Confirm" /> </label> 
+            </div> 
+            <button id="settings-lock-enable" type="button">Enable Lock</button> 
+            <p id="settings-lock-message" class="settings-msg"></p> 
+          </div> 
+          <div id="lock-recovery-alert-section" style="display:none;"></div> 
+          <div id="lock-disable-section" style="display:none;"> 
+            <p class="lock-active-badge">🔒 App is currently locked</p> 
+            <div class="lock-form-row"> 
+              <label>PIN <input type="password" id="settings-disable-pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="Enter PIN" /> </label> 
+            </div> 
+            <button id="settings-lock-disable" type="button" class="btn-secondary">Disable Lock</button> 
+            <p id="settings-disable-message" class="settings-msg"></p> 
+          </div> 
+        </section> 
 
-        <section class="card">
-          <h2>About</h2>
-          <p class="settings-desc">Expense Tracker v2.5.0</p>
-        </section>
-      </div>
+      </div> 
 
-    </main>
+    </main> 
 
-    <!-- Edit Modal -->
-    <div id="edit-modal" class="modal-overlay" role="dialog">
-      <div class="modal-content">
-        <h2>Edit Expense</h2>
-        <form id="edit-form" class="grid edit-grid">
-          <input type="hidden" id="edit-id" />
-          <label>Date <input type="date" id="edit-date" required /></label>
-          <label>Details <input type="text" id="edit-details" required /></label>
-          <label>Category
-            <select id="edit-category" required></select>
-          </label>
-          <label>Amount <input type="text" id="edit-amount" inputmode="decimal" placeholder="0.00" autocomplete="off" required /></label>
-          <div class="modal-buttons">
-            <button type="submit" class="save-btn">Save</button>
-            <button type="button" id="edit-cancel" class="cancel-btn">Cancel</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- Edit Modal --> 
+    <div id="edit-modal" class="modal-overlay" role="dialog"> 
+      <div class="modal-content"> 
+        <h2>Edit Expense</h2> 
+        <form id="edit-form" class="grid edit-grid"> 
+          <input type="hidden" id="edit-id" /> 
+          <label>Date <input type="date" id="edit-date" required /></label> 
+          <label>Details <input type="text" id="edit-details" required /></label> 
+          <label>Category 
+            <select id="edit-category" required></select> 
+          </label> 
+          <label>Amount <input type="text" id="edit-amount" inputmode="decimal" placeholder="0.00" autocomplete="off" required /></label> 
+          <div class="modal-buttons"> 
+            <button type="submit" class="save-btn">Save</button> 
+            <button type="button" id="edit-cancel" class="cancel-btn">Cancel</button> 
+          </div> 
+        </form> 
+      </div> 
+    </div> 
 
-    <!-- Batch Rename Modal -->
-    <div id="batch-modal" class="modal-overlay" role="dialog">
-      <div class="modal-content">
-        <h2>Batch Rename</h2>
-        <p class="batch-desc">Rename all entries matching a detail string.</p>
-        <form id="batch-form" class="grid batch-grid">
-          <label>Old Name
-            <input type="text" id="batch-old" placeholder="e.g. Unsohsun Electricity" list="batch-list" autocomplete="off" required />
-            <datalist id="batch-list"></datalist>
-          </label>
-          <label>New Name <input type="text" id="batch-new" placeholder="e.g. Umsosun Electricity" required /></label>
-          <div class="modal-buttons">
-            <button type="submit" class="save-btn">Rename All</button>
-            <button type="button" id="batch-cancel" class="cancel-btn">Cancel</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- Batch Rename Modal --> 
+    <div id="batch-modal" class="modal-overlay" role="dialog"> 
+      <div class="modal-content"> 
+        <h2>Batch Rename</h2> 
+        <p class="batch-desc">Rename all entries matching a detail string.</p> 
+        <form id="batch-form" class="grid batch-grid"> 
+          <label>Old Name 
+            <input type="text" id="batch-old" placeholder="e.g. Unsohsun Electricity" list="batch-list" autocomplete="off" required /> 
+            <datalist id="batch-list"></datalist> 
+          </label> 
+          <label>New Name <input type="text" id="batch-new" placeholder="e.g. Umsosun Electricity" required /></label> 
+          <div class="modal-buttons"> 
+            <button type="submit" class="save-btn">Rename All</button> 
+            <button type="button" id="batch-cancel" class="cancel-btn">Cancel</button> 
+          </div> 
+        </form> 
+      </div> 
+    </div> 
 
-    <!-- Batch Category Reassignment Modal -->
-    <div id="batch-cat-modal" class="modal-overlay" role="dialog">
-      <div class="modal-content">
-        <h2>Batch Category Reassignment</h2>
-        <p class="batch-desc">Move all expenses from one category to another. Useful before deleting a category.</p>
-        <form id="batch-cat-form" class="grid batch-grid">
-          <label>From Category
-            <select id="batch-cat-old" required></select>
-          </label>
-          <label>To Category
-            <select id="batch-cat-new" required></select>
-          </label>
-          <div class="modal-buttons">
-            <button type="submit" class="save-btn">Reassign All</button>
-            <button type="button" id="batch-cat-cancel" class="cancel-btn">Cancel</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- Batch Category Reassignment Modal --> 
+    <div id="batch-cat-modal" class="modal-overlay" role="dialog"> 
+      <div class="modal-content"> 
+        <h2>Batch Category Reassignment</h2> 
+        <p class="batch-desc">Move all expenses from one category to another. Useful before deleting a category.</p> 
+        <form id="batch-cat-form" class="grid batch-grid"> 
+          <label>From Category 
+            <select id="batch-cat-old" required></select> 
+          </label> 
+          <label>To Category 
+            <select id="batch-cat-new" required></select> 
+          </label> 
+          <div class="modal-buttons"> 
+            <button type="submit" class="save-btn">Reassign All</button> 
+            <button type="button" id="batch-cat-cancel" class="cancel-btn">Cancel</button> 
+          </div> 
+        </form> 
+      </div> 
+    </div> 
 
-    <!-- Copy Expense Modal -->
-    <div id="copy-modal" class="modal-overlay" role="dialog">
-      <div class="modal-content">
-        <h2>Copy Expense (Monthly)</h2>
-        <p class="batch-desc">Copy this expense to the same day-of-month for the next N months. Months that already have this expense will be skipped.</p>
-        <p id="copy-info" style="font-weight:600; margin-bottom:12px;"></p>
-        <form id="copy-form" class="grid batch-grid">
-          <label>Current Occurrence <input type="date" id="copy-date-start" required /></label>
-          <label>Number of Months
-            <input type="number" id="copy-months" min="1" max="60" value="1" required />
-          </label>
-          <div class="modal-buttons">
-            <button type="submit" class="save-btn">Copy</button>
-            <button type="button" id="copy-cancel" class="cancel-btn">Cancel</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- Copy Expense Modal --> 
+    <div id="copy-modal" class="modal-overlay" role="dialog"> 
+      <div class="modal-content"> 
+        <h2>Copy Expense (Monthly)</h2> 
+        <p class="batch-desc">Copy this expense to the same day-of-month for the next N months. Months that already have this expense will be skipped.</p> 
+        <p id="copy-info" style="font-weight:600; margin-bottom:12px;"></p> 
+        <form id="copy-form" class="grid batch-grid"> 
+          <label>Current Occurrence <input type="date" id="copy-date-start" required /></label> 
+          <label>Number of Months 
+            <input type="number" id="copy-months" min="1" max="60" value="1" required /> 
+          </label> 
+          <div class="modal-buttons"> 
+            <button type="submit" class="save-btn">Copy</button> 
+            <button type="button" id="copy-cancel" class="cancel-btn">Cancel</button> 
+          </div> 
+        </form> 
+      </div> 
+    </div> 
 
-    <script src="/app.js"></script>
+    <script src="/app.js"></script> 
   </body>
 </html>

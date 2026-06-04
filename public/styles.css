@@ -689,16 +689,28 @@ tbody tr:hover td { background: #fafbff; }
   background: none; 
   border: none; 
   cursor: pointer; 
-  font-size: 0.9rem; 
-  padding: 4px 6px; 
+  font-size: 1.1rem; 
+  padding: 4px 8px; 
   border-radius: 4px; 
-  transition: background 0.15s; 
+  transition: background var(--transition), opacity var(--transition); 
   box-shadow: none; 
   min-height: auto; 
+  color: var(--text-primary) !important;
+  opacity: 0.8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 } 
-.rpt-edit-btn:hover { background: #e8f4fd; } 
-.rpt-delete-btn:hover { background: #fee2e2; } 
-.rpt-copy-btn:hover { background: #e8f4fd; } 
+
+.rpt-edit-btn:hover, .rpt-copy-btn:hover { 
+  background: #e8f4fd; 
+  opacity: 1; 
+} 
+
+.rpt-delete-btn:hover { 
+  background: #fee2e2; 
+  opacity: 1; 
+}
 
 /* Collapse animation */
 .rpt-children { overflow: hidden; } 

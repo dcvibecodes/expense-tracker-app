@@ -239,7 +239,7 @@ function renderRows(rows) {
       <td data-label="Amount">${formatAmount(row.amount)}</td>
       <td class="actions-cell" data-label="">
         <button class="btn-copy" data-id="${row.id}" title="Copy to date">📋</button>
-        <button class="btn-edit" data-id="${row.id}" title="Edit">✏</button>
+        <button class="btn-edit" data-id="${row.id}" title="Edit">✏️</button>
         <button class="btn-delete" data-id="${row.id}" title="Delete">🗑</button>
       </td>`;
     fragment.appendChild(tr);
@@ -793,7 +793,7 @@ function renderReportTable(data) {
           html += `  <span class="rpt-label">${exp.details}</span>`;
           html += `  <span class="rpt-cat"><span class="cat-badge" style="background:${getCategoryColor(exp.category)}20;color:${getCategoryColor(exp.category)}">${formatCategory(exp.category)}</span></span>`;
           html += `  <span class="rpt-amt">${formatAmount(exp.amount)}</span>`;
-          html += `  <span class="rpt-actions"><button class="rpt-copy-btn" data-id="${exp.id}" title="Copy to date">📋</button><button class="rpt-edit-btn" data-id="${exp.id}" title="Edit">✏</button><button class="rpt-delete-btn" data-id="${exp.id}" title="Delete">🗑</button></span>`;
+          html += `  <span class="rpt-actions"><button class="rpt-copy-btn" data-id="${exp.id}" title="Copy to date">📋</button><button class="rpt-edit-btn" data-id="${exp.id}" title="Edit">✏️</button><button class="rpt-delete-btn" data-id="${exp.id}" title="Delete">🗑</button></span>`;
           html += `</div>`;
         }
         html += `</div>`; // day children
@@ -1022,7 +1022,7 @@ function renderCategoriesList() {
     div.innerHTML = `
       <span class="category-color-dot" style="background:${cat.color}" data-id="${cat.id}" title="Change color"></span>
       <span class="category-name">${formatCategory(cat.name)}</span>
-      <button class="cat-rename-btn" data-id="${cat.id}" title="Rename category">✏</button>
+      <button class="cat-rename-btn" data-id="${cat.id}" title="Rename category">✏️</button>
       <button class="cat-delete-btn" data-id="${cat.id}" title="Delete category">🗑</button>
     `;
     categoriesList.appendChild(div);

@@ -1,10 +1,15 @@
-const CACHE_NAME = "expense-tracker-v5";
+const CACHE_NAME = "expense-tracker-v6";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/styles.css",
   "/app.js",
-  "/manifest.json"
+  "/manifest.json",
+  "/favicon.svg",
+  "/favicon-32.png",
+  "/apple-touch-icon.png",
+  "/icon-192.png",
+  "/icon-512.png"
 ];
 
 // Install: cache static assets

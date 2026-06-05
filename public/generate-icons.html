@@ -1,27 +1,195 @@
-<!-- Helper to generate PNG icons - open in browser and right-click save -->
 <!DOCTYPE html>
 <html>
-<body>
-<canvas id="c192" width="192" height="192"></canvas>
-<canvas id="c512" width="512" height="512"></canvas>
-<script>
-function drawIcon(canvas) {
-  const ctx = canvas.getContext('2d');
-  const s = canvas.width;
-  // Background
-  ctx.fillStyle = '#1a1a2e';
-  ctx.beginPath();
-  ctx.roundRect(0, 0, s, s, s * 0.15);
-  ctx.fill();
-  // Dollar sign
-  ctx.fillStyle = '#4ade80';
-  ctx.font = `bold ${s * 0.55}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('₹', s/2, s/2);
-}
-drawIcon(document.getElementById('c192'));
-drawIcon(document.getElementById('c512'));
-</script>
+<head>
+  <title>Generate Expense Tracker+ Icons</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px; background: #f0f0f0;">
+  <h1>Expense Tracker+ Icon Generator</h1>
+  <p>Right-click each image and "Save Image As..." with the filename shown.</p>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 30px; align-items: flex-start;">
+    <div>
+      <h3>favicon-16.png (16x16)</h3>
+      <canvas id="c16" width="16" height="16"></canvas>
+    </div>
+    <div>
+      <h3>favicon-32.png (32x32)</h3>
+      <canvas id="c32" width="32" height="32"></canvas>
+    </div>
+    <div>
+      <h3>apple-touch-icon.png (180x180)</h3>
+      <canvas id="c180" width="180" height="180"></canvas>
+    </div>
+    <div>
+      <h3>icon-192.png (192x192)</h3>
+      <canvas id="c192" width="192" height="192"></canvas>
+    </div>
+    <div>
+      <h3>icon-512.png (512x512)</h3>
+      <canvas id="c512" width="512" height="512"></canvas>
+    </div>
+  </div>
+
+  <script>
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.arcTo(x + w, y, x + w, y + r, r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+      ctx.lineTo(x + r, y + h);
+      ctx.arcTo(x, y + h, x, y + h - r, r);
+      ctx.lineTo(x, y + r);
+      ctx.arcTo(x, y, x + r, y, r);
+      ctx.closePath();
+    }
+
+    function drawIcon(canvas) {
+      const ctx = canvas.getContext('2d');
+      const s = canvas.width;
+
+      // Background rounded square
+      ctx.fillStyle = '#1a1a2e';
+      roundRect(ctx, 0, 0, s, s, s * 0.18);
+      ctx.fill();
+
+      // Content area background
+      const areaSize = s * 0.625;
+      const areaX = (s - areaSize) / 2;
+      const areaY = (s - areaSize) / 2;
+
+      ctx.fillStyle = '#14532d';
+      roundRect(ctx, areaX, areaY, areaSize, areaSize, s * 0.039);
+      ctx.fill();
+      ctx.strokeStyle = '#16a34a';
+      ctx.lineWidth = Math.max(1, s * 0.008);
+      ctx.stroke();
+
+      const cx = s / 2;
+      const cy = s / 2;
+
+      // Back banknote
+      const backW = s * 0.469;
+      const backH = s * 0.273;
+      ctx.fillStyle = '#166534';
+      roundRect(ctx, cx - backW / 2, cy - backH / 2 + s * 0.02, backW, backH, s * 0.027);
+      ctx.fill();
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = Math.max(0.5, s * 0.006);
+      ctx.stroke();
+
+      // Front banknote
+      const noteW = s * 0.430;
+      const noteH = s * 0.254;
+      const noteX = cx - noteW / 2;
+      const noteY = cy - noteH / 2 - s * 0.01;
+
+      ctx.fillStyle = '#16a34a';
+      roundRect(ctx, noteX, noteY, noteW, noteH, s * 0.027);
+      ctx.fill();
+      ctx.strokeStyle = '#4ade80';
+      ctx.lineWidth = Math.max(1, s * 0.008);
+      ctx.stroke();
+
+      // Inner decorative border
+      const inM = s * 0.039;
+      roundRect(ctx, noteX + inM, noteY + inM, noteW - inM * 2, noteH - inM * 2, s * 0.016);
+      ctx.strokeStyle = '#bbf7d0';
+      ctx.lineWidth = Math.max(0.5, s * 0.005);
+      ctx.globalAlpha = 0.5;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // Center circle
+      const circR = s * 0.0625;
+      const circY = noteY + noteH / 2;
+
+      ctx.fillStyle = '#15803d';
+      ctx.beginPath();
+      ctx.arc(cx, circY, circR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#86efac';
+      ctx.lineWidth = Math.max(0.5, s * 0.006);
+      ctx.stroke();
+
+      // Abstract lines inside circle
+      ctx.strokeStyle = '#86efac';
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      ctx.lineCap = 'round';
+      const lsp = s * 0.023;
+
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.025, circY - lsp);
+      ctx.lineTo(cx + s * 0.025, circY - lsp);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.033, circY);
+      ctx.lineTo(cx + s * 0.033, circY);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.025, circY + lsp);
+      ctx.lineTo(cx + s * 0.025, circY + lsp);
+      ctx.stroke();
+
+      // Corner ornaments
+      ctx.strokeStyle = '#bbf7d0';
+      ctx.lineWidth = Math.max(0.5, s * 0.004);
+      ctx.globalAlpha = 0.4;
+      const ornR = s * 0.012;
+
+      [
+        [noteX + inM, noteY + inM],
+        [noteX + noteW - inM, noteY + inM],
+        [noteX + inM, noteY + noteH - inM],
+        [noteX + noteW - inM, noteY + noteH - inM]
+      ].forEach(([ox, oy]) => {
+        ctx.beginPath();
+        ctx.arc(ox, oy, ornR, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+
+      ctx.globalAlpha = 1;
+
+      // Plus badge bottom-right
+      const badgeX = s * 0.781;
+      const badgeY = s * 0.781;
+      const badgeR = s * 0.102;
+
+      // Border cutout
+      ctx.fillStyle = '#1a1a2e';
+      ctx.beginPath();
+      ctx.arc(badgeX, badgeY, badgeR + s * 0.016, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Badge
+      ctx.fillStyle = '#3b82f6';
+      ctx.beginPath();
+      ctx.arc(badgeX, badgeY, badgeR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Plus sign
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(1.5, s * 0.02);
+      ctx.lineCap = 'round';
+      const pLen = badgeR * 0.48;
+
+      ctx.beginPath();
+      ctx.moveTo(badgeX, badgeY - pLen);
+      ctx.lineTo(badgeX, badgeY + pLen);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(badgeX - pLen, badgeY);
+      ctx.lineTo(badgeX + pLen, badgeY);
+      ctx.stroke();
+    }
+
+    ['c16', 'c32', 'c180', 'c192', 'c512'].forEach(id => {
+      drawIcon(document.getElementById(id));
+    });
+  </script>
 </body>
 </html>

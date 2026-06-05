@@ -318,6 +318,57 @@ app.patch("/api/categories/reorder", (req, res) => {
   stmt.finalize();
   return res.json({ success: true });
 });
+// --- Suggestions API (dominant category + amount for a given item) ---
+app.get("/api/suggestions", (req, res) => {
+  const { item } = req.query;
+
+  if (!item || typeof item !== "string" || !item.trim()) {
+    return res.json({ category: null, amount: null });
+  }
+
+  const q = item.trim().toLowerCase();
+  const likeTerm = `%${q}%`;
+
+  // Category: fuzzy match (LIKE) since items stay in the same category
+  const catSql = `
+    SELECT category, COUNT(*) AS freq
+    FROM expenses
+    WHERE LOWER(details) LIKE ?
+    GROUP BY category
+    ORDER BY freq DESC
+    LIMIT 1
+  `;
+
+  // Amount: exact match only
+  const amtSql = `
+    SELECT amount, COUNT(*) AS freq
+    FROM expenses
+    WHERE LOWER(details) = ?
+    GROUP BY amount
+    ORDER BY freq DESC
+    LIMIT 1
+  `;
+
+  db.get(catSql, [likeTerm], (catErr, catRow) => {
+    if (catErr) {
+      return res.json({ category: null, amount: null });
+    }
+
+    db.get(amtSql, [q], (amtErr, amtRow) => {
+      if (amtErr) {
+        return res.json({
+          category: catRow ? catRow.category : null,
+          amount: null
+        });
+      }
+
+      return res.json({
+        category: catRow ? catRow.category : null,
+        amount: amtRow ? amtRow.amount : null
+      });
+    });
+  });
+});
 
 app.post("/api/expenses", (req, res) => {
   const { date, details, category, amount } = req.body;

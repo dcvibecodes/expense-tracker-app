@@ -2,7 +2,7 @@
 
 A personal expense tracking app built with **Node.js**, **Express**, and **SQLite**. Deploy it on a VPS or run locally — your data stays on your server.
 
-**Version 2.5.0**
+**Version 2.5.1**
 
 ---
 
@@ -89,6 +89,19 @@ Start typing in the Details field and it suggests previously used entries.
 - Recency-based — most recently used phrases appear first
 - Debounced — waits 250ms after typing stops, shows max 8 suggestions
 
+### 🧠 Smart Expense Suggestions
+As you type an expense detail, the app can automatically suggest the most likely category and amount based on your past entries.
+
+- Category suggestions use fuzzy matching against previous expense details
+- Amount suggestions use exact matching for maximum accuracy
+- Auto-fills category and amount fields when a match is found
+- Visual highlight animation indicates when values were auto-filled
+- Debounced lookups prevent unnecessary API calls while typing
+
+Example:
+- Enter "Netflix" once with category "Entertainment" and amount "499"
+- The next time you type "Netflix", the app automatically suggests those values
+
 ### 🔄 Batch Operations
 - **Batch Rename** — Rename all entries with the same detail string in one go
 - **Batch Category Reassignment** — Move all expenses from one category to another
@@ -174,6 +187,7 @@ expense-tracker/
 | GET | /api/reports | Hierarchical report data |
 | GET | /api/export/csv | Download CSV |
 | GET | /api/details | Autocomplete suggestions |
+| GET | /api/suggestions | Smart category and amount suggestions |
 | GET | /api/settings | Get app settings (date format) |
 | PUT | /api/settings | Update app settings |
 | GET | /api/lock/status | Lock status |
@@ -183,6 +197,14 @@ expense-tracker/
 | POST | /api/lock/recovery | Unlock with recovery code (sets session) |
 
 ## Changelog
+
+### v2.5.1 (June 2026)
+- Smart Expense Suggestions
+- Automatic category suggestions based on historical entries
+- Automatic amount suggestions for previously used expense details
+- Visual autofill animation when suggestions are applied
+- New `/api/suggestions` endpoint
+- Debounced suggestion lookups for improved performance
 
 ### v2.5.0 (June 2026)
 - App renamed to Expense Tracker+

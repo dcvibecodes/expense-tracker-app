@@ -309,7 +309,67 @@ function filterDetailsList() {
 detailsInput.addEventListener("input", () => {
   clearTimeout(detailsDebounce);
   detailsDebounce = setTimeout(filterDetailsList, 250);
+
+  // Also trigger suggestion lookup
+  clearTimeout(suggestionDebounce);
+  suggestionDebounce = setTimeout(fetchSuggestions, 400);
 });
+
+detailsInput.addEventListener("change", () => {
+  // When user picks from datalist, fetch suggestions immediately
+  clearTimeout(suggestionDebounce);
+  fetchSuggestions();
+});
+
+// ===== SMART SUGGESTIONS (auto-fill category + amount for item) =====
+let suggestionDebounce = null;
+let lastSuggestionQuery = "";
+
+async function fetchSuggestions() {
+  const q = detailsInput.value.trim();
+
+  if (!q || q.length < 2) {
+    lastSuggestionQuery = "";
+    return;
+  }
+
+  if (q.toLowerCase() === lastSuggestionQuery) return;
+  lastSuggestionQuery = q.toLowerCase();
+
+  try {
+    const res = await fetch(`/api/suggestions?item=${encodeURIComponent(q)}`);
+
+    if (!res.ok) return;
+
+    const data = await res.json();
+    applySuggestions(data);
+  } catch {}
+}
+
+function applySuggestions({ category, amount }) {
+  if (category && category !== categoryInput.value) {
+    categoryInput.value = category;
+    flashAutofill(categoryInput);
+  }
+
+  if (amount != null && !amountInput.value) {
+    amountInput.value = amount;
+    flashAutofill(amountInput);
+  }
+}
+
+function flashAutofill(el) {
+  el.classList.remove("autofilled");
+
+  // Force reflow to restart animation
+  void el.offsetWidth;
+
+  el.classList.add("autofilled");
+}
+
+function hideSuggestions() {
+  lastSuggestionQuery = "";
+}
 
 // Edit modal
 function openEditModal(row) {
@@ -595,6 +655,7 @@ expenseForm.addEventListener("submit", async e => {
       addExpenseMsg.textContent = "Expense added successfully.";
       addExpenseMsg.className = "form-msg success";
       detailsInput.value = ""; amountInput.value = "";
+      hideSuggestions();
       await refreshAll(); populateDetailsList();
       setTimeout(() => { addExpenseMsg.textContent = ""; addExpenseMsg.className = "form-msg"; }, 3000);
     } else {

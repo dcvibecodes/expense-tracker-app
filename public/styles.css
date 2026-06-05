@@ -1272,3 +1272,18 @@ tbody tr:hover td { background: #fafbff; }
   [data-theme="dark"] .rpt-day { border-left-color: #4a6fa5; } 
   [data-theme="dark"] .rpt-expense .rpt-actions { border-top-color: var(--border-color); } 
 }
+
+/* ===== Smart Suggestion Autofill Highlight ===== */
+.autofilled {
+  animation: autofillPulse 1.2s ease;
+}
+
+@keyframes autofillPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59,130,246,0.55);
+  }
+
+  100% {
+    box-shadow: 0 0 0 12px rgba(59,130,246,0);
+  }
+}

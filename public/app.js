@@ -294,6 +294,7 @@ function filterDetailsList() {
   const q = detailsInput.value.trim().toLowerCase();
   detailsList.innerHTML = "";
   if (!q || q.length < 2) return;
+  if (allDetails.some(d => d. toLowerCase() === q)) return;
   const fragment = document.createDocumentFragment();
   let count = 0;
   for (const d of allDetails) {

@@ -4,12 +4,35 @@ const MONTH_NAMES = ["January","February","March","April","May","June","July","A
 let categories = []; // loaded from server
 let dateFormat = "MM/DD/YYYY"; // configurable date display format
 
+// ===== HTML ESCAPE (XSS prevention) =====
+function escapeHtml(str) {
+  if (!str) return "";
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+// ===== ERROR TOAST =====
+let toastTimeout = null;
+function showErrorToast(message, duration) {
+  duration = duration || 4000;
+  const toast = document.getElementById("error-toast");
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add("visible");
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => {
+    toast.classList.remove("visible");
+  }, duration);
+}
+
 // ===== THEME =====
 function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
   localStorage.setItem("theme", theme);
   const btn = document.getElementById("theme-toggle");
-  if (btn) btn.textContent = theme === "dark" ? "☀" : "🌙";
+  if (btn) {
+    btn.textContent = theme === "dark" ? "☀️" : "🌙";
+    btn.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  }
 }
 // Apply saved theme immediately
 applyTheme(localStorage.getItem("theme") || "light");
@@ -17,7 +40,6 @@ applyTheme(localStorage.getItem("theme") || "light");
 // ===== HELPERS =====
 
 // ---- Date-optional inputs: toggle "is-empty" class for cross-browser consistency ----
-// Safari shows a ghost date when value is empty; hiding text via CSS + this class solves it.
 function syncDateOptionalClass(input) {
   if (input.value) {
     input.classList.remove("is-empty");
@@ -88,13 +110,57 @@ function populateCategorySelect(sel, includeAll) {
   if (current && [...sel.options].some(o => o.value === current)) sel.value = current;
 }
 
+// ===== SAFE FETCH WRAPPER =====
+async function safeFetch(url, options) {
+  try {
+    const res = await fetch(url, options);
+    if (!res.ok && res.status === 429) {
+      showErrorToast("Too many attempts. Please wait a moment.");
+    }
+    return res;
+  } catch (err) {
+    showErrorToast("Network error. Check your connection.");
+    throw err;
+  }
+}
+
+// ===== FOCUS TRAPPING FOR MODALS =====
+function trapFocus(modalEl) {
+  const focusable = modalEl.querySelectorAll(
+    'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  );
+  if (focusable.length === 0) return null;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+
+  function handler(e) {
+    if (e.key !== "Tab") return;
+    if (e.shiftKey) {
+      if (document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }
+  modalEl.addEventListener("keydown", handler);
+  first.focus();
+  return () => modalEl.removeEventListener("keydown", handler);
+}
+
+let activeModalTrap = null;
+
 // ===== TAB NAVIGATION =====
-const tabBtns = document.querySelectorAll(".tab-btn");
+const tabBtns = document.querySelectorAll(".bottom-nav-btn");
 const tabContents = document.querySelectorAll(".tab-content");
-const TAB_ORDER = ["tracker", "reports", "downloads", "settings"];
+const TAB_ORDER = ["tracker", "reports", "settings"];
 
 function switchToTab(tabId) {
-  const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+  const btn = document.querySelector(`.bottom-nav-btn[data-tab="${tabId}"]`);
   if (!btn) return;
   tabBtns.forEach(b => b.classList.remove("active"));
   tabContents.forEach(c => c.classList.remove("active"));
@@ -124,9 +190,9 @@ tabBtns.forEach(btn => {
 
   const container = document.querySelector(".container");
   const appHeader = document.querySelector(".app-header");
-  const tabNav = document.querySelector(".tab-nav");
+  const bottomNav = document.querySelector(".bottom-nav");
 
-  if (!container || !appHeader || !tabNav) return;
+  if (!container || !appHeader) return;
 
   const panels = document.querySelectorAll(".tab-content");
 
@@ -136,8 +202,8 @@ tabBtns.forEach(btn => {
   );
 
   document.documentElement.style.setProperty(
-    "--tab-height",
-    `${tabNav.offsetHeight}px`
+    "--bottom-nav-height",
+    `${bottomNav ? bottomNav.offsetHeight : 62}px`
   );
 
   let headerHidden = false;
@@ -148,14 +214,14 @@ tabBtns.forEach(btn => {
     if (headerHidden) return;
     headerHidden = true;
     appHeader.classList.add("header-hidden");
-    tabNav.classList.add("tabs-at-top");
+    container.classList.add("header-collapsed");
   }
 
   function showHeader() {
     if (!headerHidden) return;
     headerHidden = false;
     appHeader.classList.remove("header-hidden");
-    tabNav.classList.remove("tabs-at-top");
+    container.classList.remove("header-collapsed");
   }
 
   container.addEventListener("scroll", () => {
@@ -174,7 +240,7 @@ tabBtns.forEach(btn => {
       const tabId = TAB_ORDER[clampedIdx];
 
       const currentActive =
-        document.querySelector(".tab-btn.active");
+        document.querySelector(".bottom-nav-btn.active");
 
       if (
         !currentActive ||
@@ -184,7 +250,7 @@ tabBtns.forEach(btn => {
         tabContents.forEach(c => c.classList.remove("active"));
 
         const btn = document.querySelector(
-          `.tab-btn[data-tab="${tabId}"]`
+          `.bottom-nav-btn[data-tab="${tabId}"]`
         );
 
         if (btn) btn.classList.add("active");
@@ -228,13 +294,13 @@ tabBtns.forEach(btn => {
     );
 
     document.documentElement.style.setProperty(
-      "--tab-height",
-      `${tabNav.offsetHeight}px`
+      "--bottom-nav-height",
+      `${bottomNav ? bottomNav.offsetHeight : 62}px`
     );
 
     if (window.innerWidth <= 640) {
       const currentTab =
-        document.querySelector(".tab-btn.active");
+        document.querySelector(".bottom-nav-btn.active");
 
       if (currentTab) {
         const idx =
@@ -286,6 +352,114 @@ let pieCharts = [null, null];
 let barChart;
 let allDetails = [];
 
+// ===== CUSTOM AUTOCOMPLETE (iOS-friendly datalist replacement) =====
+// iOS Safari has poor datalist support — this provides a custom dropdown
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+let autocompleteDropdown = null;
+let autocompleteActiveIndex = -1;
+
+function setupAutocomplete(input, getItems) {
+  // Wrap the input in a relative container
+  const wrapper = document.createElement("div");
+  wrapper.className = "autocomplete-wrap";
+  input.parentNode.insertBefore(wrapper, input);
+  wrapper.appendChild(input);
+
+  const dropdown = document.createElement("div");
+  dropdown.className = "autocomplete-dropdown";
+  dropdown.setAttribute("role", "listbox");
+  wrapper.appendChild(dropdown);
+
+  function show(items, query) {
+    dropdown.innerHTML = "";
+    autocompleteActiveIndex = -1;
+    if (!items.length) { dropdown.classList.remove("open"); return; }
+    const lq = query.toLowerCase();
+    for (let i = 0; i < Math.min(items.length, 8); i++) {
+      const opt = document.createElement("div");
+      opt.className = "autocomplete-option";
+      opt.setAttribute("role", "option");
+      opt.dataset.value = items[i];
+      // Highlight matching text
+      const idx = items[i].toLowerCase().indexOf(lq);
+      if (idx >= 0 && lq.length > 0) {
+        opt.innerHTML = escapeHtml(items[i].slice(0, idx)) +
+          "<mark>" + escapeHtml(items[i].slice(idx, idx + lq.length)) + "</mark>" +
+          escapeHtml(items[i].slice(idx + lq.length));
+      } else {
+        opt.textContent = items[i];
+      }
+      opt.addEventListener("mousedown", e => {
+        e.preventDefault();
+        input.value = items[i];
+        hide();
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      dropdown.appendChild(opt);
+    }
+    dropdown.classList.add("open");
+  }
+
+  function hide() {
+    dropdown.classList.remove("open");
+    autocompleteActiveIndex = -1;
+  }
+
+  function navigate(dir) {
+    const opts = dropdown.querySelectorAll(".autocomplete-option");
+    if (!opts.length) return;
+    autocompleteActiveIndex += dir;
+    if (autocompleteActiveIndex < 0) autocompleteActiveIndex = opts.length - 1;
+    if (autocompleteActiveIndex >= opts.length) autocompleteActiveIndex = 0;
+    opts.forEach((o, i) => o.classList.toggle("active", i === autocompleteActiveIndex));
+  }
+
+  input.addEventListener("input", () => {
+    const q = input.value.trim();
+    if (q.length < 2) { hide(); return; }
+    const items = getItems(q);
+    // Don't show if value exactly matches an item
+    if (items.some(d => d.toLowerCase() === q.toLowerCase())) { hide(); return; }
+    show(items, q);
+  });
+
+  input.addEventListener("keydown", e => {
+    if (!dropdown.classList.contains("open")) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); navigate(1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); navigate(-1); }
+    else if (e.key === "Enter" && autocompleteActiveIndex >= 0) {
+      e.preventDefault();
+      const opts = dropdown.querySelectorAll(".autocomplete-option");
+      if (opts[autocompleteActiveIndex]) {
+        input.value = opts[autocompleteActiveIndex].dataset.value;
+        hide();
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    } else if (e.key === "Escape") {
+      hide();
+    }
+  });
+
+  input.addEventListener("blur", () => {
+    setTimeout(hide, 150);
+  });
+
+  return { show, hide, dropdown };
+}
+
+// Setup autocomplete on details input (replaces datalist on all platforms)
+const detailsAutocomplete = setupAutocomplete(detailsInput, q => {
+  const lq = q.toLowerCase();
+  return allDetails.filter(d => d.toLowerCase().includes(lq)).slice(0, 8);
+});
+
+// Remove native datalist — custom dropdown handles it
+if (detailsList) {
+  detailsList.remove();
+  detailsInput.removeAttribute("list");
+}
+
 // ===== COLLAPSIBLE FILTERS =====
 const filtersToggle = document.getElementById("filters-toggle");
 const filtersContent = document.getElementById("filters-content");
@@ -307,6 +481,13 @@ function setDateRangeToCurrentMonth() {
   endDateInput.value = localDateStr(effectiveEnd);
 }
 
+// ===== DEBOUNCED REFRESH =====
+let refreshDebounce = null;
+function debouncedRefresh() {
+  clearTimeout(refreshDebounce);
+  refreshDebounce = setTimeout(refreshAll, 150);
+}
+
 async function fetchExpenses() {
   const search = searchInput.value.trim();
   const params = new URLSearchParams();
@@ -316,7 +497,7 @@ async function fetchExpenses() {
   }
   if (categoryFilterInput.value !== "all") params.set("category", categoryFilterInput.value);
   if (search) params.set("search", search);
-  const res = await fetch(`/api/expenses?${params}`);
+  const res = await safeFetch(`/api/expenses?${params}`);
   if (!res.ok) throw new Error("Failed to fetch expenses");
   return res.json();
 }
@@ -328,14 +509,14 @@ function renderRows(rows) {
   for (const row of rows) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td data-label="Date">${formatDate(row.date)}</td>
-      <td data-label="Details">${row.details}</td>
-      <td data-label="Category"><span class="cat-badge" style="background:${getCategoryColor(row.category)}20;color:${getCategoryColor(row.category)}">${formatCategory(row.category)}</span></td>
+      <td data-label="Date">${escapeHtml(formatDate(row.date))}</td>
+      <td data-label="Details">${escapeHtml(row.details)}</td>
+      <td data-label="Category"><span class="cat-badge" style="background:${getCategoryColor(row.category)}20;color:${getCategoryColor(row.category)}">${escapeHtml(formatCategory(row.category))}</span></td>
       <td data-label="Amount">${formatAmount(row.amount)}</td>
       <td class="actions-cell" data-label="">
-        <button class="btn-copy" data-id="${row.id}" title="Copy to date">📋</button>
-        <button class="btn-edit" data-id="${row.id}" title="Edit">✏️</button>
-        <button class="btn-delete" data-id="${row.id}" title="Delete">🗑</button>
+        <button class="action-btn btn-copy" data-id="${row.id}" title="Copy to date" aria-label="Copy expense to another date">📋</button>
+        <button class="action-btn btn-edit" data-id="${row.id}" title="Edit" aria-label="Edit expense">✏️</button>
+        <button class="action-btn delete btn-delete" data-id="${row.id}" title="Delete" aria-label="Delete expense">🗑️</button>
       </td>`;
     fragment.appendChild(tr);
   }
@@ -355,72 +536,56 @@ function renderSummary(pieData) {
     const val = pieData[cat.name] || 0;
     const div = document.createElement("div");
     div.className = "summary-item";
-    div.innerHTML = `<span class="summary-dot" style="background:${cat.color}"></span><div class="summary-info"><span class="summary-label">${formatCategory(cat.name)}</span><span class="summary-amount">${formatAmount(val)}</span></div>`;
+    div.innerHTML = `<span class="summary-dot" style="background:${cat.color}"></span><div class="summary-info"><span class="summary-label">${escapeHtml(formatCategory(cat.name))}</span><span class="summary-amount">${formatAmount(val)}</span></div>`;
     summaryGrid.appendChild(div);
   }
 }
 
 async function refreshAll() {
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const year = now.getFullYear();
+  try {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
 
-  // Fetch expenses and summary in parallel
-  const [rows, summaryRes] = await Promise.all([
-    fetchExpenses(),
-    fetch(`/api/charts?month=${month}&year=${year}`).then(r => r.ok ? r.json() : null).catch(() => null)
-  ]);
+    const [rows, summaryRes] = await Promise.all([
+      fetchExpenses(),
+      fetch(`/api/charts?month=${month}&year=${year}`).then(r => r.ok ? r.json() : null).catch(() => null)
+    ]);
 
-  renderRows(rows);
+    renderRows(rows);
 
-  if (summaryRes) {
-    const mn = MONTH_NAMES[month - 1];
-    summaryHeading.textContent = `${mn} ${year} Summary`;
-    renderSummary(summaryRes.pie);
+    if (summaryRes) {
+      const mn = MONTH_NAMES[month - 1];
+      summaryHeading.textContent = `${mn} ${year} Summary`;
+      renderSummary(summaryRes.pie);
+    }
+  } catch (err) {
+    // Error toast already shown by safeFetch if network fails
   }
 }
 
 async function populateDetailsList() {
-  try { const res = await fetch("/api/details"); if (res.ok) allDetails = await res.json(); } catch {}
+  try {
+    const res = await fetch("/api/details");
+    if (res.ok) allDetails = await res.json();
+  } catch {}
 }
 
-let detailsDebounce = null;
-function filterDetailsList() {
-  const q = detailsInput.value.trim().toLowerCase();
-  detailsList.innerHTML = "";
-  if (!q || q.length < 2) return;
-  if (allDetails.some(d => d.toLowerCase() === q)) return;
-  const fragment = document.createDocumentFragment();
-  let count = 0;
-  for (const d of allDetails) {
-    if (d.toLowerCase().includes(q)) {
-      const o = document.createElement("option");
-      o.value = d;
-      fragment.appendChild(o);
-      if (++count >= 8) break;
-    }
-  }
-  detailsList.appendChild(fragment);
-}
+// Details input: trigger autocomplete + suggestion lookup
+let suggestionDebounce = null;
+let lastSuggestionQuery = "";
+
 detailsInput.addEventListener("input", () => {
-  clearTimeout(detailsDebounce);
-  detailsDebounce = setTimeout(filterDetailsList, 250);
-
-  // Also trigger suggestion lookup
   clearTimeout(suggestionDebounce);
   suggestionDebounce = setTimeout(fetchSuggestions, 400);
 });
 
 detailsInput.addEventListener("change", () => {
-  // When user picks from datalist, fetch suggestions immediately
   clearTimeout(suggestionDebounce);
   fetchSuggestions();
 });
 
 // ===== SMART SUGGESTIONS (auto-fill category + amount for item) =====
-let suggestionDebounce = null;
-let lastSuggestionQuery = "";
-
 async function fetchSuggestions() {
   const q = detailsInput.value.trim();
 
@@ -434,9 +599,7 @@ async function fetchSuggestions() {
 
   try {
     const res = await fetch(`/api/suggestions?item=${encodeURIComponent(q)}`);
-
     if (!res.ok) return;
-
     const data = await res.json();
     applySuggestions(data);
   } catch {}
@@ -456,10 +619,7 @@ function applySuggestions({ category, amount }) {
 
 function flashAutofill(el) {
   el.classList.remove("autofilled");
-
-  // Force reflow to restart animation
-  void el.offsetWidth;
-
+  void el.offsetWidth; // Force reflow
   el.classList.add("autofilled");
 }
 
@@ -467,14 +627,20 @@ function hideSuggestions() {
   lastSuggestionQuery = "";
 }
 
-// Edit modal
+// ===== EDIT MODAL =====
 function openEditModal(row) {
   editId.value = row.id; editDate.value = row.date; editDetails.value = row.details;
   populateCategorySelect(editCategory, false);
   editCategory.value = row.category;
-  editAmount.value = row.amount; editModal.classList.add("open");
+  editAmount.value = row.amount;
+  editModal.classList.add("open");
+  if (activeModalTrap) activeModalTrap();
+  activeModalTrap = trapFocus(editModal.querySelector(".modal-content"));
 }
-function closeEditModal() { editModal.classList.remove("open"); }
+function closeEditModal() {
+  editModal.classList.remove("open");
+  if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
+}
 
 // ===== COPY MODAL =====
 const copyModal = document.getElementById("copy-modal");
@@ -488,12 +654,17 @@ let copyExpenseId = null;
 function openCopyModal(row) {
   copyExpenseId = row.id;
   copyInfo.textContent = `${row.details} — ${formatAmount(row.amount)}`;
-  copyDateStart.value = row.date; // Pre-fill with the expense's date (latest occurrence)
+  copyDateStart.value = row.date;
   copyMonths.value = "1";
   copyModal.classList.add("open");
-  copyMonths.focus();
+  if (activeModalTrap) activeModalTrap();
+  activeModalTrap = trapFocus(copyModal.querySelector(".modal-content"));
 }
-function closeCopyModal() { copyModal.classList.remove("open"); copyExpenseId = null; }
+function closeCopyModal() {
+  copyModal.classList.remove("open");
+  copyExpenseId = null;
+  if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
+}
 
 copyCancel.addEventListener("click", closeCopyModal);
 copyModal.addEventListener("click", e => { if (e.target === copyModal) closeCopyModal(); });
@@ -506,21 +677,22 @@ copyForm.addEventListener("submit", async e => {
   if (!startDate) { alert("Please select the current occurrence date."); return; }
   if (!months || months < 1 || months > 60) { alert("Please enter a number of months between 1 and 60."); return; }
 
-  // Generate dates starting from the NEXT month after the latest occurrence
+  // Generate dates starting from the NEXT month after the occurrence
   const dates = [];
-  const start = new Date(startDate + "T00:00:00");
-  const targetDay = start.getDate(); // e.g. 2nd of the month
+  const start = new Date(startDate + "T12:00:00"); // Use noon to avoid DST edge cases
+  const targetDay = start.getDate();
 
   for (let i = 1; i <= months; i++) {
-    const d = new Date(start);
-    d.setMonth(d.getMonth() + i);
+    // Create a fresh date at the 1st of the target month to avoid overflow
+    let targetMonth = start.getMonth() + i;
+    let targetYear = start.getFullYear();
+    while (targetMonth > 11) { targetMonth -= 12; targetYear++; }
+    while (targetMonth < 0) { targetMonth += 12; targetYear--; }
 
-    // Handle month overflow (e.g. Jan 31 + 1 month → Mar 3 if Feb has 28 days)
-    // If the day changed due to month length, clamp to last day of target month
-    if (d.getDate() !== targetDay) {
-      d.setDate(0); // go to last day of previous month
-    }
-
+    // Get last day of target month
+    const maxDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+    const clampedDay = Math.min(targetDay, maxDay);
+    const d = new Date(targetYear, targetMonth, clampedDay);
     dates.push(localDateStr(d));
   }
 
@@ -533,33 +705,33 @@ copyForm.addEventListener("submit", async e => {
   copySaveBtn.disabled = true;
   copySaveBtn.textContent = "Copying...";
 
-  const res = await fetch("/api/expenses/copy", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id: copyExpenseId, dates })
-  });
-  if (res.ok) {
-    const r = await res.json();
-    copySaveBtn.disabled = false;
-    copySaveBtn.textContent = "Copy";
-    closeCopyModal();
-    await refreshAll();
-    await loadReports();
-    populateDetailsList();
-    let msg = `Copied to ${r.inserted} month${r.inserted > 1 ? "s" : ""}.`;
-    if (r.skipped > 0) {
-      msg += `\n${r.skipped} date${r.skipped > 1 ? "s were" : " was"} skipped (duplicate already exists).`;
+  try {
+    const res = await safeFetch("/api/expenses/copy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: copyExpenseId, dates })
+    });
+    if (res.ok) {
+      const r = await res.json();
+      closeCopyModal();
+      await refreshAll();
+      await loadReports();
+      populateDetailsList();
+      let msg = `Copied to ${r.inserted} month${r.inserted > 1 ? "s" : ""}.`;
+      if (r.skipped > 0) {
+        msg += `\n${r.skipped} date${r.skipped > 1 ? "s were" : " was"} skipped (duplicate already exists).`;
+      }
+      alert(msg);
+    } else {
+      const err = await res.json();
+      alert(err.error || "Failed to copy expense.");
     }
-    alert(msg);
-  } else {
-    const err = await res.json();
-    copySaveBtn.disabled = false;
-    copySaveBtn.textContent = "Copy";
-    alert(err.error || "Failed to copy expense.");
-  }
+  } catch {}
+  copySaveBtn.disabled = false;
+  copySaveBtn.textContent = "Copy";
 });
 
-// Tracker table click handlers
+// ===== TRACKER TABLE CLICK HANDLERS =====
 rowsEl.addEventListener("click", async e => {
   const btn = e.target.closest("button"); if (!btn) return;
   const id = parseInt(btn.dataset.id, 10);
@@ -572,11 +744,15 @@ rowsEl.addEventListener("click", async e => {
     btn.textContent = "⏳";
     btn.style.opacity = "0.5";
     btn.style.pointerEvents = "none";
-    // Also disable sibling action buttons to prevent misclicks
     const siblings = btn.parentElement.querySelectorAll("button");
     siblings.forEach(s => { s.disabled = true; s.style.pointerEvents = "none"; });
-    const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
-    if (res.ok) { await refreshAll(); populateDetailsList(); } else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); btn.textContent = "🗑"; btn.style.opacity = ""; }
+    try {
+      const res = await safeFetch(`/api/expenses/${id}`, { method: "DELETE" });
+      if (res.ok) { await refreshAll(); populateDetailsList(); }
+      else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); btn.textContent = "🗑"; btn.style.opacity = ""; }
+    } catch {
+      siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); btn.textContent = "🗑"; btn.style.opacity = "";
+    }
   }
 });
 
@@ -589,22 +765,24 @@ editForm.addEventListener("submit", async e => {
   const saveBtn = editForm.querySelector(".save-btn");
   saveBtn.disabled = true;
   saveBtn.textContent = "Saving...";
-  const res = await fetch(`/api/expenses/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: editDate.value, details: editDetails.value.trim(), category: editCategory.value, amount: amountNum }) });
-  if (res.ok) { closeEditModal(); await refreshAll(); await loadReports(); populateDetailsList(); } else { const err = await res.json(); alert(err.error || "Failed to update"); }
+  try {
+    const res = await safeFetch(`/api/expenses/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: editDate.value, details: editDetails.value.trim(), category: editCategory.value, amount: amountNum }) });
+    if (res.ok) { closeEditModal(); await refreshAll(); await loadReports(); populateDetailsList(); }
+    else { const err = await res.json(); alert(err.error || "Failed to update"); }
+  } catch {}
   saveBtn.disabled = false;
   saveBtn.textContent = "Save";
 });
 editCancel.addEventListener("click", closeEditModal);
 editModal.addEventListener("click", e => { if (e.target === editModal) closeEditModal(); });
 
-// Batch rename
+// ===== BATCH RENAME MODAL =====
 const batchModal = document.getElementById("batch-modal");
 const batchForm = document.getElementById("batch-form");
 const batchOld = document.getElementById("batch-old");
 const batchNew = document.getElementById("batch-new");
 const batchList = document.getElementById("batch-list");
 
-// Batch rename datalist filtering (cap at 8 like tracker)
 let batchDebounce = null;
 function filterBatchList() {
   const q = batchOld.value.trim().toLowerCase();
@@ -630,10 +808,20 @@ batchOld.addEventListener("input", () => {
 document.getElementById("batch-edit-btn").addEventListener("click", () => {
   batchList.innerHTML = "";
   batchOld.value = ""; batchNew.value = "";
-  batchModal.classList.add("open"); batchOld.focus();
+  batchModal.classList.add("open");
+  if (activeModalTrap) activeModalTrap();
+  activeModalTrap = trapFocus(batchModal.querySelector(".modal-content"));
 });
-document.getElementById("batch-cancel").addEventListener("click", () => batchModal.classList.remove("open"));
-batchModal.addEventListener("click", e => { if (e.target === batchModal) batchModal.classList.remove("open"); });
+document.getElementById("batch-cancel").addEventListener("click", () => {
+  batchModal.classList.remove("open");
+  if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
+});
+batchModal.addEventListener("click", e => {
+  if (e.target === batchModal) {
+    batchModal.classList.remove("open");
+    if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
+  }
+});
 
 batchForm.addEventListener("submit", async e => {
   e.preventDefault();
@@ -643,11 +831,13 @@ batchForm.addEventListener("submit", async e => {
   const batchSaveBtn = batchForm.querySelector(".save-btn");
   batchSaveBtn.disabled = true;
   batchSaveBtn.textContent = "Renaming...";
-  const res = await fetch("/api/expenses/batch", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oldDetails: oldVal, newDetails: newVal }) });
-  batchSaveBtn.disabled = false;
-  batchSaveBtn.textContent = "Rename All";
-  if (res.ok) { const r = await res.json(); batchModal.classList.remove("open"); await refreshAll(); await loadReports(); populateDetailsList(); alert(`Renamed ${r.updated} entr${r.updated===1?"y":"ies"}.`); }
-  else { alert("Failed to batch rename"); }
+  try {
+    const res = await safeFetch("/api/expenses/batch", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oldDetails: oldVal, newDetails: newVal }) });
+    batchSaveBtn.disabled = false;
+    batchSaveBtn.textContent = "Rename All";
+    if (res.ok) { const r = await res.json(); batchModal.classList.remove("open"); if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; } await refreshAll(); await loadReports(); populateDetailsList(); alert(`Renamed ${r.updated} entr${r.updated===1?"y":"ies"}.`); }
+    else { alert("Failed to batch rename"); }
+  } catch { batchSaveBtn.disabled = false; batchSaveBtn.textContent = "Rename All"; }
 });
 
 // ===== BATCH CATEGORY REASSIGNMENT MODAL =====
@@ -661,9 +851,19 @@ document.getElementById("batch-cat-btn").addEventListener("click", () => {
   populateCategorySelect(batchCatOld, false);
   populateCategorySelect(batchCatNew, false);
   batchCatModal.classList.add("open");
+  if (activeModalTrap) activeModalTrap();
+  activeModalTrap = trapFocus(batchCatModal.querySelector(".modal-content"));
 });
-batchCatCancel.addEventListener("click", () => batchCatModal.classList.remove("open"));
-batchCatModal.addEventListener("click", e => { if (e.target === batchCatModal) batchCatModal.classList.remove("open"); });
+batchCatCancel.addEventListener("click", () => {
+  batchCatModal.classList.remove("open");
+  if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
+});
+batchCatModal.addEventListener("click", e => {
+  if (e.target === batchCatModal) {
+    batchCatModal.classList.remove("open");
+    if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
+  }
+});
 
 batchCatForm.addEventListener("submit", async e => {
   e.preventDefault();
@@ -674,31 +874,33 @@ batchCatForm.addEventListener("submit", async e => {
   const batchCatSaveBtn = batchCatForm.querySelector(".save-btn");
   batchCatSaveBtn.disabled = true;
   batchCatSaveBtn.textContent = "Reassigning...";
-  const res = await fetch("/api/expenses/batch-category", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oldCategory: oldCat, newCategory: newCat }) });
-  batchCatSaveBtn.disabled = false;
-  batchCatSaveBtn.textContent = "Reassign All";
-  if (res.ok) {
-    const r = await res.json();
-    batchCatModal.classList.remove("open");
-    await refreshAll();
-    await loadReports();
-    alert(`Reassigned ${r.updated} expense${r.updated===1?"":"s"}.`);
-  } else {
-    const err = await res.json();
-    alert(err.error || "Failed to reassign.");
-  }
+  try {
+    const res = await safeFetch("/api/expenses/batch-category", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oldCategory: oldCat, newCategory: newCat }) });
+    batchCatSaveBtn.disabled = false;
+    batchCatSaveBtn.textContent = "Reassign All";
+    if (res.ok) {
+      const r = await res.json();
+      batchCatModal.classList.remove("open");
+      if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
+      await refreshAll();
+      await loadReports();
+      alert(`Reassigned ${r.updated} expense${r.updated===1?"":"s"}.`);
+    } else {
+      const err = await res.json();
+      alert(err.error || "Failed to reassign.");
+    }
+  } catch { batchCatSaveBtn.disabled = false; batchCatSaveBtn.textContent = "Reassign All"; }
 });
 
-// Event listeners — Add expense with double-click prevention and duplicate check
+// ===== ADD EXPENSE =====
 const addExpenseMsg = document.getElementById("add-expense-msg");
 const addBtn = document.getElementById("add-btn");
 let isSubmitting = false;
 
 expenseForm.addEventListener("submit", async e => {
   e.preventDefault();
-  if (isSubmitting) return; // Prevent double-click
+  if (isSubmitting) return;
 
-  // Disable immediately on click — before any async work
   isSubmitting = true;
   addBtn.disabled = true;
   addBtn.textContent = "Adding...";
@@ -714,7 +916,6 @@ expenseForm.addEventListener("submit", async e => {
     addBtn.textContent = "+ Add";
     return;
   }
-  // Validate amount is a valid decimal number
   const amountNum = parseFloat(amount);
   if (isNaN(amountNum) || amountNum <= 0) {
     addExpenseMsg.textContent = "Please enter a valid amount (e.g. 10.50).";
@@ -746,12 +947,13 @@ expenseForm.addEventListener("submit", async e => {
   } catch {}
 
   try {
-    const res = await fetch("/api/expenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date, details, category, amount: amountNum }) });
+    const res = await safeFetch("/api/expenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date, details, category, amount: amountNum }) });
     if (res.ok) {
       addExpenseMsg.textContent = "Expense added successfully.";
       addExpenseMsg.className = "form-msg success";
       detailsInput.value = ""; amountInput.value = "";
       hideSuggestions();
+      detailsAutocomplete.hide();
       await refreshAll(); populateDetailsList();
       setTimeout(() => { addExpenseMsg.textContent = ""; addExpenseMsg.className = "form-msg"; }, 3000);
     } else {
@@ -759,16 +961,15 @@ expenseForm.addEventListener("submit", async e => {
       addExpenseMsg.textContent = err.error || "Failed to add expense.";
       addExpenseMsg.className = "form-msg error";
     }
-  } finally {
-    isSubmitting = false;
-    addBtn.disabled = false;
-    addBtn.textContent = "+ Add";
-  }
+  } catch {}
+  isSubmitting = false;
+  addBtn.disabled = false;
+  addBtn.textContent = "+ Add";
 });
 
-startDateInput.addEventListener("change", refreshAll);
-endDateInput.addEventListener("change", refreshAll);
-categoryFilterInput.addEventListener("change", refreshAll);
+startDateInput.addEventListener("change", debouncedRefresh);
+endDateInput.addEventListener("change", debouncedRefresh);
+categoryFilterInput.addEventListener("change", debouncedRefresh);
 let searchDebounce = null;
 searchInput.addEventListener("input", () => {
   clearTimeout(searchDebounce);
@@ -776,9 +977,19 @@ searchInput.addEventListener("input", () => {
 });
 clearRangeButton.addEventListener("click", () => { categoryFilterInput.value = "all"; searchInput.value = ""; setDateRangeToCurrentMonth(); refreshAll(); });
 
-// Today button resets add-expense date to today
 document.getElementById("date-today-btn").addEventListener("click", () => {
   dateInput.value = todayStr();
+});
+
+document.getElementById("clear-form-btn").addEventListener("click", () => {
+  dateInput.value = todayStr();
+  detailsInput.value = "";
+  amountInput.value = "";
+  if (categories.length) categoryInput.value = categories[0].name;
+  detailsAutocomplete.hide();
+  hideSuggestions();
+  addExpenseMsg.textContent = "";
+  addExpenseMsg.className = "form-msg";
 });
 
 document.addEventListener("keydown", e => {
@@ -787,6 +998,7 @@ document.addEventListener("keydown", e => {
     closeCopyModal();
     batchModal.classList.remove("open");
     batchCatModal.classList.remove("open");
+    if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
   }
 });
 
@@ -813,8 +1025,16 @@ function setChartsExpanded(expanded) {
 toggleChartsButton.addEventListener("click", () => setChartsExpanded(!chartsExpanded));
 
 async function fetchCharts() {
-  const month = reportMonth.value ? parseInt(reportMonth.value, 10) : (new Date().getMonth() + 1);
-  const year = parseInt(reportYear.value, 10) || new Date().getFullYear();
+  // If custom date range is set, derive month/year from it for charts
+  let month, year;
+  if (reportFrom.value) {
+    const parts = reportFrom.value.split("-");
+    year = parseInt(parts[0], 10);
+    month = parseInt(parts[1], 10);
+  } else {
+    month = reportMonth.value ? parseInt(reportMonth.value, 10) : (new Date().getMonth() + 1);
+    year = parseInt(reportYear.value, 10) || new Date().getFullYear();
+  }
 
   // Calculate selected month + 1 previous month
   const months = [];
@@ -888,15 +1108,17 @@ async function loadReports() {
     params.set("category", reportCategory.value);
   }
 
-  const res = await fetch(`/api/reports?${params}`);
-  if (!res.ok) { reportWrap.innerHTML = `<p class="report-empty">Failed to load reports.</p>`; return; }
-  const data = await res.json();
-  renderReportTable(data);
-
   try {
+    const res = await safeFetch(`/api/reports?${params}`);
+    if (!res.ok) { reportWrap.innerHTML = `<p class="report-empty">Failed to load reports.</p>`; return; }
+    const data = await res.json();
+    renderReportTable(data);
+
     const charts = await fetchCharts();
     renderCharts(charts);
-  } catch {}
+  } catch {
+    reportWrap.innerHTML = `<p class="report-empty">Failed to load reports.</p>`;
+  }
 }
 
 let reportUid = 0;
@@ -910,9 +1132,9 @@ function renderReportTable(data) {
 
   for (const yr of data) {
     const yId = `rg-${reportUid++}`;
-    html += `<div class="rpt-row rpt-year" data-toggle="${yId}">`;
+    html += `<div class="rpt-row rpt-year" data-toggle="${yId}" tabindex="0" role="button" aria-expanded="true">`;
     html += `  <span class="rpt-chevron expanded"></span>`;
-    html += `  <span class="rpt-label">${yr.year}</span>`;
+    html += `  <span class="rpt-label">${escapeHtml(yr.year)}</span>`;
     html += `  <span class="rpt-cat"></span>`;
     html += `  <span class="rpt-amt">${formatAmount(yr.total)}</span>`;
     html += `  <span class="rpt-actions"></span>`;
@@ -922,9 +1144,9 @@ function renderReportTable(data) {
     for (const mo of yr.months) {
       const monthName = MONTH_NAMES[parseInt(mo.month, 10) - 1];
       const mId = `rg-${reportUid++}`;
-      html += `<div class="rpt-row rpt-month" data-toggle="${mId}">`;
+      html += `<div class="rpt-row rpt-month" data-toggle="${mId}" tabindex="0" role="button" aria-expanded="true">`;
       html += `  <span class="rpt-chevron expanded"></span>`;
-      html += `  <span class="rpt-label">${monthName} ${yr.year}</span>`;
+      html += `  <span class="rpt-label">${escapeHtml(monthName)} ${escapeHtml(yr.year)}</span>`;
       html += `  <span class="rpt-cat"></span>`;
       html += `  <span class="rpt-amt">${formatAmount(mo.total)}</span>`;
       html += `  <span class="rpt-actions"></span>`;
@@ -933,11 +1155,11 @@ function renderReportTable(data) {
 
       for (const day of mo.days) {
         const dayLabel = `${day.day} ${monthName.slice(0,3)}`;
-        const preview = day.expenses.map(e => e.details).join(", ");
+        const preview = day.expenses.map(e => escapeHtml(e.details)).join(", ");
         const dId = `rg-${reportUid++}`;
-        html += `<div class="rpt-row rpt-day" data-toggle="${dId}">`;
+        html += `<div class="rpt-row rpt-day" data-toggle="${dId}" tabindex="0" role="button" aria-expanded="false">`;
         html += `  <span class="rpt-chevron"></span>`;
-        html += `  <span class="rpt-label">${dayLabel}<span class="rpt-preview"> — ${preview}</span></span>`;
+        html += `  <span class="rpt-label">${escapeHtml(dayLabel)}<span class="rpt-preview"> — ${preview}</span></span>`;
         html += `  <span class="rpt-cat"></span>`;
         html += `  <span class="rpt-amt">${formatAmount(day.total)}</span>`;
         html += `  <span class="rpt-actions"></span>`;
@@ -947,10 +1169,10 @@ function renderReportTable(data) {
         for (const exp of day.expenses) {
           html += `<div class="rpt-row rpt-expense">`;
           html += `  <span class="rpt-chevron-placeholder"></span>`;
-          html += `  <span class="rpt-label">${exp.details}</span>`;
-          html += `  <span class="rpt-cat"><span class="cat-badge" style="background:${getCategoryColor(exp.category)}20;color:${getCategoryColor(exp.category)}">${formatCategory(exp.category)}</span></span>`;
+          html += `  <span class="rpt-label">${escapeHtml(exp.details)}</span>`;
+          html += `  <span class="rpt-cat"><span class="cat-badge" style="background:${getCategoryColor(exp.category)}20;color:${getCategoryColor(exp.category)}">${escapeHtml(formatCategory(exp.category))}</span></span>`;
           html += `  <span class="rpt-amt">${formatAmount(exp.amount)}</span>`;
-          html += `  <span class="rpt-actions"><button class="rpt-copy-btn" data-id="${exp.id}" title="Copy to date">📋</button><button class="rpt-edit-btn" data-id="${exp.id}" title="Edit">✏️</button><button class="rpt-delete-btn" data-id="${exp.id}" title="Delete">🗑</button></span>`;
+          html += `  <span class="rpt-actions"><button class="action-btn rpt-copy-btn" data-id="${exp.id}" title="Copy to date" aria-label="Copy expense">📋</button><button class="action-btn rpt-edit-btn" data-id="${exp.id}" title="Edit" aria-label="Edit expense">✏️</button><button class="action-btn delete rpt-delete-btn" data-id="${exp.id}" title="Delete" aria-label="Delete expense">🗑️</button></span>`;
           html += `</div>`;
         }
         html += `</div>`; // day children
@@ -965,31 +1187,26 @@ function renderReportTable(data) {
 
 // Report table click handlers (expand/collapse + edit/delete/copy)
 reportWrap.addEventListener("click", async e => {
-  // Copy button
   const copyBtn = e.target.closest(".rpt-copy-btn");
   if (copyBtn) {
     const id = parseInt(copyBtn.dataset.id, 10);
-    const res = await fetch(`/api/expenses/${id}`);
-    if (res.ok) {
-      const row = await res.json();
-      openCopyModal(row);
-    }
+    try {
+      const res = await safeFetch(`/api/expenses/${id}`);
+      if (res.ok) { const row = await res.json(); openCopyModal(row); }
+    } catch {}
     return;
   }
 
-  // Edit button
   const editBtn = e.target.closest(".rpt-edit-btn");
   if (editBtn) {
     const id = parseInt(editBtn.dataset.id, 10);
-    const res = await fetch(`/api/expenses/${id}`);
-    if (res.ok) {
-      const row = await res.json();
-      openEditModal(row);
-    }
+    try {
+      const res = await safeFetch(`/api/expenses/${id}`);
+      if (res.ok) { const row = await res.json(); openEditModal(row); }
+    } catch {}
     return;
   }
 
-  // Delete button
   const delBtn = e.target.closest(".rpt-delete-btn");
   if (delBtn) {
     const id = parseInt(delBtn.dataset.id, 10);
@@ -998,12 +1215,13 @@ reportWrap.addEventListener("click", async e => {
     delBtn.textContent = "⏳";
     delBtn.style.opacity = "0.5";
     delBtn.style.pointerEvents = "none";
-    // Disable sibling action buttons
     const siblings = delBtn.parentElement.querySelectorAll("button");
     siblings.forEach(s => { s.disabled = true; s.style.pointerEvents = "none"; });
-    const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
-    if (res.ok) { await loadReports(); await refreshAll(); populateDetailsList(); }
-    else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); delBtn.textContent = "🗑"; delBtn.style.opacity = ""; }
+    try {
+      const res = await safeFetch(`/api/expenses/${id}`, { method: "DELETE" });
+      if (res.ok) { await loadReports(); await refreshAll(); populateDetailsList(); }
+      else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); delBtn.textContent = "🗑"; delBtn.style.opacity = ""; }
+    } catch { siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); delBtn.textContent = "🗑"; delBtn.style.opacity = ""; }
     return;
   }
 
@@ -1016,30 +1234,40 @@ reportWrap.addEventListener("click", async e => {
   const chevron = row.querySelector(".rpt-chevron");
   const isExpanded = chevron.classList.toggle("expanded");
   children.classList.toggle("collapsed", !isExpanded);
+  row.setAttribute("aria-expanded", String(isExpanded));
   const preview = row.querySelector(".rpt-preview");
   if (preview) preview.style.display = isExpanded ? "none" : "inline";
 });
 
-// Expand All / Collapse All
+// Also allow keyboard activation for report rows
+reportWrap.addEventListener("keydown", e => {
+  if (e.key === "Enter" || e.key === " ") {
+    const row = e.target.closest(".rpt-row[data-toggle]");
+    if (row) { e.preventDefault(); row.click(); }
+  }
+});
+
+// Expand All / Collapse All / Default View
 document.getElementById("report-expand-all").addEventListener("click", () => {
   reportWrap.querySelectorAll(".rpt-children").forEach(el => el.classList.remove("collapsed"));
   reportWrap.querySelectorAll(".rpt-chevron").forEach(el => el.classList.add("expanded"));
   reportWrap.querySelectorAll(".rpt-preview").forEach(el => el.style.display = "none");
+  reportWrap.querySelectorAll("[aria-expanded]").forEach(el => el.setAttribute("aria-expanded", "true"));
 });
 
 document.getElementById("report-collapse-all").addEventListener("click", () => {
   reportWrap.querySelectorAll(".rpt-children").forEach(el => el.classList.add("collapsed"));
   reportWrap.querySelectorAll(".rpt-chevron").forEach(el => el.classList.remove("expanded"));
   reportWrap.querySelectorAll(".rpt-preview").forEach(el => el.style.display = "inline");
+  reportWrap.querySelectorAll("[aria-expanded]").forEach(el => el.setAttribute("aria-expanded", "false"));
 });
 
 document.getElementById("report-default-view").addEventListener("click", () => {
-  // Collapse everything first
   reportWrap.querySelectorAll(".rpt-children").forEach(el => el.classList.add("collapsed"));
   reportWrap.querySelectorAll(".rpt-chevron").forEach(el => el.classList.remove("expanded"));
   reportWrap.querySelectorAll(".rpt-preview").forEach(el => el.style.display = "inline");
+  reportWrap.querySelectorAll("[aria-expanded]").forEach(el => el.setAttribute("aria-expanded", "false"));
 
-  // Expand year-level and month-level (but keep days collapsed)
   reportWrap.querySelectorAll(".rpt-year[data-toggle]").forEach(yearRow => {
     const targetId = yearRow.dataset.toggle;
     const children = document.getElementById(targetId);
@@ -1047,6 +1275,7 @@ document.getElementById("report-default-view").addEventListener("click", () => {
       children.classList.remove("collapsed");
       const chevron = yearRow.querySelector(".rpt-chevron");
       if (chevron) chevron.classList.add("expanded");
+      yearRow.setAttribute("aria-expanded", "true");
     }
   });
   reportWrap.querySelectorAll(".rpt-month[data-toggle]").forEach(monthRow => {
@@ -1056,6 +1285,7 @@ document.getElementById("report-default-view").addEventListener("click", () => {
       children.classList.remove("collapsed");
       const chevron = monthRow.querySelector(".rpt-chevron");
       if (chevron) chevron.classList.add("expanded");
+      monthRow.setAttribute("aria-expanded", "true");
       const preview = monthRow.querySelector(".rpt-preview");
       if (preview) preview.style.display = "none";
     }
@@ -1065,6 +1295,8 @@ document.getElementById("report-default-view").addEventListener("click", () => {
 document.getElementById("report-apply").addEventListener("click", loadReports);
 document.getElementById("report-reset").addEventListener("click", () => {
   reportFrom.value = ""; reportTo.value = "";
+  syncDateOptionalClass(reportFrom);
+  syncDateOptionalClass(reportTo);
   reportCategory.value = "all";
   setReportDefaults();
   loadReports();
@@ -1074,40 +1306,32 @@ function setReportDefaults() {
   const now = new Date();
   reportYear.value = now.getFullYear();
   reportMonth.value = String(now.getMonth() + 1);
-  // Leave from/to empty so year/month selectors drive the query
   reportFrom.value = "";
   reportTo.value = "";
   syncDateOptionalClass(reportFrom);
   syncDateOptionalClass(reportTo);
 }
 
-// ===== DOWNLOADS TAB =====
-const dlYear = document.getElementById("dl-year");
-const dlMonth = document.getElementById("dl-month");
-const dlFrom = document.getElementById("dl-from");
-const dlTo = document.getElementById("dl-to");
-
-populateGenericYearPicker(dlYear, true);
-
-document.getElementById("dl-csv-btn").addEventListener("click", async () => {
+// ===== CSV DOWNLOAD (uses report filters) =====
+document.getElementById("report-csv-btn").addEventListener("click", async () => {
   const params = new URLSearchParams();
-  if (dlFrom.value) {
-    params.set("startDate", dlFrom.value);
-    if (dlTo.value) params.set("endDate", dlTo.value);
-  } else if (dlYear.value === "all") {
-    params.set("all", "true");
-  } else if (dlYear.value) {
-    params.set("year", dlYear.value);
-    if (dlMonth.value) params.set("month", dlMonth.value);
+  if (reportFrom.value) {
+    params.set("startDate", reportFrom.value);
+    if (reportTo.value) params.set("endDate", reportTo.value);
+  } else if (reportYear.value) {
+    params.set("year", reportYear.value);
+    if (reportMonth.value) params.set("month", reportMonth.value);
   }
 
-  const res = await fetch(`/api/export/csv?${params}`);
-  if (!res.ok) { alert("Failed to download CSV"); return; }
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = "expenses.csv"; a.click();
-  URL.revokeObjectURL(url);
+  try {
+    const res = await safeFetch(`/api/export/csv?${params}`);
+    if (!res.ok) { alert("Failed to download CSV"); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "expenses.csv"; a.click();
+    URL.revokeObjectURL(url);
+  } catch {}
 });
 
 // ===== SETTINGS TAB =====
@@ -1144,29 +1368,52 @@ function renderColorSwatches(container, selectedColor, onSelect) {
     swatch.className = `color-swatch${color === selectedColor ? " selected" : ""}`;
     swatch.style.background = color;
     swatch.title = color;
+    swatch.setAttribute("role", "button");
+    swatch.setAttribute("tabindex", "0");
+    swatch.setAttribute("aria-label", `Select color ${color}`);
     swatch.addEventListener("click", () => {
       container.querySelectorAll(".color-swatch").forEach(s => s.classList.remove("selected"));
       swatch.classList.add("selected");
       onSelect(color);
     });
+    swatch.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); swatch.click(); }
+    });
     container.appendChild(swatch);
   }
 }
 
-// Initialize add-row swatches
 renderColorSwatches(newCategorySwatches, selectedNewColor, c => { selectedNewColor = c; });
 
+// Show/hide the add category form
+const showAddCategoryBtn = document.getElementById("show-add-category-btn");
+const categoryAddRow = document.getElementById("category-add-row");
+const cancelAddCategoryBtn = document.getElementById("cancel-add-category-btn");
+
+showAddCategoryBtn.addEventListener("click", () => {
+  categoryAddRow.style.display = "flex";
+  showAddCategoryBtn.style.display = "none";
+  newCategoryName.focus();
+});
+
+cancelAddCategoryBtn.addEventListener("click", () => {
+  categoryAddRow.style.display = "none";
+  showAddCategoryBtn.style.display = "";
+  newCategoryName.value = "";
+  categoryMessage.textContent = "";
+  categoryMessage.className = "settings-msg";
+});
+
 async function loadCategories() {
-  const res = await fetch("/api/categories");
-  if (res.ok) categories = await res.json();
+  try {
+    const res = await fetch("/api/categories");
+    if (res.ok) categories = await res.json();
+  } catch {}
   renderCategoriesList();
-  // Update all category selects
   populateCategorySelect(categoryInput, false);
   populateCategorySelect(categoryFilterInput, true);
   populateCategorySelect(reportCategory, true);
-  // Set "All Categories" text for report
   if (reportCategory.options[0]) reportCategory.options[0].textContent = "All Categories";
-  // Refresh color swatches to hide used colors
   renderColorSwatches(newCategorySwatches, selectedNewColor, c => { selectedNewColor = c; });
 }
 
@@ -1177,10 +1424,10 @@ function renderCategoriesList() {
     div.className = "category-item";
     div.dataset.id = cat.id;
     div.innerHTML = `
-      <span class="category-color-dot" style="background:${cat.color}" data-id="${cat.id}" title="Change color"></span>
-      <span class="category-name">${formatCategory(cat.name)}</span>
-      <button class="cat-rename-btn" data-id="${cat.id}" title="Rename category">✏️</button>
-      <button class="cat-delete-btn" data-id="${cat.id}" title="Delete category">🗑</button>
+      <span class="category-color-dot" style="background:${cat.color}" data-id="${cat.id}" title="Change color" role="button" tabindex="0" aria-label="Change color for ${escapeHtml(formatCategory(cat.name))}"></span>
+      <span class="category-name">${escapeHtml(formatCategory(cat.name))}</span>
+      <button class="cat-rename-btn" data-id="${cat.id}" title="Rename category" aria-label="Rename ${escapeHtml(formatCategory(cat.name))}">✏️</button>
+      <button class="cat-delete-btn" data-id="${cat.id}" title="Delete category" aria-label="Delete ${escapeHtml(formatCategory(cat.name))}">🗑</button>
     `;
     categoriesList.appendChild(div);
   }
@@ -1190,17 +1437,21 @@ addCategoryBtn.addEventListener("click", async () => {
   const name = newCategoryName.value.trim();
   if (!name) { categoryMessage.textContent = "Enter a name."; categoryMessage.className = "settings-msg error"; return; }
 
-  const res = await fetch("/api/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, color: selectedNewColor }) });
-  const data = await res.json();
-  if (res.ok) {
-    categoryMessage.textContent = `Added "${formatCategory(data.name)}".`;
-    categoryMessage.className = "settings-msg success";
-    newCategoryName.value = "";
-    await loadCategories();
-  } else {
-    categoryMessage.textContent = data.error || "Failed to add.";
-    categoryMessage.className = "settings-msg error";
-  }
+  try {
+    const res = await safeFetch("/api/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, color: selectedNewColor }) });
+    const data = await res.json();
+    if (res.ok) {
+      categoryMessage.textContent = `Added "${formatCategory(data.name)}".`;
+      categoryMessage.className = "settings-msg success";
+      newCategoryName.value = "";
+      categoryAddRow.style.display = "none";
+      showAddCategoryBtn.style.display = "";
+      await loadCategories();
+    } else {
+      categoryMessage.textContent = data.error || "Failed to add.";
+      categoryMessage.className = "settings-msg error";
+    }
+  } catch {}
 });
 
 categoriesList.addEventListener("click", async e => {
@@ -1211,13 +1462,11 @@ categoriesList.addEventListener("click", async e => {
     const cat = categories.find(c => c.id === id);
     const item = colorDot.closest(".category-item");
 
-    // Check if swatch picker already open
     if (item.querySelector(".color-picker-inline")) return;
 
     const picker = document.createElement("div");
     picker.className = "color-picker-inline";
 
-    // Show all colors except ones used by OTHER categories
     const otherUsed = new Set(categories.filter(c => c.id !== id).map(c => c.color));
     const available = PRESET_COLORS.filter(c => !otherUsed.has(c));
 
@@ -1225,20 +1474,24 @@ categoriesList.addEventListener("click", async e => {
       const swatch = document.createElement("span");
       swatch.className = `color-swatch${color === cat.color ? " selected" : ""}`;
       swatch.style.background = color;
+      swatch.setAttribute("role", "button");
+      swatch.setAttribute("tabindex", "0");
       swatch.addEventListener("click", async (ev) => {
         ev.stopPropagation();
         if (color === cat.color) { picker.remove(); return; }
-        const res = await fetch(`/api/categories/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: cat.name, color }) });
-        if (res.ok) {
-          categoryMessage.textContent = `Color updated for "${formatCategory(cat.name)}".`;
-          categoryMessage.className = "settings-msg success";
-          await loadCategories();
-          await refreshAll();
-        } else {
-          const data = await res.json();
-          categoryMessage.textContent = data.error || "Failed to update color.";
-          categoryMessage.className = "settings-msg error";
-        }
+        try {
+          const res = await safeFetch(`/api/categories/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: cat.name, color }) });
+          if (res.ok) {
+            categoryMessage.textContent = `Color updated for "${formatCategory(cat.name)}".`;
+            categoryMessage.className = "settings-msg success";
+            await loadCategories();
+            await refreshAll();
+          } else {
+            const data = await res.json();
+            categoryMessage.textContent = data.error || "Failed to update color.";
+            categoryMessage.className = "settings-msg error";
+          }
+        } catch {}
         picker.remove();
       });
       picker.appendChild(swatch);
@@ -1246,7 +1499,6 @@ categoriesList.addEventListener("click", async e => {
 
     item.appendChild(picker);
 
-    // Close picker when clicking outside
     const closeHandler = (ev) => {
       if (!item.contains(ev.target)) { picker.remove(); document.removeEventListener("click", closeHandler); }
     };
@@ -1273,11 +1525,13 @@ categoriesList.addEventListener("click", async e => {
     saveBtn.className = "cat-save-btn";
     saveBtn.title = "Save";
     saveBtn.textContent = "✓";
+    saveBtn.setAttribute("aria-label", "Save rename");
 
     const cancelBtn = document.createElement("button");
     cancelBtn.className = "cat-cancel-btn";
     cancelBtn.title = "Cancel";
     cancelBtn.textContent = "✕";
+    cancelBtn.setAttribute("aria-label", "Cancel rename");
 
     nameSpan.replaceWith(input);
     renameBtn.style.display = "none";
@@ -1308,35 +1562,23 @@ categoriesList.addEventListener("click", async e => {
       resolved = true;
       const newName = input.value.trim();
       if (!newName || newName.toLowerCase() === cat.name) {
-        const span = document.createElement("span");
-        span.className = "category-name";
-        span.textContent = formatCategory(cat.name);
-        input.replaceWith(span);
-        saveBtn.remove();
-        cancelBtn.remove();
-        renameBtn.style.display = "";
-        deleteBtn.style.display = "";
+        revert();
         return;
       }
-      const res = await fetch(`/api/categories/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newName, color: cat.color }) });
-      const data = await res.json();
-      if (res.ok) {
-        categoryMessage.textContent = `Renamed "${formatCategory(cat.name)}" → "${formatCategory(newName)}".`;
-        categoryMessage.className = "settings-msg success";
-        await loadCategories();
-        await refreshAll();
-      } else {
-        categoryMessage.textContent = data.error || "Failed to rename.";
-        categoryMessage.className = "settings-msg error";
-        const span = document.createElement("span");
-        span.className = "category-name";
-        span.textContent = formatCategory(cat.name);
-        input.replaceWith(span);
-        saveBtn.remove();
-        cancelBtn.remove();
-        renameBtn.style.display = "";
-        deleteBtn.style.display = "";
-      }
+      try {
+        const res = await safeFetch(`/api/categories/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newName, color: cat.color }) });
+        const data = await res.json();
+        if (res.ok) {
+          categoryMessage.textContent = `Renamed "${formatCategory(cat.name)}" → "${formatCategory(newName)}".`;
+          categoryMessage.className = "settings-msg success";
+          await loadCategories();
+          await refreshAll();
+        } else {
+          categoryMessage.textContent = data.error || "Failed to rename.";
+          categoryMessage.className = "settings-msg error";
+          revert();
+        }
+      } catch { revert(); }
     };
 
     saveBtn.addEventListener("click", e => { e.stopPropagation(); doRename(); });
@@ -1351,19 +1593,21 @@ categoriesList.addEventListener("click", async e => {
   const id = parseInt(delBtn.dataset.id, 10);
   const cat = categories.find(c => c.id === id);
   if (!confirm(`⚠ Delete category "${formatCategory(cat.name)}"?\n\nThis will permanently remove the category. Any historical expenses using it will lose their category assignment.\n\nConsider renaming the category instead if you want to preserve historical records.`)) return;
-  const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
-  const data = await res.json();
-  if (res.ok) {
-    categoryMessage.textContent = "Deleted.";
-    categoryMessage.className = "settings-msg success";
-    await loadCategories();
-  } else {
-    categoryMessage.textContent = data.error || "Failed to delete.";
-    categoryMessage.className = "settings-msg error";
-  }
+  try {
+    const res = await safeFetch(`/api/categories/${id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (res.ok) {
+      categoryMessage.textContent = "Deleted.";
+      categoryMessage.className = "settings-msg success";
+      await loadCategories();
+    } else {
+      categoryMessage.textContent = data.error || "Failed to delete.";
+      categoryMessage.className = "settings-msg error";
+    }
+  } catch {}
 });
 
-// Date format settings
+// ===== DATE FORMAT SETTINGS =====
 async function loadDateFormatSetting() {
   try {
     const res = await fetch("/api/settings");
@@ -1375,7 +1619,7 @@ async function loadDateFormatSetting() {
         if (sel) sel.value = data.date_format;
       }
     }
-  } catch(e) {}
+  } catch {}
 }
 
 document.getElementById("settings-date-format-save").addEventListener("click", async function() {
@@ -1386,7 +1630,7 @@ document.getElementById("settings-date-format-save").addEventListener("click", a
   btn.disabled = true;
   btn.textContent = "Saving...";
   try {
-    const res = await fetch("/api/settings", {
+    const res = await safeFetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ date_format: selectedFormat })
@@ -1402,7 +1646,7 @@ document.getElementById("settings-date-format-save").addEventListener("click", a
       msg.textContent = err.error || "Failed to save.";
       msg.className = "settings-msg error";
     }
-  } catch(e) {
+  } catch {
     msg.textContent = "Failed to save.";
     msg.className = "settings-msg error";
   }
@@ -1411,20 +1655,22 @@ document.getElementById("settings-date-format-save").addEventListener("click", a
   setTimeout(() => { msg.textContent = ""; msg.className = "settings-msg"; }, 3000);
 });
 
-// Lock settings
+// ===== LOCK SETTINGS =====
 const lockSetupSection = document.getElementById("lock-setup-section");
 const lockDisableSection = document.getElementById("lock-disable-section");
 
 async function loadLockSettings() {
-  const res = await fetch("/api/lock/status");
-  const { locked } = await res.json();
-  lockSetupSection.style.display = locked ? "none" : "block";
-  lockDisableSection.style.display = locked ? "block" : "none";
-  document.getElementById("lock-recovery-alert-section").style.display = "none";
-  document.getElementById("settings-pin").value = "";
-  document.getElementById("settings-pin-confirm").value = "";
-  document.getElementById("settings-lock-message").textContent = "";
-  document.getElementById("settings-lock-message").className = "settings-msg";
+  try {
+    const res = await fetch("/api/lock/status");
+    const { locked } = await res.json();
+    lockSetupSection.style.display = locked ? "none" : "block";
+    lockDisableSection.style.display = locked ? "block" : "none";
+    document.getElementById("lock-recovery-alert-section").style.display = "none";
+    document.getElementById("settings-pin").value = "";
+    document.getElementById("settings-pin-confirm").value = "";
+    document.getElementById("settings-lock-message").textContent = "";
+    document.getElementById("settings-lock-message").className = "settings-msg";
+  } catch {}
 }
 
 document.getElementById("settings-lock-enable").addEventListener("click", async () => {
@@ -1434,26 +1680,30 @@ document.getElementById("settings-lock-enable").addEventListener("click", async 
   if (pin.length !== 6 || !/^\d{6}$/.test(pin)) { msg.textContent = "PIN must be exactly 6 digits."; msg.className = "settings-msg error"; return; }
   if (pin !== confirmPin) { msg.textContent = "PINs do not match."; msg.className = "settings-msg error"; return; }
 
-  const res = await fetch("/api/lock/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
-  const data = await res.json();
-  if (data.success) {
-    lockSetupSection.style.display = "none";
-    const alertSection = document.getElementById("lock-recovery-alert-section");
-    alertSection.innerHTML = `<div class="recovery-alert"><div class="recovery-alert-header">✓ Lock enabled successfully</div><div class="recovery-alert-body">
-<p>Your recovery code:</p><code class="recovery-code">${data.recoveryCode}</code>
+  try {
+    const res = await safeFetch("/api/lock/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
+    const data = await res.json();
+    if (data.success) {
+      lockSetupSection.style.display = "none";
+      const alertSection = document.getElementById("lock-recovery-alert-section");
+      alertSection.innerHTML = `<div class="recovery-alert"><div class="recovery-alert-header">✓ Lock enabled successfully</div><div class="recovery-alert-body">
+<p>Your recovery code:</p><code class="recovery-code">${escapeHtml(data.recoveryCode)}</code>
 <p class="recovery-warning">⚠ Save this code now. This is the only time it will be shown. If you forget your PIN and don't have this code, you will permanently lose access to the app.</p><p class="recovery-tips">Tips: Save it in your notes app, email it to yourself, or store it in your password manager.</p></div></div>`;
-    alertSection.style.display = "block";
-    lockDisableSection.style.display = "block";
-  } else { msg.textContent = data.error || "Failed"; msg.className = "settings-msg error"; }
+      alertSection.style.display = "block";
+      lockDisableSection.style.display = "block";
+    } else { msg.textContent = data.error || "Failed"; msg.className = "settings-msg error"; }
+  } catch {}
 });
 
 document.getElementById("settings-lock-disable").addEventListener("click", async () => {
   const pin = document.getElementById("settings-disable-pin").value;
   const msg = document.getElementById("settings-disable-message");
-  const res = await fetch("/api/lock/disable", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
-  const data = await res.json();
-  if (data.success) { localStorage.removeItem("lock-remembered"); msg.textContent = "Lock disabled."; msg.className = "settings-msg success"; document.getElementById("settings-disable-pin").value = ""; loadLockSettings(); }
-  else { msg.textContent = data.error || "Incorrect PIN"; msg.className = "settings-msg error"; }
+  try {
+    const res = await safeFetch("/api/lock/disable", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
+    const data = await res.json();
+    if (data.success) { localStorage.removeItem("lock-remembered"); msg.textContent = "Lock disabled."; msg.className = "settings-msg success"; document.getElementById("settings-disable-pin").value = ""; loadLockSettings(); }
+    else { msg.textContent = data.error || "Incorrect PIN"; msg.className = "settings-msg error"; }
+  } catch {}
 });
 
 document.getElementById("settings-pin-confirm").addEventListener("keydown", e => {
@@ -1464,7 +1714,7 @@ document.getElementById("settings-disable-pin").addEventListener("keydown", e =>
   if (e.key === "Enter") { e.preventDefault(); document.getElementById("settings-lock-disable").click(); }
 });
 
-// ===== PIN INPUT FILTERING =====
+// PIN input filtering
 document.querySelectorAll('#settings-pin, #settings-pin-confirm, #settings-disable-pin').forEach(input => {
   input.addEventListener("input", () => { input.value = input.value.replace(/\D/g, ""); });
 });
@@ -1502,13 +1752,16 @@ function saveDismissedIds(ids) {
 
 function createNotification(title, desc, { dates, details, amount }) {
   const notifs = getNotifications();
-  // deduplicate: if same details+amount already exists with same end date range, skip
   const isDup = notifs.some(n =>
     n.details === details &&
     n.amount === amount &&
     n.dates.length === dates.length
   );
   if (isDup) return;
+  // Guard against localStorage overflow
+  if (notifs.length > 50) {
+    notifs.splice(0, notifs.length - 50);
+  }
   notifs.push({
     id: Date.now(),
     title,
@@ -1526,9 +1779,8 @@ function checkNotifications() {
   let notifs = getNotifications();
   const dismissed = getDismissedIds();
   const now = new Date();
-  now.setHours(0, 0, 0, 0); // normalize to start of day
+  now.setHours(0, 0, 0, 0);
 
-  // Auto-delete expired notifications (past the 14-day window)
   const activeNotifs = [];
   const expiredIds = [];
   let unreadCount = 0;
@@ -1542,12 +1794,10 @@ function checkNotifications() {
     expiresAt.setDate(expiresAt.getDate() + 7);
 
     if (now > expiresAt) {
-      // Past the 14-day window — auto-delete
       expiredIds.push(n.id);
       continue;
     }
 
-    // Within the 14-day window: check if today is on or after the last date
     if (now >= lastDate && now <= expiresAt) {
       if (!dismissed.includes(n.id)) {
         unreadCount++;
@@ -1557,7 +1807,6 @@ function checkNotifications() {
     activeNotifs.push(n);
   }
 
-  // Clean up expired notifications and their dismissed ids
   if (expiredIds.length) {
     saveNotifications(activeNotifs);
     saveDismissedIds(dismissed.filter(id => !expiredIds.includes(id)));
@@ -1569,10 +1818,10 @@ function checkNotifications() {
     if (unreadCount > 0) {
       badge.textContent = unreadCount;
       badge.style.display = "flex";
-      bell.title = `${unreadCount} notification${unreadCount > 1 ? "s" : ""}`;
+      bell.setAttribute("aria-label", `${unreadCount} notification${unreadCount > 1 ? "s" : ""}`);
     } else {
       badge.style.display = "none";
-      bell.title = "Notifications";
+      bell.setAttribute("aria-label", "Notifications");
     }
   }
   renderNotificationPanel();
@@ -1594,7 +1843,6 @@ function renderNotificationPanel() {
   }
 
   list.innerHTML = "";
-  // Show most recent first
   for (const n of [...notifs].reverse()) {
     const isDismissed = dismissed.includes(n.id);
     const div = document.createElement("div");
@@ -1603,8 +1851,8 @@ function renderNotificationPanel() {
     const formattedLast = lastDate ? formatDate(lastDate) : "";
 
     div.innerHTML = `
-      <div class="notification-item-title">${n.title}</div>
-      <div class="notification-item-desc">${n.desc}${formattedLast ? ` (ends ${formattedLast})` : ""}</div>
+      <div class="notification-item-title">${escapeHtml(n.title)}</div>
+      <div class="notification-item-desc">${escapeHtml(n.desc)}${formattedLast ? ` (ends ${escapeHtml(formattedLast)})` : ""}</div>
       <button class="dismiss-btn" data-nid="${n.id}">${isDismissed ? "Remove" : "Dismiss"}</button>
     `;
     list.appendChild(div);
@@ -1618,7 +1866,6 @@ document.body.appendChild(notifOverlay);
 document.getElementById("notification-bell")?.addEventListener("click", () => {
   const panel = document.getElementById("notification-panel");
   if (!panel) return;
-  // Mark all as read when opening
   const dismissed = getDismissedIds();
   const notifs = getNotifications();
   const newlyRead = notifs.filter(n => !dismissed.includes(n.id)).map(n => n.id);
@@ -1648,13 +1895,11 @@ document.addEventListener("click", e => {
   if (!nid) return;
   const dismissed = getDismissedIds();
   if (dismissed.includes(nid)) {
-    // Remove permanently
     saveDismissedIds(dismissed.filter(id => id !== nid));
     let notifs = getNotifications();
     notifs = notifs.filter(n => n.id !== nid);
     saveNotifications(notifs);
   } else {
-    // Mark as dismissed (read)
     saveDismissedIds([...dismissed, nid]);
   }
   updateNotificationBadge();
@@ -1669,20 +1914,15 @@ window.fetch = function(...args) {
     const method = typeof args[1] === "object" && args[1]?.method ? args[1].method : "GET";
 
     if (url?.includes("/api/expenses/copy") && method === "POST" && response.ok) {
-      // Clone the response so we can read body
       const cloned = response.clone();
       try {
         const body = await cloned.json();
         if (body.inserted && body.inserted > 0) {
-          // Find the last date from the request body
           try {
             const reqBody = typeof args[1]?.body === "string" ? JSON.parse(args[1].body) : args[1]?.body;
             if (reqBody?.dates?.length) {
               const dates = reqBody.dates;
-              const lastDate = dates[dates.length - 1];
-              const firstDate = dates[0];
               const months = dates.length;
-              // Get details from the copied expense info (from the button data)
               const copyInfoEl = document.getElementById("copy-info");
               const infoText = copyInfoEl?.textContent || "";
               const [details = "Expense", amount = ""] = infoText.split(" — ");
@@ -1705,11 +1945,9 @@ function updateNotificationBadge() {
   checkNotifications();
 }
 
-// Initial check
 checkNotifications();
 
-// Re-check when switching to tracker tab
-document.querySelectorAll(".tab-btn").forEach(btn => {
+document.querySelectorAll(".bottom-nav-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     if (btn.dataset.tab === "tracker") {
       checkNotifications();
@@ -1723,16 +1961,20 @@ let pullMoveY = 0;
 let isPulling = false;
 const PULL_THRESHOLD = 80;
 
-const pullIndicator = document.createElement("div");
-pullIndicator.className = "pull-indicator";
-pullIndicator.id = "pull-indicator";
-const container = document.querySelector(".container");
-if (container) {
-  container.parentNode.insertBefore(pullIndicator, container);
+// Create a pull indicator inside each tab panel
+const tabPanels = document.querySelectorAll(".tab-content");
+tabPanels.forEach(panel => {
+  const indicator = document.createElement("div");
+  indicator.className = "pull-indicator";
+  panel.insertBefore(indicator, panel.firstChild);
+});
+
+function getActiveIndicator() {
+  const activePanel = document.querySelector(".tab-content.active") || document.querySelector(".tab-content");
+  return activePanel ? activePanel.querySelector(".pull-indicator") : null;
 }
 
 function isAtTopOfScroll() {
-  // On mobile with scroll-snap panels, scrolling happens inside .tab-content
   if (window.innerWidth <= 640) {
     const activePanel = document.querySelector(".tab-content.active");
     if (activePanel) return activePanel.scrollTop <= 10;
@@ -1741,7 +1983,6 @@ function isAtTopOfScroll() {
 }
 
 document.addEventListener("touchstart", e => {
-  // Only activate pull-to-refresh when at top of page/panel
   if (!isAtTopOfScroll()) return;
   const target = e.target;
   if (target.closest(".modal-overlay") || target.closest(".notification-panel")) return;
@@ -1754,10 +1995,10 @@ document.addEventListener("touchmove", e => {
   if (!isPulling) return;
   pullMoveY = e.touches[0].clientY;
   const dist = pullMoveY - pullStartY;
-  if (dist < 0) { isPulling = false; pullIndicator.classList.remove("visible"); return; }
+  if (dist < 0) { isPulling = false; const ind = getActiveIndicator(); if (ind) ind.classList.remove("visible"); return; }
 
-  const indicator = document.getElementById("pull-indicator");
-  if (dist > 20) {
+  const indicator = getActiveIndicator();
+  if (indicator && dist > 20) {
     indicator.innerHTML = dist > PULL_THRESHOLD
       ? `<span class="spinner"></span>Release to refresh...`
       : `<span class="spinner"></span>Pull down to refresh...`;
@@ -1765,14 +2006,14 @@ document.addEventListener("touchmove", e => {
   }
 }, { passive: true });
 
-document.addEventListener("touchend", async e => {
+document.addEventListener("touchend", async () => {
   if (!isPulling) return;
   isPulling = false;
   const dist = pullMoveY - pullStartY;
-  const indicator = document.getElementById("pull-indicator");
+  const indicator = getActiveIndicator();
 
   if (dist > PULL_THRESHOLD) {
-    indicator.innerHTML = `<span class="spinner"></span>Refreshing...`;
+    if (indicator) indicator.innerHTML = `<span class="spinner"></span>Refreshing...`;
     try {
       await Promise.all([
         refreshAll(),
@@ -1780,16 +2021,55 @@ document.addEventListener("touchend", async e => {
         loadCategories()
       ]);
       populateDetailsList();
-      indicator.innerHTML = `✓ Updated`;
+      if (indicator) indicator.innerHTML = `✓ Updated`;
     } catch {
-      indicator.innerHTML = `✗ Failed`;
+      if (indicator) indicator.innerHTML = `✗ Failed`;
     }
     setTimeout(() => {
-      indicator.classList.remove("visible");
-      indicator.innerHTML = "";
+      if (indicator) { indicator.classList.remove("visible"); indicator.innerHTML = ""; }
     }, 1500);
   } else {
-    indicator.classList.remove("visible");
-    indicator.innerHTML = "";
+    if (indicator) { indicator.classList.remove("visible"); indicator.innerHTML = ""; }
   }
 }, { passive: true });
+
+// ===== SERVICE WORKER REGISTRATION =====
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").then(reg => {
+    // Listen for new SW waiting to activate
+    reg.addEventListener("updatefound", () => {
+      const newWorker = reg.installing;
+      if (!newWorker) return;
+      newWorker.addEventListener("statechange", () => {
+        if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+          // New version available — show update banner
+          showUpdateBanner();
+        }
+      });
+    });
+  }).catch(() => {});
+
+  // Handle controller change (new SW activated)
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    window.location.reload();
+  });
+}
+
+function showUpdateBanner() {
+  let banner = document.querySelector(".sw-update-banner");
+  if (!banner) {
+    banner = document.createElement("div");
+    banner.className = "sw-update-banner";
+    banner.innerHTML = "🔄 Update available — tap to refresh";
+    banner.addEventListener("click", () => {
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.ready.then(reg => {
+          if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
+        });
+      }
+      banner.classList.remove("visible");
+    });
+    document.body.appendChild(banner);
+  }
+  banner.classList.add("visible");
+}

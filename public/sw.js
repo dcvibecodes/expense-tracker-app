@@ -1,4 +1,4 @@
-const CACHE_NAME = "expense-tracker-v6";
+const CACHE_NAME = "expense-tracker-v7";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -17,7 +17,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
-  self.skipWaiting();
+  // Don't skipWaiting automatically — wait for user to approve update
 });
 
 // Activate: clean old caches
@@ -30,21 +30,26 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// Listen for SKIP_WAITING message from the app
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 // Fetch: network-first for API, cache-first for static assets
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // API requests: network-first, queue if offline
+  // API requests: network-first
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(
       fetch(event.request)
         .then((response) => response)
         .catch(() => {
-          // If it's a GET, try cache
           if (event.request.method === "GET") {
             return caches.match(event.request);
           }
-          // For POST/PUT/DELETE when offline, store in IndexedDB for later sync
           return new Response(JSON.stringify({ error: "Offline. Changes will sync when back online." }), {
             status: 503,
             headers: { "Content-Type": "application/json" }
@@ -59,7 +64,6 @@ self.addEventListener("fetch", (event) => {
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
       return fetch(event.request).then((response) => {
-        // Cache new static assets dynamically (like Chart.js CDN)
         if (response.ok && event.request.method === "GET") {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));

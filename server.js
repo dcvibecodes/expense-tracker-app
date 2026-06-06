@@ -8,6 +8,34 @@ const sqlite3 = require("sqlite3").verbose();
 const app = express();
 const PORT = 3000;
 
+// --- Rate Limiting (in-memory) ---
+const rateLimitMap = new Map(); // key -> { count, resetAt }
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 10; // 10 attempts per window
+
+function rateLimit(key) {
+  const now = Date.now();
+  let entry = rateLimitMap.get(key);
+  if (!entry || now > entry.resetAt) {
+    entry = { count: 1, resetAt: now + RATE_LIMIT_WINDOW };
+    rateLimitMap.set(key, entry);
+    return true;
+  }
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) {
+    return false;
+  }
+  return true;
+}
+
+// Periodic cleanup of expired rate limit entries
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitMap) {
+    if (now > entry.resetAt) rateLimitMap.delete(key);
+  }
+}, 5 * 60 * 1000);
+
 const dataDir = path.join(__dirname, "data");
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
@@ -78,10 +106,24 @@ db.serialize(() => {
     CREATE TABLE IF NOT EXISTS app_lock (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       pin_hash TEXT NOT NULL,
+      pin_salt TEXT NOT NULL DEFAULT '',
       recovery_hash TEXT NOT NULL,
+      recovery_salt TEXT NOT NULL DEFAULT '',
       locked INTEGER NOT NULL DEFAULT 1
     )
   `);
+
+  // Migrate: add salt columns if missing (for existing DBs)
+  db.all("PRAGMA table_info(app_lock)", (err, cols) => {
+    if (err) return;
+    const colNames = cols.map(c => c.name);
+    if (!colNames.includes("pin_salt")) {
+      db.run("ALTER TABLE app_lock ADD COLUMN pin_salt TEXT NOT NULL DEFAULT ''");
+    }
+    if (!colNames.includes("recovery_salt")) {
+      db.run("ALTER TABLE app_lock ADD COLUMN recovery_salt TEXT NOT NULL DEFAULT ''");
+    }
+  });
   // Seed default categories if table is empty
   db.get("SELECT COUNT(*) AS cnt FROM categories", (err, row) => {
     if (!err && row && row.cnt === 0) {
@@ -97,7 +139,20 @@ db.serialize(() => {
   });
 });
 
-function hashPin(pin) {
+// --- Secure PIN hashing with PBKDF2 + salt ---
+function hashPinSecure(pin, salt) {
+  if (!salt) salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.pbkdf2Sync(pin, salt, 100000, 32, "sha256").toString("hex");
+  return { hash, salt };
+}
+
+function verifyPin(pin, storedHash, storedSalt) {
+  const { hash } = hashPinSecure(pin, storedSalt);
+  return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(storedHash, "hex"));
+}
+
+// Legacy fallback for old unsalted SHA-256 hashes (migration path)
+function hashPinLegacy(pin) {
   return crypto.createHash("sha256").update(pin).digest("hex");
 }
 
@@ -108,7 +163,15 @@ function generateRecoveryCode() {
 app.use(express.json());
 
 // --- Session & Auth middleware ---
-const SESSION_SECRET = crypto.randomBytes(32).toString("hex");
+// Persist session secret across restarts
+const secretPath = path.join(dataDir, ".session-secret");
+let SESSION_SECRET;
+if (fs.existsSync(secretPath)) {
+  SESSION_SECRET = fs.readFileSync(secretPath, "utf8").trim();
+} else {
+  SESSION_SECRET = crypto.randomBytes(32).toString("hex");
+  fs.writeFileSync(secretPath, SESSION_SECRET, "utf8");
+}
 
 app.use(session({
   secret: SESSION_SECRET,
@@ -274,16 +337,29 @@ app.put("/api/categories/:id", (req, res) => {
     if (!row) return res.status(404).json({ error: "Category not found." });
 
     const oldName = row.name;
-    db.run("UPDATE categories SET name = ?, color = ? WHERE id = ?", [cleanName, color || "#6b7280", id], function(updateErr) {
-      if (updateErr) {
-        if (updateErr.message.includes("UNIQUE")) return res.status(400).json({ error: "Category name already exists." });
-        return res.status(500).json({ error: "Failed to update category." });
-      }
-      // Update all expenses with old category name
-      if (oldName !== cleanName) {
-        db.run("UPDATE expenses SET category = ? WHERE category = ?", [cleanName, oldName]);
-      }
-      return res.json({ success: true });
+    db.serialize(() => {
+      db.run("BEGIN TRANSACTION");
+      db.run("UPDATE categories SET name = ?, color = ? WHERE id = ?", [cleanName, color || "#6b7280", id], function(updateErr) {
+        if (updateErr) {
+          db.run("ROLLBACK");
+          if (updateErr.message.includes("UNIQUE")) return res.status(400).json({ error: "Category name already exists." });
+          return res.status(500).json({ error: "Failed to update category." });
+        }
+        // Update all expenses with old category name
+        if (oldName !== cleanName) {
+          db.run("UPDATE expenses SET category = ? WHERE category = ?", [cleanName, oldName], (expErr) => {
+            if (expErr) {
+              db.run("ROLLBACK");
+              return res.status(500).json({ error: "Failed to update expenses." });
+            }
+            db.run("COMMIT");
+            return res.json({ success: true });
+          });
+        } else {
+          db.run("COMMIT");
+          return res.json({ success: true });
+        }
+      });
     });
   });
 });
@@ -311,12 +387,16 @@ app.patch("/api/categories/reorder", (req, res) => {
   const { order } = req.body; // array of category ids in desired order
   if (!Array.isArray(order)) return res.status(400).json({ error: "order must be an array of ids." });
 
-  const stmt = db.prepare("UPDATE categories SET sort_order = ? WHERE id = ?");
-  for (let i = 0; i < order.length; i++) {
-    stmt.run(i + 1, order[i]);
-  }
-  stmt.finalize();
-  return res.json({ success: true });
+  db.serialize(() => {
+    const stmt = db.prepare("UPDATE categories SET sort_order = ? WHERE id = ?");
+    for (let i = 0; i < order.length; i++) {
+      stmt.run(i + 1, order[i]);
+    }
+    stmt.finalize((err) => {
+      if (err) return res.status(500).json({ error: "Failed to reorder categories." });
+      return res.json({ success: true });
+    });
+  });
 });
 // --- Suggestions API (dominant category + amount for a given item) ---
 app.get("/api/suggestions", (req, res) => {
@@ -817,8 +897,15 @@ app.get("/api/export/csv", (req, res) => {
 
     let csv = "Date,Details,Category,Amount\n";
     for (const r of rows) {
-      const details = r.details.includes(",") ? `"${r.details}"` : r.details;
-      csv += `${r.date},${details},${r.category.charAt(0).toUpperCase() + r.category.slice(1)},${r.amount}\n`;
+      // Proper CSV escaping: wrap in quotes if contains comma, quote, or newline
+      // Escape double quotes by doubling them
+      // Prefix with single quote to prevent CSV injection (formulas starting with =, +, -, @)
+      let details = r.details;
+      if (/[,"\r\n]/.test(details) || /^[=+\-@\t\r]/.test(details)) {
+        details = '"' + details.replace(/"/g, '""') + '"';
+      }
+      let catName = r.category.charAt(0).toUpperCase() + r.category.slice(1);
+      csv += `${r.date},${details},${catName},${r.amount}\n`;
     }
 
     res.setHeader("Content-Type", "text/csv");
@@ -843,14 +930,15 @@ app.post("/api/lock/setup", (req, res) => {
   }
 
   const recoveryCode = generateRecoveryCode();
-  const pinHash = hashPin(pin);
-  const recoveryHash = hashPin(recoveryCode);
+  const pinResult = hashPinSecure(pin);
+  const recoveryResult = hashPinSecure(recoveryCode);
 
   db.run(
-    "INSERT OR REPLACE INTO app_lock (id, pin_hash, recovery_hash, locked) VALUES (1, ?, ?, 1)",
-    [pinHash, recoveryHash],
+    "INSERT OR REPLACE INTO app_lock (id, pin_hash, pin_salt, recovery_hash, recovery_salt, locked) VALUES (1, ?, ?, ?, ?, 1)",
+    [pinResult.hash, pinResult.salt, recoveryResult.hash, recoveryResult.salt],
     (err) => {
       if (err) return res.status(500).json({ error: "Failed to setup lock." });
+      req.session.authenticated = true;
       return res.json({ success: true, recoveryCode });
     }
   );
@@ -860,10 +948,31 @@ app.post("/api/lock/unlock", (req, res) => {
   const { pin } = req.body;
   if (!pin) return res.status(400).json({ error: "PIN required." });
 
-  db.get("SELECT pin_hash FROM app_lock WHERE id = 1", (err, row) => {
+  // Rate limiting
+  const clientKey = `unlock:${req.ip}`;
+  if (!rateLimit(clientKey)) {
+    return res.status(429).json({ error: "Too many attempts. Please wait a minute." });
+  }
+
+  db.get("SELECT pin_hash, pin_salt FROM app_lock WHERE id = 1", (err, row) => {
     if (err) return res.status(500).json({ error: "DB error" });
     if (!row) return res.status(404).json({ error: "No lock configured." });
-    if (hashPin(pin) !== row.pin_hash) {
+
+    let valid = false;
+    if (row.pin_salt) {
+      // New secure hash
+      valid = verifyPin(pin, row.pin_hash, row.pin_salt);
+    } else {
+      // Legacy unsalted hash — verify and migrate
+      valid = (hashPinLegacy(pin) === row.pin_hash);
+      if (valid) {
+        // Migrate to secure hash on successful unlock
+        const newResult = hashPinSecure(pin);
+        db.run("UPDATE app_lock SET pin_hash = ?, pin_salt = ? WHERE id = 1", [newResult.hash, newResult.salt]);
+      }
+    }
+
+    if (!valid) {
       return res.status(401).json({ error: "Incorrect PIN." });
     }
     req.session.authenticated = true;
@@ -875,10 +984,24 @@ app.post("/api/lock/disable", (req, res) => {
   const { pin } = req.body;
   if (!pin) return res.status(400).json({ error: "PIN required." });
 
-  db.get("SELECT pin_hash FROM app_lock WHERE id = 1", (err, row) => {
+  // Rate limiting
+  const clientKey = `disable:${req.ip}`;
+  if (!rateLimit(clientKey)) {
+    return res.status(429).json({ error: "Too many attempts. Please wait a minute." });
+  }
+
+  db.get("SELECT pin_hash, pin_salt FROM app_lock WHERE id = 1", (err, row) => {
     if (err) return res.status(500).json({ error: "DB error" });
     if (!row) return res.status(404).json({ error: "No lock configured." });
-    if (hashPin(pin) !== row.pin_hash) {
+
+    let valid = false;
+    if (row.pin_salt) {
+      valid = verifyPin(pin, row.pin_hash, row.pin_salt);
+    } else {
+      valid = (hashPinLegacy(pin) === row.pin_hash);
+    }
+
+    if (!valid) {
       return res.status(401).json({ error: "Incorrect PIN." });
     }
     db.run("DELETE FROM app_lock WHERE id = 1", (delErr) => {
@@ -892,10 +1015,25 @@ app.post("/api/lock/recovery", (req, res) => {
   const { code } = req.body;
   if (!code) return res.status(400).json({ error: "Recovery code required." });
 
-  db.get("SELECT recovery_hash FROM app_lock WHERE id = 1", (err, row) => {
+  // Rate limiting
+  const clientKey = `recovery:${req.ip}`;
+  if (!rateLimit(clientKey)) {
+    return res.status(429).json({ error: "Too many attempts. Please wait a minute." });
+  }
+
+  db.get("SELECT recovery_hash, recovery_salt FROM app_lock WHERE id = 1", (err, row) => {
     if (err) return res.status(500).json({ error: "DB error" });
     if (!row) return res.status(404).json({ error: "No lock configured." });
-    if (hashPin(code.toUpperCase()) !== row.recovery_hash) {
+
+    const codeUpper = code.toUpperCase();
+    let valid = false;
+    if (row.recovery_salt) {
+      valid = verifyPin(codeUpper, row.recovery_hash, row.recovery_salt);
+    } else {
+      valid = (hashPinLegacy(codeUpper) === row.recovery_hash);
+    }
+
+    if (!valid) {
       return res.status(401).json({ error: "Invalid recovery code." });
     }
     req.session.authenticated = true;

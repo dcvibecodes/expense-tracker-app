@@ -1,6 +1,6 @@
 {
-  "name": "Expense Tracker+",
-  "short_name": "Expense+",
+  "name": "Expenses+",
+  "short_name": "Expenses+",
   "description": "Personal expense tracking app",
   "start_url": "/",
   "display": "standalone",

@@ -118,37 +118,132 @@ tabBtns.forEach(btn => {
   btn.addEventListener("click", () => switchToTab(btn.dataset.tab));
 });
 
-// ---- Mobile: sync tab buttons with scroll-snap position ----
+// ---- Mobile: sync tab buttons + collapsible header ----
 (function setupMobileScrollSync() {
   if (window.innerWidth > 640) return;
-  const container = document.querySelector(".container");
-  if (!container) return;
 
+  const container = document.querySelector(".container");
+  const appHeader = document.querySelector(".app-header");
+  const tabNav = document.querySelector(".tab-nav");
+
+  if (!container || !appHeader || !tabNav) return;
+
+  const panels = document.querySelectorAll(".tab-content");
+
+  document.documentElement.style.setProperty(
+    "--header-height",
+    `${appHeader.offsetHeight}px`
+  );
+
+  document.documentElement.style.setProperty(
+    "--tab-height",
+    `${tabNav.offsetHeight}px`
+  );
+
+  let headerHidden = false;
   let scrollTimeout = null;
+  const lastScrollTops = new Map();
+
+  function hideHeader() {
+    if (headerHidden) return;
+    headerHidden = true;
+    appHeader.classList.add("header-hidden");
+    tabNav.classList.add("tabs-at-top");
+  }
+
+  function showHeader() {
+    if (!headerHidden) return;
+    headerHidden = false;
+    appHeader.classList.remove("header-hidden");
+    tabNav.classList.remove("tabs-at-top");
+  }
+
   container.addEventListener("scroll", () => {
     clearTimeout(scrollTimeout);
+
     scrollTimeout = setTimeout(() => {
-      const idx = Math.round(container.scrollLeft / container.offsetWidth);
-      const clampedIdx = Math.max(0, Math.min(idx, TAB_ORDER.length - 1));
+      const idx = Math.round(
+        container.scrollLeft / container.offsetWidth
+      );
+
+      const clampedIdx = Math.max(
+        0,
+        Math.min(idx, TAB_ORDER.length - 1)
+      );
+
       const tabId = TAB_ORDER[clampedIdx];
-      const currentActive = document.querySelector(".tab-btn.active");
-      if (currentActive && currentActive.dataset.tab === tabId) return;
-      tabBtns.forEach(b => b.classList.remove("active"));
-      tabContents.forEach(c => c.classList.remove("active"));
-      const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
-      if (btn) btn.classList.add("active");
-      document.getElementById(`tab-${tabId}`).classList.add("active");
-      if (tabId === "reports") loadReports();
+
+      const currentActive =
+        document.querySelector(".tab-btn.active");
+
+      if (
+        !currentActive ||
+        currentActive.dataset.tab !== tabId
+      ) {
+        tabBtns.forEach(b => b.classList.remove("active"));
+        tabContents.forEach(c => c.classList.remove("active"));
+
+        const btn = document.querySelector(
+          `.tab-btn[data-tab="${tabId}"]`
+        );
+
+        if (btn) btn.classList.add("active");
+
+        const panel = document.getElementById(`tab-${tabId}`);
+        if (panel) panel.classList.add("active");
+
+        if (tabId === "reports") loadReports();
+      }
     }, 50);
   }, { passive: true });
 
-  // Also re-setup on resize (e.g. orientation change)
+  panels.forEach(panel => {
+    lastScrollTops.set(panel, 0);
+
+    panel.addEventListener("scroll", () => {
+      const currentScrollTop = panel.scrollTop;
+      const lastScrollTop =
+        lastScrollTops.get(panel) || 0;
+
+      if (currentScrollTop <= 10) {
+        showHeader();
+      } else if (
+        currentScrollTop > lastScrollTop + 10
+      ) {
+        hideHeader();
+      } else if (
+        currentScrollTop < lastScrollTop - 10
+      ) {
+        showHeader();
+      }
+
+      lastScrollTops.set(panel, currentScrollTop);
+    }, { passive: true });
+  });
+
   window.addEventListener("resize", () => {
+    document.documentElement.style.setProperty(
+      "--header-height",
+      `${appHeader.offsetHeight}px`
+    );
+
+    document.documentElement.style.setProperty(
+      "--tab-height",
+      `${tabNav.offsetHeight}px`
+    );
+
     if (window.innerWidth <= 640) {
-      const currentTab = document.querySelector(".tab-btn.active");
+      const currentTab =
+        document.querySelector(".tab-btn.active");
+
       if (currentTab) {
-        const idx = TAB_ORDER.indexOf(currentTab.dataset.tab);
-        if (idx >= 0) container.scrollLeft = idx * container.offsetWidth;
+        const idx =
+          TAB_ORDER.indexOf(currentTab.dataset.tab);
+
+        if (idx >= 0) {
+          container.scrollLeft =
+            idx * container.offsetWidth;
+        }
       }
     }
   });
@@ -294,7 +389,7 @@ function filterDetailsList() {
   const q = detailsInput.value.trim().toLowerCase();
   detailsList.innerHTML = "";
   if (!q || q.length < 2) return;
-  if (allDetails.some(d => d. toLowerCase() === q)) return;
+  if (allDetails.some(d => d.toLowerCase() === q)) return;
   const fragment = document.createDocumentFragment();
   let count = 0;
   for (const d of allDetails) {

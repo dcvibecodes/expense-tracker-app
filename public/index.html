@@ -2,7 +2,7 @@
 <html lang="en"> 
   <head> 
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>Expenses+</title>
 
     <!-- Favicon -->
@@ -23,7 +23,7 @@
     <meta name="theme-color" content="#1a1a2e" />
 
     <link rel="stylesheet" href="/styles.css" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous"></script> 
   </head> 
   <body> 
 
@@ -31,11 +31,11 @@
     <header class="app-header"> 
       <span class="app-title">Expenses+</span> 
       <div class="header-actions"> 
-        <span id="notification-bell" class="notification-bell" title="Notifications"> 
+        <span id="notification-bell" class="notification-bell" title="Notifications" role="button" aria-label="Notifications"> 
           🔔 
-          <span id="notification-badge" class="notification-badge" style="display:none;">0</span> 
+          <span id="notification-badge" class="notification-badge" aria-hidden="true" style="display:none;">0</span> 
         </span> 
-        <button id="theme-toggle" class="theme-toggle-btn" title="Toggle dark mode">🌙</button> 
+        <button id="theme-toggle" class="theme-toggle-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button> 
       </div> 
     </header> 
 
@@ -48,14 +48,20 @@
       <div id="notification-list" class="notification-list"></div> 
     </div> 
 
-    <!-- Tab Navigation --> 
-    <nav class="tab-nav" id="tab-nav"> 
-      <div class="tab-nav-tabs"> 
-        <button class="tab-btn active" data-tab="tracker">Tracker</button> 
-        <button class="tab-btn" data-tab="reports">Reports</button> 
-        <button class="tab-btn" data-tab="downloads">Downloads</button> 
-        <button class="tab-btn" data-tab="settings">Settings</button> 
-      </div> 
+    <!-- Bottom Navigation --> 
+    <nav class="bottom-nav" id="tab-nav" role="tablist" aria-label="Main navigation"> 
+      <button class="bottom-nav-btn active" data-tab="tracker" role="tab" aria-selected="true" aria-controls="tab-tracker">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span>Tracker</span>
+      </button> 
+      <button class="bottom-nav-btn" data-tab="reports" role="tab" aria-selected="false" aria-controls="tab-reports">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        <span>Reports</span>
+      </button> 
+      <button class="bottom-nav-btn" data-tab="settings" role="tab" aria-selected="false" aria-controls="tab-settings">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Settings</span>
+      </button> 
     </nav> 
 
     <main class="container"> 
@@ -80,7 +86,10 @@
               <select id="category" required></select> 
             </label> 
             <label>Amount <input type="text" id="amount" inputmode="decimal" placeholder="0.00" autocomplete="off" required /></label> 
-            <button type="submit" class="add-btn" id="add-btn">+ Add</button> 
+            <div style="grid-column: 1/-1; display: flex; gap: 10px;">
+              <button type="submit" class="add-btn" id="add-btn">+ Add</button> 
+              <button type="button" class="cancel-btn" id="clear-form-btn">Clear</button>
+            </div> 
           </form> 
           <p id="add-expense-msg" class="form-msg"></p> 
         </section> 
@@ -145,6 +154,7 @@
             <div class="report-range-btns"> 
               <button id="report-apply" type="button">Apply</button> 
               <button id="report-reset" type="button" class="btn-secondary">Reset</button> 
+              <button id="report-csv-btn" type="button" class="btn-secondary">⬇ CSV</button> 
             </div> 
           </div> 
         </section> 
@@ -173,27 +183,6 @@
         </section> 
       </div> 
 
-      <!-- ===== DOWNLOADS TAB ===== --> 
-      <div id="tab-downloads" class="tab-content"> 
-        <section class="card"> 
-          <div class="report-range"> 
-            <label>Year <select id="dl-year"></select></label> 
-            <label>Month 
-              <select id="dl-month"> 
-                <option value="">All Months</option> 
-                <option value="1">January</option><option value="2">February</option><option value="3">March</option> 
-                <option value="4">April</option><option value="5">May</option><option value="6">June</option> 
-                <option value="7">July</option><option value="8">August</option><option value="9">September</option> 
-                <option value="10">October</option><option value="11">November</option><option value="12">December</option> 
-              </select> 
-            </label> 
-            <label>From <input type="date" id="dl-from" class="date-optional" /> </label> 
-            <label>To <input type="date" id="dl-to" class="date-optional" /> </label> 
-            <button id="dl-csv-btn" type="button">Download CSV</button> 
-          </div> 
-        </section> 
-      </div> 
-
       <!-- ===== SETTINGS TAB ===== --> 
       <div id="tab-settings" class="tab-content"> 
 
@@ -201,10 +190,14 @@
           <h2>Categories</h2> 
           <p class="settings-desc">Manage expense categories (max 15). Changes apply to new and existing expenses.</p> 
           <div id="categories-list" class="categories-list"></div> 
-          <div class="category-add-row" id="category-add-row"> 
+          <button id="show-add-category-btn" type="button" class="btn-secondary" style="margin-bottom:12px;">+ Add Category</button> 
+          <div class="category-add-row" id="category-add-row" style="display:none;"> 
             <input type="text" id="new-category-name" placeholder="New category name" maxlength="30" /> 
             <div class="color-swatches" id="new-category-swatches"></div> 
-            <button id="add-category-btn" type="button">+ Add</button> 
+            <div class="category-add-actions">
+              <button id="add-category-btn" type="button">Add</button> 
+              <button id="cancel-add-category-btn" type="button" class="btn-secondary">Cancel</button> 
+            </div>
           </div> 
           <p id="category-message" class="settings-msg"></p> 
         </section> 
@@ -252,9 +245,9 @@
     </main> 
 
     <!-- Edit Modal --> 
-    <div id="edit-modal" class="modal-overlay" role="dialog"> 
+    <div id="edit-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title"> 
       <div class="modal-content"> 
-        <h2>Edit Expense</h2> 
+        <h2 id="edit-modal-title">Edit Expense</h2> 
         <form id="edit-form" class="grid edit-grid"> 
           <input type="hidden" id="edit-id" /> 
           <label>Date <input type="date" id="edit-date" required /></label> 
@@ -272,9 +265,9 @@
     </div> 
 
     <!-- Batch Rename Modal --> 
-    <div id="batch-modal" class="modal-overlay" role="dialog"> 
+    <div id="batch-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="batch-modal-title"> 
       <div class="modal-content"> 
-        <h2>Batch Rename</h2> 
+        <h2 id="batch-modal-title">Batch Rename</h2> 
         <p class="batch-desc">Rename all entries matching a detail string.</p> 
         <form id="batch-form" class="grid batch-grid"> 
           <label>Old Name 
@@ -291,9 +284,9 @@
     </div> 
 
     <!-- Batch Category Reassignment Modal --> 
-    <div id="batch-cat-modal" class="modal-overlay" role="dialog"> 
+    <div id="batch-cat-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="batch-cat-modal-title"> 
       <div class="modal-content"> 
-        <h2>Batch Category Reassignment</h2> 
+        <h2 id="batch-cat-modal-title">Batch Category Reassignment</h2> 
         <p class="batch-desc">Move all expenses from one category to another. Useful before deleting a category.</p> 
         <form id="batch-cat-form" class="grid batch-grid"> 
           <label>From Category 
@@ -311,9 +304,9 @@
     </div> 
 
     <!-- Copy Expense Modal --> 
-    <div id="copy-modal" class="modal-overlay" role="dialog"> 
+    <div id="copy-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="copy-modal-title"> 
       <div class="modal-content"> 
-        <h2>Copy Expense (Monthly)</h2> 
+        <h2 id="copy-modal-title">Copy Expense (Monthly)</h2> 
         <p class="batch-desc">Copy this expense to the same day-of-month for the next N months. Months that already have this expense will be skipped.</p> 
         <p id="copy-info" style="font-weight:600; margin-bottom:12px;"></p> 
         <form id="copy-form" class="grid batch-grid"> 
@@ -328,6 +321,9 @@
         </form> 
       </div> 
     </div> 
+
+    <!-- Error Toast -->
+    <div id="error-toast" class="error-toast" role="alert" aria-live="polite"></div>
 
     <script src="/app.js"></script> 
   </body>

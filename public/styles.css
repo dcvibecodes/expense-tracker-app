@@ -252,7 +252,8 @@ h3 { font-size: 12px; font-weight: 600; margin: 0 0 10px 0; color: #555; text-tr
   backdrop-filter: blur(8px); 
   -webkit-backdrop-filter: blur(8px); 
   border-bottom: 1px solid var(--border-color); 
-} 
+  transition: top 0.3s ease; 
+}
 
 .tab-nav-tabs { 
   display: flex; 
@@ -283,36 +284,88 @@ h3 { font-size: 12px; font-weight: 600; margin: 0 0 10px 0; color: #555; text-tr
 .tab-content.active { display: block; } 
 
 /* ---- Mobile: horizontal scroll-snap sliding panels ---- */
-@media (max-width: 640px) { 
-  .container { 
-    display: flex; 
-    overflow-x: auto; 
-    overflow-y: hidden; 
-    scroll-snap-type: x mandatory; 
-    -webkit-overflow-scrolling: touch; 
-    scroll-behavior: smooth; 
-    gap: 0; 
-    padding: 0; 
-    max-width: 100vw; 
-    height: calc(100vh - 110px); 
-    height: calc(100dvh - 110px); 
-  } 
-  .tab-content { 
-    display: block !important; 
-    flex: 0 0 100%; 
-    min-width: 100%; 
-    width: 100%; 
-    scroll-snap-align: start; 
-    scroll-snap-stop: always; 
-    padding: 12px 8px; 
-    overflow-y: auto; 
-    -webkit-overflow-scrolling: touch; 
-    height: 100%; 
-  } 
-  /* Hide scrollbar on the sliding container */ 
-  .container::-webkit-scrollbar { display: none; } 
-  .container { -ms-overflow-style: none; scrollbar-width: none; } 
-} 
+@media (max-width: 640px) {
+
+  .app-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    padding: calc(env(safe-area-inset-top) + 10px) 12px 10px;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+  }
+
+  .app-header.header-hidden {
+    transform: translateY(-100%);
+  }
+
+  .tab-nav {
+    position: fixed;
+    top: var(--header-height, 52px);
+    left: 0;
+    right: 0;
+    z-index: 950;
+    padding: 8px 10px;
+    transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .tab-nav.tabs-at-top {
+    top: env(safe-area-inset-top, 0px);
+  }
+
+  .container {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    gap: 0;
+    padding: 0;
+    max-width: 100vw;
+
+    margin-top: calc(
+      var(--header-height, 52px) +
+      var(--tab-height, 44px)
+    );
+
+    height: calc(
+      100vh -
+      var(--header-height, 52px) -
+      var(--tab-height, 44px)
+    );
+
+    height: calc(
+      100dvh -
+      var(--header-height, 52px) -
+      var(--tab-height, 44px)
+    );
+  }
+
+  .tab-content {
+    display: block !important;
+    flex: 0 0 100%;
+    min-width: 100%;
+    width: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    padding: 12px 8px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    height: 100%;
+  }
+
+  .container::-webkit-scrollbar {
+    display: none;
+  }
+
+  .container {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
 
 /* ---- Cards ---- */
 .card { 
@@ -999,15 +1052,22 @@ tbody tr:hover td { background: #fafbff; }
   h2 { font-size: 14px; } 
 
   /* Tabs: scrollable row */ 
-  .app-header {
-  padding: calc(env(safe-area-inset-top) + 10px) 12px 10px;
-} 
+  .app-title { font-size: 14px; }
 
-  .app-title { font-size: 14px; } 
-  .theme-toggle-btn { width: 28px; height: 28px; font-size: 14px; min-height: 28px; } 
-  .tab-nav { padding: 8px 10px; } 
-  .tab-nav-tabs { gap: 6px; } 
-  .tab-btn { padding: 8px 14px; font-size: 11px; flex-shrink: 0; } 
+.theme-toggle-btn {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  min-height: 28px;
+}
+
+.tab-nav-tabs { gap: 6px; }
+
+.tab-btn {
+  padding: 8px 14px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
 
   /* Add form: single column */ 
   .add-grid { grid-template-columns: 1fr; } 

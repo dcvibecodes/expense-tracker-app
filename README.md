@@ -1,8 +1,8 @@
-# Expense Tracker+
+# Expenses+
 
 A personal expense tracking app built with **Node.js**, **Express**, and **SQLite**. Deploy it on a VPS or run locally — your data stays on your server.
 
-**Version 2.5.1**
+**Version 2.6.0**
 
 ---
 
@@ -137,8 +137,8 @@ npm start
 The app will be available at http://localhost:3000.
 The database file is created automatically at data/expenses.db on first run.
 
-### Upgrading from v2.4.x
-Deploy the updated files (server.js, public/app.js, public/styles.css, public/index.html, package.json) and run `npm install` (adds express-session). Restart the server. The new settings table is created automatically — no manual DB migration needed.
+### Upgrading from v2.5.x
+Deploy the updated files (server.js, public/app.js, public/styles.css, public/index.html, public/manifest.json, public/generate-icons.html, package.json) and run `npm install`. Restart the server.
 
 ## Tech Stack
 
@@ -152,17 +152,24 @@ Deploy the updated files (server.js, public/app.js, public/styles.css, public/in
 
 ## Project Structure
 
-```
-expense-tracker/
-├── server.js          ← Express server, API routes, session auth, DB schema
-├── package.json       ← Project dependencies
+```text
+expenses-plus/
+├── server.js                ← Express server, API routes, session auth, DB schema
+├── package.json             ← Project dependencies
 ├── data/
-│   └── expenses.db    ← SQLite database (auto-created)
+│   └── expenses.db          ← SQLite database (auto-created)
 ├── public/
-│   ├── index.html     ← Single-page HTML
-│   ├── app.js         ← Frontend JavaScript
-│   └── styles.css     ← Styles (light + dark themes, responsive)
-└── README.md          ← This file
+│   ├── index.html           ← Single-page HTML
+│   ├── app.js               ← Frontend JavaScript
+│   ├── styles.css           ← Styles (light + dark themes, responsive)
+│   ├── manifest.json        ← PWA manifest
+│   ├── generate-icons.html  ← Icon generation utility
+│   ├── favicon-16.png
+│   ├── favicon-32.png
+│   ├── apple-touch-icon.png
+│   ├── icon-192.png
+│   └── icon-512.png
+└── README.md                ← This file
 ```
 
 ## API Endpoints
@@ -197,6 +204,15 @@ expense-tracker/
 | POST | /api/lock/recovery | Unlock with recovery code (sets session) |
 
 ## Changelog
+
+### v2.6.0 (June 2026)
+- App renamed from Expense Tracker+ to Expenses+
+- Mobile swipe-tab improvements with scroll synchronization
+- Improved iPhone/PWA safe-area handling
+- Enhanced pull-to-refresh behavior
+- Improved recurring expense notifications
+- Mobile chart tooltip dismissal improvements
+- UI polish and responsiveness updates
 
 ### v2.5.1 (June 2026)
 - Smart Expense Suggestions

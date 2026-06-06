@@ -161,7 +161,7 @@ function getLockPage() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Expense Tracker+ - Locked</title>
+  <title>Expenses+ - Locked</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
@@ -179,7 +179,7 @@ function getLockPage() {
 </head>
 <body>
   <div class="lock-modal">
-    <h2>Expense Tracker+ Locked</h2>
+    <h2>Expenses+ Locked</h2>
     <p class="subtitle">Enter your 6-digit PIN to access the app.</p>
     <input type="password" id="pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="••••••" />
     <button id="unlock-btn" type="button">Unlock</button>
@@ -934,6 +934,6 @@ app.put("/api/settings", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Expense Tracker+ running at http://localhost:${PORT}`);
+  console.log(`Expenses+ running at http://localhost:${PORT}`);
   console.log(`Database path: ${dbPath}`);
 });

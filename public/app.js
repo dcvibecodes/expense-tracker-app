@@ -886,20 +886,20 @@ const reportCategory = document.getElementById("report-category");
 const reportFrom = document.getElementById("report-from");
 const reportTo = document.getElementById("report-to");
 const reportWrap = document.getElementById("report-table-wrap");
-const toggleChartsButton = document.getElementById("toggle-charts");
 const chartsContent = document.getElementById("charts-content");
+
+// Report filters toggle
+const reportFiltersToggle = document.getElementById("report-filters-toggle");
+const reportFiltersContent = document.getElementById("report-filters-content");
+reportFiltersToggle.addEventListener("click", () => {
+  const isExpanded = reportFiltersContent.style.display !== "none";
+  reportFiltersContent.style.display = isExpanded ? "none" : "block";
+  reportFiltersToggle.setAttribute("aria-expanded", String(!isExpanded));
+  reportFiltersToggle.textContent = isExpanded ? "🔍 Filters & Options" : "🔍 Hide Filters";
+});
 
 populateGenericYearPicker(reportYear);
 setReportDefaults();
-
-let chartsExpanded = true;
-function setChartsExpanded(expanded) {
-  chartsExpanded = expanded;
-  chartsContent.classList.toggle("collapsed", !expanded);
-  toggleChartsButton.textContent = expanded ? "▼" : "▶";
-  toggleChartsButton.setAttribute("aria-expanded", String(expanded));
-}
-toggleChartsButton.addEventListener("click", () => setChartsExpanded(!chartsExpanded));
 
 async function fetchCharts() {
   // If custom date range is set, derive month/year from it for charts
@@ -1032,11 +1032,10 @@ function renderReportTable(data) {
 
       for (const day of mo.days) {
         const dayLabel = `${day.day} ${monthName.slice(0,3)}`;
-        const preview = day.expenses.map(e => escapeHtml(e.details)).join(", ");
         const dId = `rg-${reportUid++}`;
         html += `<div class="rpt-row rpt-day" data-toggle="${dId}" tabindex="0" role="button" aria-expanded="false">`;
         html += `  <span class="rpt-chevron"></span>`;
-        html += `  <span class="rpt-label">${escapeHtml(dayLabel)}<span class="rpt-preview"> — ${preview}</span></span>`;
+        html += `  <span class="rpt-label">${escapeHtml(dayLabel)}</span>`;
         html += `  <span class="rpt-cat"></span>`;
         html += `  <span class="rpt-amt">${formatAmount(day.total)}</span>`;
         html += `  <span class="rpt-actions"></span>`;

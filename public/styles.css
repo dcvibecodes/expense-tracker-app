@@ -209,12 +209,6 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 
 /* ---- Charts ---- */
 .charts-card { margin-bottom: 20px; }
-.charts-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
-.charts-header h2 { margin-bottom: 0; }
-
-#toggle-charts { width: 36px; height: 36px; padding: 0; font-size: 14px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: var(--bg); color: var(--text-secondary); border: 1px solid var(--border); min-height: 36px; cursor: pointer; }
-#toggle-charts:hover { background: var(--border); }
-.charts-content.collapsed { display: none; }
 .charts { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 12px; }
 .chart-panel { display: flex; flex-direction: column; padding: 12px 12px 6px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); max-height: 200px; }
 .chart-panel h3 { margin-bottom: 4px; flex-shrink: 0; font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px; }
@@ -278,7 +272,7 @@ tbody tr:hover td { background: rgba(59, 130, 246, 0.03); }
 .modal-buttons button { flex: 1; }
 
 /* ---- Report Range ---- */
-.report-range { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.report-range { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-top: 14px; }
 .report-range label { min-width: 120px; display: flex; flex-direction: column; font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); gap: 4px; }
 .report-range-btns { display: flex; gap: 8px; align-items: flex-end; white-space: nowrap; }
 .report-range-btns button { white-space: nowrap; padding: 8px 12px; font-size: 0.8rem; }
@@ -298,7 +292,7 @@ tbody tr:hover td { background: rgba(59, 130, 246, 0.03); }
 
 .rpt { min-width: 520px; }
 .rpt-row {
-  display: grid; grid-template-columns: 36px 1fr 100px 130px 110px;
+  display: grid; grid-template-columns: 36px minmax(140px, 1fr) 90px 110px 90px;
   align-items: center; padding: 0 16px; min-height: 42px;
   border-bottom: 1px solid var(--border); cursor: default;
 }
@@ -306,9 +300,12 @@ tbody tr:hover td { background: rgba(59, 130, 246, 0.03); }
 .rpt-row[data-toggle] { cursor: pointer; }
 
 .rpt-year { background: var(--bg); border-bottom: 2px solid var(--border); min-height: 48px; font-weight: 700; font-size: 0.9rem; }
-.rpt-month { background: rgba(59, 130, 246, 0.02); border-left: 3px solid #bfdbfe; padding-left: 20px; min-height: 44px; font-weight: 600; font-size: 0.85rem; }
-.rpt-day { border-left: 3px solid #c7d2fe; padding-left: 32px; min-height: 40px; font-size: 0.85rem; }
-.rpt-expense { padding-left: 44px; min-height: 38px; font-size: 0.85rem; color: var(--text-secondary); border-left: 3px solid transparent; }
+.rpt-month { background: rgba(59, 130, 246, 0.02); border-left: 3px solid #bfdbfe; min-height: 44px; font-weight: 600; font-size: 0.85rem; }
+.rpt-month .rpt-label { padding-left: 4px; }
+.rpt-day { border-left: 3px solid #c7d2fe; min-height: 40px; font-size: 0.85rem; }
+.rpt-day .rpt-label { padding-left: 16px; }
+.rpt-expense { min-height: 38px; font-size: 0.85rem; color: var(--text-secondary); border-left: 3px solid transparent; }
+.rpt-expense .rpt-label { padding-left: 28px; }
 .rpt-expense:last-child { border-bottom: none; }
 
 .rpt-chevron, .rpt-chevron-placeholder { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; justify-self: center; }
@@ -577,15 +574,9 @@ html, body { max-width: 100vw; overflow-x: hidden; }
   #tab-tracker .table-wrap table td[data-label=""] { text-align: right !important; }
   #tab-tracker .table-wrap table td[data-label=""]:before { display: none; }
 
-  /* Report pivot: readable on mobile with side scroll only for actions */
+  /* Report pivot: side scroll on mobile */
   .report-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .rpt { min-width: 0; }
-  .rpt-row { grid-template-columns: 28px 1fr 90px 80px; padding: 0 10px; }
-  .rpt-row .rpt-cat { display: none; }
-  .rpt-header .rpt-cat { display: none; }
-  .rpt-label { font-size: 0.8rem; overflow: visible; white-space: normal; word-break: break-word; text-overflow: unset; }
-  .rpt-amt { font-size: 0.8rem; padding-right: 4px; }
-  .rpt-actions { gap: 2px; }
+  .rpt { min-width: 520px; }
   .report-toolbar { padding: 10px 12px 8px; flex-wrap: wrap; }
 }
 

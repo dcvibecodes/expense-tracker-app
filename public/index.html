@@ -132,37 +132,37 @@
       <!-- ===== REPORTS TAB ===== --> 
       <div id="tab-reports" class="tab-content"> 
         <section class="card"> 
-          <div class="report-range"> 
-            <label>Year <select id="report-year"></select></label> 
-            <label>Month 
-              <select id="report-month"> 
-                <option value="">All Months</option> 
-                <option value="1">January</option><option value="2">February</option><option value="3">March</option> 
-                <option value="4">April</option><option value="5">May</option><option value="6">June</option> 
-                <option value="7">July</option><option value="8">August</option><option value="9">September</option> 
-                <option value="10">October</option><option value="11">November</option><option value="12">December</option> 
-              </select> 
-            </label> 
-            <label>From <input type="date" id="report-from" class="date-optional" /></label> 
-            <label>To <input type="date" id="report-to" class="date-optional" /> </label> 
-            <label>Category 
-              <select id="report-category"> 
-                <option value="all">All Categories</option> 
-              </select> 
-            </label> 
-            <div class="report-range-btns"> 
-              <button id="report-apply" type="button" class="add-btn">Apply</button> 
-              <button id="report-reset" type="button" class="btn-secondary">Reset</button> 
-              <button id="report-csv-btn" type="button" class="btn-secondary">⬇ CSV</button> 
+          <button id="report-filters-toggle" type="button" class="filters-toggle-btn" aria-expanded="false">🔍 Filters & Options</button>
+          <div id="report-filters-content" style="display:none;">
+            <div class="report-range"> 
+              <label>Year <select id="report-year"></select></label> 
+              <label>Month 
+                <select id="report-month"> 
+                  <option value="">All Months</option> 
+                  <option value="1">January</option><option value="2">February</option><option value="3">March</option> 
+                  <option value="4">April</option><option value="5">May</option><option value="6">June</option> 
+                  <option value="7">July</option><option value="8">August</option><option value="9">September</option> 
+                  <option value="10">October</option><option value="11">November</option><option value="12">December</option> 
+                </select> 
+              </label> 
+              <label>From <input type="date" id="report-from" class="date-optional" /></label> 
+              <label>To <input type="date" id="report-to" class="date-optional" /> </label> 
+              <label>Category 
+                <select id="report-category"> 
+                  <option value="all">All Categories</option> 
+                </select> 
+              </label> 
+              <div class="report-range-btns"> 
+                <button id="report-apply" type="button" class="add-btn">Apply</button> 
+                <button id="report-reset" type="button" class="btn-secondary">Reset</button> 
+                <button id="report-csv-btn" type="button" class="btn-secondary">⬇ CSV</button> 
+              </div> 
             </div> 
-          </div> 
+          </div>
         </section> 
 
         <section class="card charts-card" id="charts-panel"> 
-          <div class="charts-header"> 
-            <h2 id="charts-heading">Monthly & Yearly Charts</h2> 
-            <button id="toggle-charts" type="button" aria-expanded="true" title="Collapse charts">▼</button> 
-          </div> 
+          <h2 id="charts-heading">Monthly & Yearly Charts</h2> 
           <div id="charts-content" class="charts-content"> 
             <div class="charts"> 
               <div class="chart-panel" id="pie-panel-1"><h3 id="pie-heading-1"></h3><div class="chart-wrapper"><canvas id="pie-chart-1"></canvas></div></div> 

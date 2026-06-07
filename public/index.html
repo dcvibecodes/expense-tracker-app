@@ -2,7 +2,7 @@
 <html lang="en"> 
   <head> 
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Expenses+</title>
 
     <!-- Favicon -->
@@ -18,12 +18,11 @@
 
     <!-- iOS PWA meta tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Expenses+" />
     <meta name="theme-color" content="#1a1a2e" />
 
     <link rel="stylesheet" href="/styles.css" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous"></script> 
   </head> 
   <body> 
 
@@ -322,9 +321,22 @@
       </div> 
     </div> 
 
-    <!-- Error Toast -->
-    <div id="error-toast" class="error-toast" role="alert" aria-live="polite"></div>
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
 
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+      <div class="modal-content modal-content-sm" style="text-align:center;">
+        <h2 id="confirm-modal-title">Confirm</h2>
+        <p id="confirm-modal-message" class="settings-desc" style="margin-bottom:20px;"></p>
+        <div class="modal-buttons" style="justify-content:center;">
+          <button id="confirm-modal-yes" class="save-btn">Yes</button>
+          <button id="confirm-modal-no" class="cancel-btn">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script src="/app.js"></script> 
   </body>
 </html>

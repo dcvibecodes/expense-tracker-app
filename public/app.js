@@ -10,18 +10,39 @@ function escapeHtml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-// ===== ERROR TOAST =====
-let toastTimeout = null;
+// ===== TOAST NOTIFICATIONS =====
+function showToast(message, type, duration) {
+  type = type || "info";
+  duration = duration || 3000;
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+  const div = document.createElement("div");
+  div.className = "toast toast-" + type;
+  div.textContent = message;
+  container.appendChild(div);
+  setTimeout(() => { div.remove(); }, duration);
+}
 function showErrorToast(message, duration) {
-  duration = duration || 4000;
-  const toast = document.getElementById("error-toast");
-  if (!toast) return;
-  toast.textContent = message;
-  toast.classList.add("visible");
-  clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => {
-    toast.classList.remove("visible");
-  }, duration);
+  showToast(message, "error", duration || 4000);
+}
+
+// ===== CONFIRM MODAL (replaces native confirm()) =====
+function showConfirm(title, message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("confirm-modal");
+    document.getElementById("confirm-modal-title").textContent = title || "Confirm";
+    document.getElementById("confirm-modal-message").textContent = message || "";
+    overlay.classList.add("open");
+    const yesBtn = document.getElementById("confirm-modal-yes");
+    const noBtn = document.getElementById("confirm-modal-no");
+    function cleanup() { overlay.classList.remove("open"); yesBtn.removeEventListener("click", onYes); noBtn.removeEventListener("click", onNo); overlay.removeEventListener("click", onOverlay); }
+    function onYes() { cleanup(); resolve(true); }
+    function onNo() { cleanup(); resolve(false); }
+    function onOverlay(e) { if (e.target === overlay) { cleanup(); resolve(false); } }
+    yesBtn.addEventListener("click", onYes);
+    noBtn.addEventListener("click", onNo);
+    overlay.addEventListener("click", onOverlay);
+  });
 }
 
 // ===== THEME =====
@@ -167,155 +188,12 @@ function switchToTab(tabId) {
   btn.classList.add("active");
   const tabEl = document.getElementById(`tab-${tabId}`);
   tabEl.classList.add("active");
-
-  // On mobile, scroll the container to the correct panel
-  if (window.innerWidth <= 640) {
-    const container = document.querySelector(".container");
-    const idx = TAB_ORDER.indexOf(tabId);
-    if (container && idx >= 0) {
-      container.scrollTo({ left: idx * container.offsetWidth, behavior: "smooth" });
-    }
-  }
-
   if (tabId === "reports") loadReports();
 }
 
 tabBtns.forEach(btn => {
   btn.addEventListener("click", () => switchToTab(btn.dataset.tab));
 });
-
-// ---- Mobile: sync tab buttons + collapsible header ----
-(function setupMobileScrollSync() {
-  if (window.innerWidth > 640) return;
-
-  const container = document.querySelector(".container");
-  const appHeader = document.querySelector(".app-header");
-  const bottomNav = document.querySelector(".bottom-nav");
-
-  if (!container || !appHeader) return;
-
-  const panels = document.querySelectorAll(".tab-content");
-
-  document.documentElement.style.setProperty(
-    "--header-height",
-    `${appHeader.offsetHeight}px`
-  );
-
-  document.documentElement.style.setProperty(
-    "--bottom-nav-height",
-    `${bottomNav ? bottomNav.offsetHeight : 62}px`
-  );
-
-  let headerHidden = false;
-  let scrollTimeout = null;
-  const lastScrollTops = new Map();
-
-  function hideHeader() {
-    if (headerHidden) return;
-    headerHidden = true;
-    appHeader.classList.add("header-hidden");
-    if (bottomNav) bottomNav.classList.add("nav-hidden");
-    container.classList.add("bars-hidden");
-  }
-
-  function showHeader() {
-    if (!headerHidden) return;
-    headerHidden = false;
-    appHeader.classList.remove("header-hidden");
-    if (bottomNav) bottomNav.classList.remove("nav-hidden");
-    container.classList.remove("bars-hidden");
-  }
-
-  container.addEventListener("scroll", () => {
-    clearTimeout(scrollTimeout);
-
-    scrollTimeout = setTimeout(() => {
-      const idx = Math.round(
-        container.scrollLeft / container.offsetWidth
-      );
-
-      const clampedIdx = Math.max(
-        0,
-        Math.min(idx, TAB_ORDER.length - 1)
-      );
-
-      const tabId = TAB_ORDER[clampedIdx];
-
-      const currentActive =
-        document.querySelector(".bottom-nav-btn.active");
-
-      if (
-        !currentActive ||
-        currentActive.dataset.tab !== tabId
-      ) {
-        tabBtns.forEach(b => b.classList.remove("active"));
-        tabContents.forEach(c => c.classList.remove("active"));
-
-        const btn = document.querySelector(
-          `.bottom-nav-btn[data-tab="${tabId}"]`
-        );
-
-        if (btn) btn.classList.add("active");
-
-        const panel = document.getElementById(`tab-${tabId}`);
-        if (panel) panel.classList.add("active");
-
-        if (tabId === "reports") loadReports();
-      }
-    }, 50);
-  }, { passive: true });
-
-  panels.forEach(panel => {
-    lastScrollTops.set(panel, 0);
-
-    panel.addEventListener("scroll", () => {
-      const currentScrollTop = panel.scrollTop;
-      const lastScrollTop =
-        lastScrollTops.get(panel) || 0;
-
-      if (currentScrollTop <= 10) {
-        showHeader();
-      } else if (
-        currentScrollTop > lastScrollTop + 10
-      ) {
-        hideHeader();
-      } else if (
-        currentScrollTop < lastScrollTop - 10
-      ) {
-        showHeader();
-      }
-
-      lastScrollTops.set(panel, currentScrollTop);
-    }, { passive: true });
-  });
-
-  window.addEventListener("resize", () => {
-    document.documentElement.style.setProperty(
-      "--header-height",
-      `${appHeader.offsetHeight}px`
-    );
-
-    document.documentElement.style.setProperty(
-      "--bottom-nav-height",
-      `${bottomNav ? bottomNav.offsetHeight : 62}px`
-    );
-
-    if (window.innerWidth <= 640) {
-      const currentTab =
-        document.querySelector(".bottom-nav-btn.active");
-
-      if (currentTab) {
-        const idx =
-          TAB_ORDER.indexOf(currentTab.dataset.tab);
-
-        if (idx >= 0) {
-          container.scrollLeft =
-            idx * container.offsetWidth;
-        }
-      }
-    }
-  });
-})();
 
 // Theme toggle
 document.getElementById("theme-toggle").addEventListener("click", () => {
@@ -354,10 +232,7 @@ let pieCharts = [null, null];
 let barChart;
 let allDetails = [];
 
-// ===== CUSTOM AUTOCOMPLETE (iOS-friendly datalist replacement) =====
-// iOS Safari has poor datalist support — this provides a custom dropdown
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
+// ===== CUSTOM AUTOCOMPLETE =====
 let autocompleteDropdown = null;
 let autocompleteActiveIndex = -1;
 
@@ -701,7 +576,7 @@ copyForm.addEventListener("submit", async e => {
   if (dates.length === 0) { alert("No valid months to copy to."); return; }
   if (dates.length > 365) { alert("Cannot copy to more than 365 dates at once."); return; }
 
-  if (!confirm(`Copy this expense to ${dates.length} month${dates.length > 1 ? "s" : ""} (${dates[0]} – ${dates[dates.length-1]})?`)) return;
+  if (!await showConfirm("Copy Expense", `Copy this expense to ${dates.length} month${dates.length > 1 ? "s" : ""} (${dates[0]} – ${dates[dates.length-1]})?`)) return;
 
   const copySaveBtn = copyForm.querySelector(".save-btn");
   copySaveBtn.disabled = true;
@@ -741,7 +616,7 @@ rowsEl.addEventListener("click", async e => {
   if (btn.classList.contains("btn-edit")) { openEditModal(row); }
   else if (btn.classList.contains("btn-copy")) { openCopyModal(row); }
   else if (btn.classList.contains("btn-delete")) {
-    if (!confirm(`Delete this expense?\n\n${formatDate(row.date)} — ${row.details} — ${formatAmount(row.amount)}`)) return;
+    if (!await showConfirm("Delete Expense", `${formatDate(row.date)} — ${row.details} — ${formatAmount(row.amount)}`)) return;
     btn.disabled = true;
     btn.textContent = "⏳";
     btn.style.opacity = "0.5";
@@ -829,7 +704,7 @@ batchForm.addEventListener("submit", async e => {
   e.preventDefault();
   const oldVal = batchOld.value.trim(), newVal = batchNew.value.trim();
   if (!oldVal || !newVal) return;
-  if (!confirm(`Rename all "${oldVal}" entries to "${newVal}"?`)) return;
+  if (!await showConfirm("Batch Rename", `Rename all "${oldVal}" entries to "${newVal}"?`)) return;
   const batchSaveBtn = batchForm.querySelector(".save-btn");
   batchSaveBtn.disabled = true;
   batchSaveBtn.textContent = "Renaming...";
@@ -872,7 +747,7 @@ batchCatForm.addEventListener("submit", async e => {
   const oldCat = batchCatOld.value, newCat = batchCatNew.value;
   if (!oldCat || !newCat) return;
   if (oldCat === newCat) { alert("Source and target categories must be different."); return; }
-  if (!confirm(`Reassign all "${formatCategory(oldCat)}" expenses to "${formatCategory(newCat)}"?`)) return;
+  if (!await showConfirm("Batch Reassign", `Reassign all "${formatCategory(oldCat)}" expenses to "${formatCategory(newCat)}"?`)) return;
   const batchCatSaveBtn = batchCatForm.querySelector(".save-btn");
   batchCatSaveBtn.disabled = true;
   batchCatSaveBtn.textContent = "Reassigning...";
@@ -938,7 +813,7 @@ expenseForm.addEventListener("submit", async e => {
     if (dupRes.ok) {
       const { duplicate } = await dupRes.json();
       if (duplicate) {
-        if (!confirm(`A similar entry already exists:\n\n${formatDate(date)} — ${details} — ${amount}\n\nThis may be a duplicate. Add anyway?`)) {
+        if (!await showConfirm("Possible Duplicate", `A similar entry already exists:\n${formatDate(date)} — ${details} — ${amount}\n\nAdd anyway?`)) {
           isSubmitting = false;
           addBtn.disabled = false;
           addBtn.textContent = "+ Add";
@@ -1212,7 +1087,7 @@ reportWrap.addEventListener("click", async e => {
   const delBtn = e.target.closest(".rpt-delete-btn");
   if (delBtn) {
     const id = parseInt(delBtn.dataset.id, 10);
-    if (!confirm("Delete this expense?")) return;
+    if (!await showConfirm("Delete Expense", "Delete this expense?")) return;
     delBtn.disabled = true;
     delBtn.textContent = "⏳";
     delBtn.style.opacity = "0.5";
@@ -1594,7 +1469,7 @@ categoriesList.addEventListener("click", async e => {
   if (!delBtn) return;
   const id = parseInt(delBtn.dataset.id, 10);
   const cat = categories.find(c => c.id === id);
-  if (!confirm(`⚠ Delete category "${formatCategory(cat.name)}"?\n\nThis will permanently remove the category. Any historical expenses using it will lose their category assignment.\n\nConsider renaming the category instead if you want to preserve historical records.`)) return;
+  if (!await showConfirm("Delete Category", `Delete category "${formatCategory(cat.name)}"?\n\nThis will permanently remove the category. Any historical expenses using it will lose their category assignment.\n\nConsider renaming instead.`)) return;
   try {
     const res = await safeFetch(`/api/categories/${id}`, { method: "DELETE" });
     const data = await res.json();
@@ -1959,84 +1834,6 @@ document.querySelectorAll(".bottom-nav-btn").forEach(btn => {
     }
   });
 });
-
-// ===== PULL TO REFRESH (iPhone PWA) =====
-let pullStartY = 0;
-let pullMoveY = 0;
-let isPulling = false;
-const PULL_THRESHOLD = 80;
-
-// Create a pull indicator inside each tab panel
-const tabPanels = document.querySelectorAll(".tab-content");
-tabPanels.forEach(panel => {
-  const indicator = document.createElement("div");
-  indicator.className = "pull-indicator";
-  panel.insertBefore(indicator, panel.firstChild);
-});
-
-function getActiveIndicator() {
-  const activePanel = document.querySelector(".tab-content.active") || document.querySelector(".tab-content");
-  return activePanel ? activePanel.querySelector(".pull-indicator") : null;
-}
-
-function isAtTopOfScroll() {
-  if (window.innerWidth <= 640) {
-    const activePanel = document.querySelector(".tab-content.active");
-    if (activePanel) return activePanel.scrollTop <= 10;
-  }
-  return window.scrollY <= 10;
-}
-
-document.addEventListener("touchstart", e => {
-  if (!isAtTopOfScroll()) return;
-  const target = e.target;
-  if (target.closest(".modal-overlay") || target.closest(".notification-panel")) return;
-  pullStartY = e.touches[0].clientY;
-  pullMoveY = pullStartY;
-  isPulling = true;
-}, { passive: true });
-
-document.addEventListener("touchmove", e => {
-  if (!isPulling) return;
-  pullMoveY = e.touches[0].clientY;
-  const dist = pullMoveY - pullStartY;
-  if (dist < 0) { isPulling = false; const ind = getActiveIndicator(); if (ind) ind.classList.remove("visible"); return; }
-
-  const indicator = getActiveIndicator();
-  if (indicator && dist > 20) {
-    indicator.innerHTML = dist > PULL_THRESHOLD
-      ? `<span class="spinner"></span>Release to refresh...`
-      : `<span class="spinner"></span>Pull down to refresh...`;
-    indicator.classList.add("visible");
-  }
-}, { passive: true });
-
-document.addEventListener("touchend", async () => {
-  if (!isPulling) return;
-  isPulling = false;
-  const dist = pullMoveY - pullStartY;
-  const indicator = getActiveIndicator();
-
-  if (dist > PULL_THRESHOLD) {
-    if (indicator) indicator.innerHTML = `<span class="spinner"></span>Refreshing...`;
-    try {
-      await Promise.all([
-        refreshAll(),
-        loadReports().catch(() => {}),
-        loadCategories()
-      ]);
-      populateDetailsList();
-      if (indicator) indicator.innerHTML = `✓ Updated`;
-    } catch {
-      if (indicator) indicator.innerHTML = `✗ Failed`;
-    }
-    setTimeout(() => {
-      if (indicator) { indicator.classList.remove("visible"); indicator.innerHTML = ""; }
-    }, 1500);
-  } else {
-    if (indicator) { indicator.classList.remove("visible"); indicator.innerHTML = ""; }
-  }
-}, { passive: true });
 
 // ===== SERVICE WORKER REGISTRATION =====
 if ("serviceWorker" in navigator) {

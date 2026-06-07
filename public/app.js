@@ -214,14 +214,16 @@ tabBtns.forEach(btn => {
     if (headerHidden) return;
     headerHidden = true;
     appHeader.classList.add("header-hidden");
-    container.classList.add("header-collapsed");
+    if (bottomNav) bottomNav.classList.add("nav-hidden");
+    container.classList.add("bars-hidden");
   }
 
   function showHeader() {
     if (!headerHidden) return;
     headerHidden = false;
     appHeader.classList.remove("header-hidden");
-    container.classList.remove("header-collapsed");
+    if (bottomNav) bottomNav.classList.remove("nav-hidden");
+    container.classList.remove("bars-hidden");
   }
 
   container.addEventListener("scroll", () => {
@@ -749,9 +751,9 @@ rowsEl.addEventListener("click", async e => {
     try {
       const res = await safeFetch(`/api/expenses/${id}`, { method: "DELETE" });
       if (res.ok) { await refreshAll(); populateDetailsList(); }
-      else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); btn.textContent = "🗑"; btn.style.opacity = ""; }
+      else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); btn.textContent = "🗑️"; btn.style.opacity = ""; }
     } catch {
-      siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); btn.textContent = "🗑"; btn.style.opacity = "";
+      siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); btn.textContent = "🗑️"; btn.style.opacity = "";
     }
   }
 });
@@ -1220,8 +1222,8 @@ reportWrap.addEventListener("click", async e => {
     try {
       const res = await safeFetch(`/api/expenses/${id}`, { method: "DELETE" });
       if (res.ok) { await loadReports(); await refreshAll(); populateDetailsList(); }
-      else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); delBtn.textContent = "🗑"; delBtn.style.opacity = ""; }
-    } catch { siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); delBtn.textContent = "🗑"; delBtn.style.opacity = ""; }
+      else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); delBtn.textContent = "🗑️"; delBtn.style.opacity = ""; }
+    } catch { siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); delBtn.textContent = "🗑️"; delBtn.style.opacity = ""; }
     return;
   }
 
@@ -1401,7 +1403,7 @@ cancelAddCategoryBtn.addEventListener("click", () => {
   showAddCategoryBtn.style.display = "";
   newCategoryName.value = "";
   categoryMessage.textContent = "";
-  categoryMessage.className = "settings-msg";
+  categoryMessage.className = "form-msg";
 });
 
 async function loadCategories() {
@@ -1427,7 +1429,7 @@ function renderCategoriesList() {
       <span class="category-color-dot" style="background:${cat.color}" data-id="${cat.id}" title="Change color" role="button" tabindex="0" aria-label="Change color for ${escapeHtml(formatCategory(cat.name))}"></span>
       <span class="category-name">${escapeHtml(formatCategory(cat.name))}</span>
       <button class="cat-rename-btn" data-id="${cat.id}" title="Rename category" aria-label="Rename ${escapeHtml(formatCategory(cat.name))}">✏️</button>
-      <button class="cat-delete-btn" data-id="${cat.id}" title="Delete category" aria-label="Delete ${escapeHtml(formatCategory(cat.name))}">🗑</button>
+      <button class="cat-delete-btn" data-id="${cat.id}" title="Delete category" aria-label="Delete ${escapeHtml(formatCategory(cat.name))}">🗑️</button>
     `;
     categoriesList.appendChild(div);
   }
@@ -1435,21 +1437,21 @@ function renderCategoriesList() {
 
 addCategoryBtn.addEventListener("click", async () => {
   const name = newCategoryName.value.trim();
-  if (!name) { categoryMessage.textContent = "Enter a name."; categoryMessage.className = "settings-msg error"; return; }
+  if (!name) { categoryMessage.textContent = "Enter a name."; categoryMessage.className = "form-msg error"; return; }
 
   try {
     const res = await safeFetch("/api/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, color: selectedNewColor }) });
     const data = await res.json();
     if (res.ok) {
       categoryMessage.textContent = `Added "${formatCategory(data.name)}".`;
-      categoryMessage.className = "settings-msg success";
+      categoryMessage.className = "form-msg success";
       newCategoryName.value = "";
       categoryAddRow.style.display = "none";
       showAddCategoryBtn.style.display = "";
       await loadCategories();
     } else {
       categoryMessage.textContent = data.error || "Failed to add.";
-      categoryMessage.className = "settings-msg error";
+      categoryMessage.className = "form-msg error";
     }
   } catch {}
 });
@@ -1483,13 +1485,13 @@ categoriesList.addEventListener("click", async e => {
           const res = await safeFetch(`/api/categories/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: cat.name, color }) });
           if (res.ok) {
             categoryMessage.textContent = `Color updated for "${formatCategory(cat.name)}".`;
-            categoryMessage.className = "settings-msg success";
+            categoryMessage.className = "form-msg success";
             await loadCategories();
             await refreshAll();
           } else {
             const data = await res.json();
             categoryMessage.textContent = data.error || "Failed to update color.";
-            categoryMessage.className = "settings-msg error";
+            categoryMessage.className = "form-msg error";
           }
         } catch {}
         picker.remove();
@@ -1570,12 +1572,12 @@ categoriesList.addEventListener("click", async e => {
         const data = await res.json();
         if (res.ok) {
           categoryMessage.textContent = `Renamed "${formatCategory(cat.name)}" → "${formatCategory(newName)}".`;
-          categoryMessage.className = "settings-msg success";
+          categoryMessage.className = "form-msg success";
           await loadCategories();
           await refreshAll();
         } else {
           categoryMessage.textContent = data.error || "Failed to rename.";
-          categoryMessage.className = "settings-msg error";
+          categoryMessage.className = "form-msg error";
           revert();
         }
       } catch { revert(); }
@@ -1598,11 +1600,11 @@ categoriesList.addEventListener("click", async e => {
     const data = await res.json();
     if (res.ok) {
       categoryMessage.textContent = "Deleted.";
-      categoryMessage.className = "settings-msg success";
+      categoryMessage.className = "form-msg success";
       await loadCategories();
     } else {
       categoryMessage.textContent = data.error || "Failed to delete.";
-      categoryMessage.className = "settings-msg error";
+      categoryMessage.className = "form-msg error";
     }
   } catch {}
 });
@@ -1638,21 +1640,21 @@ document.getElementById("settings-date-format-save").addEventListener("click", a
     if (res.ok) {
       dateFormat = selectedFormat;
       msg.textContent = "Date format saved.";
-      msg.className = "settings-msg success";
+      msg.className = "form-msg success";
       renderRows(currentRows);
       await loadReports();
     } else {
       const err = await res.json();
       msg.textContent = err.error || "Failed to save.";
-      msg.className = "settings-msg error";
+      msg.className = "form-msg error";
     }
   } catch {
     msg.textContent = "Failed to save.";
-    msg.className = "settings-msg error";
+    msg.className = "form-msg error";
   }
   btn.disabled = false;
   btn.textContent = "Save";
-  setTimeout(() => { msg.textContent = ""; msg.className = "settings-msg"; }, 3000);
+  setTimeout(() => { msg.textContent = ""; msg.className = "form-msg"; }, 3000);
 });
 
 // ===== LOCK SETTINGS =====
@@ -1669,7 +1671,7 @@ async function loadLockSettings() {
     document.getElementById("settings-pin").value = "";
     document.getElementById("settings-pin-confirm").value = "";
     document.getElementById("settings-lock-message").textContent = "";
-    document.getElementById("settings-lock-message").className = "settings-msg";
+    document.getElementById("settings-lock-message").className = "form-msg";
   } catch {}
 }
 
@@ -1677,8 +1679,8 @@ document.getElementById("settings-lock-enable").addEventListener("click", async 
   const pin = document.getElementById("settings-pin").value;
   const confirmPin = document.getElementById("settings-pin-confirm").value;
   const msg = document.getElementById("settings-lock-message");
-  if (pin.length !== 6 || !/^\d{6}$/.test(pin)) { msg.textContent = "PIN must be exactly 6 digits."; msg.className = "settings-msg error"; return; }
-  if (pin !== confirmPin) { msg.textContent = "PINs do not match."; msg.className = "settings-msg error"; return; }
+  if (pin.length !== 6 || !/^\d{6}$/.test(pin)) { msg.textContent = "PIN must be exactly 6 digits."; msg.className = "form-msg error"; return; }
+  if (pin !== confirmPin) { msg.textContent = "PINs do not match."; msg.className = "form-msg error"; return; }
 
   try {
     const res = await safeFetch("/api/lock/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
@@ -1691,7 +1693,10 @@ document.getElementById("settings-lock-enable").addEventListener("click", async 
 <p class="recovery-warning">⚠ Save this code now. This is the only time it will be shown. If you forget your PIN and don't have this code, you will permanently lose access to the app.</p><p class="recovery-tips">Tips: Save it in your notes app, email it to yourself, or store it in your password manager.</p></div></div>`;
       alertSection.style.display = "block";
       lockDisableSection.style.display = "block";
-    } else { msg.textContent = data.error || "Failed"; msg.className = "settings-msg error"; }
+      document.getElementById("settings-disable-pin").value = "";
+      document.getElementById("settings-disable-message").textContent = "";
+      document.getElementById("settings-disable-message").className = "form-msg";
+    } else { msg.textContent = data.error || "Failed"; msg.className = "form-msg error"; }
   } catch {}
 });
 
@@ -1701,8 +1706,8 @@ document.getElementById("settings-lock-disable").addEventListener("click", async
   try {
     const res = await safeFetch("/api/lock/disable", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
     const data = await res.json();
-    if (data.success) { localStorage.removeItem("lock-remembered"); msg.textContent = "Lock disabled."; msg.className = "settings-msg success"; document.getElementById("settings-disable-pin").value = ""; loadLockSettings(); }
-    else { msg.textContent = data.error || "Incorrect PIN"; msg.className = "settings-msg error"; }
+    if (data.success) { localStorage.removeItem("lock-remembered"); msg.textContent = "Lock disabled."; msg.className = "form-msg success"; document.getElementById("settings-disable-pin").value = ""; loadLockSettings(); }
+    else { msg.textContent = data.error || "Incorrect PIN"; msg.className = "form-msg error"; }
   } catch {}
 });
 

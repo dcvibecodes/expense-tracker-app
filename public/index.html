@@ -152,7 +152,7 @@
               </select> 
             </label> 
             <div class="report-range-btns"> 
-              <button id="report-apply" type="button">Apply</button> 
+              <button id="report-apply" type="button" class="add-btn">Apply</button> 
               <button id="report-reset" type="button" class="btn-secondary">Reset</button> 
               <button id="report-csv-btn" type="button" class="btn-secondary">⬇ CSV</button> 
             </div> 
@@ -199,7 +199,7 @@
               <button id="cancel-add-category-btn" type="button" class="btn-secondary">Cancel</button> 
             </div>
           </div> 
-          <p id="category-message" class="settings-msg"></p> 
+          <p id="category-message" class="form-msg"></p> 
         </section> 
 
         <section class="card"> 
@@ -213,30 +213,30 @@
                 <option value="YYYY-MM-DD">YYYY-MM-DD</option> 
               </select> 
             </label> 
-            <button id="settings-date-format-save" type="button">Save</button> 
+            <button id="settings-date-format-save" type="button" class="add-btn">Save</button> 
           </div> 
-          <p id="date-format-message" class="settings-msg"></p> 
+          <p id="date-format-message" class="form-msg"></p> 
         </section> 
 
         <section class="card"> 
           <h2>App Lock</h2> 
           <div id="lock-setup-section"> 
-            <p>Set a 6-digit PIN to lock the app.</p> 
+            <p class="settings-desc">Set a 6-digit PIN to lock the app.</p> 
             <div class="lock-form-row"> 
               <label>PIN <input type="password" id="settings-pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="6 digits" /></label> 
-              <label>Confirm PIN <input type="password" id="settings-pin-confirm" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="Confirm" /> </label> 
+              <label>Confirm PIN <input type="password" id="settings-pin-confirm" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="Confirm" /></label> 
             </div> 
-            <button id="settings-lock-enable" type="button">Enable Lock</button> 
-            <p id="settings-lock-message" class="settings-msg"></p> 
+            <button id="settings-lock-enable" type="button" class="add-btn">Enable Lock</button> 
+            <p id="settings-lock-message" class="form-msg"></p> 
           </div> 
           <div id="lock-recovery-alert-section" style="display:none;"></div> 
           <div id="lock-disable-section" style="display:none;"> 
             <p class="lock-active-badge">🔒 App is currently locked</p> 
             <div class="lock-form-row"> 
-              <label>PIN <input type="password" id="settings-disable-pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="Enter PIN" /> </label> 
+              <label>PIN <input type="password" id="settings-disable-pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="Enter PIN" /></label> 
             </div> 
-            <button id="settings-lock-disable" type="button" class="btn-secondary">Disable Lock</button> 
-            <p id="settings-disable-message" class="settings-msg"></p> 
+            <button id="settings-lock-disable" type="button" class="cancel-btn">Disable Lock</button> 
+            <p id="settings-disable-message" class="form-msg"></p> 
           </div> 
         </section> 
 

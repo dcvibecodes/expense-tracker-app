@@ -190,7 +190,8 @@ function authMiddleware(req, res, next) {
     "/api/lock/status",
     "/api/lock/unlock",
     "/api/lock/recovery",
-    "/api/lock/setup"
+    "/api/lock/setup",
+    "/api/lock/disable"
   ];
 
   if (openPaths.includes(req.path)) {

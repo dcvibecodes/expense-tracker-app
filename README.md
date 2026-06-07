@@ -1,45 +1,41 @@
-# Expenses+ v3.0.0
+# Expenses+ v3.1.0
 
-Personal expense tracking PWA with SQLite database.
+Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
 
-## What's New in v3.0.0
+## What's New in v3.1.0
 
-### Security
-- PIN hashing upgraded to PBKDF2 with random salt (100,000 iterations). Legacy hashes auto-migrate on next unlock.
-- Rate limiting (10 attempts/minute) on unlock, disable, and recovery endpoints.
-- Session secret persisted across server restarts.
-- CSV export properly escapes special characters and prevents CSV injection.
-- All user-generated content HTML-escaped to prevent XSS.
+### Mobile Compatibility
+- **Fixed bottom tab bar** — navigation pinned to screen bottom on phones (icon + label, native app feel)
+- **No zoom on input focus** — viewport locked with `maximum-scale=1.0`, all inputs at 16px font
+- **Single-column layouts** — forms, filters, charts, and settings reflow to one column on mobile
+- **Card layout for expenses table** — rows become stacked cards with labeled fields on mobile (no side scroll)
+- **Report pivot side-scrolls** — reports table scrolls internally with full descriptions visible
+- **Summary cards: 2-per-row** — category totals always show in a 2-column grid on mobile
+- **Safe area support** — bottom nav respects iPhone home indicator via `env(safe-area-inset-bottom)`
+- **Bottom-sheet modals** — modals slide up from bottom on small screens
 
-### UI Overhaul
-- Bottom navigation bar (SVG icons + labels) — sticky top on desktop, fixed bottom on mobile.
-- Downloads tab removed — CSV export integrated into Reports tab.
-- Category add workflow collapsed behind a button (cleaner settings screen).
-- Custom autocomplete dropdown replaces native datalist (consistent cross-browser).
-- Action buttons (edit, copy, delete) restyled to match portfolio tracker.
-- Theme toggle icon and sizing matched to portfolio tracker.
-- Header slides up on mobile scroll — content now reclaims the space.
-- Pull-to-refresh works on all tabs.
-- Error toast for network failures.
-- Service worker update prompt (no more silent hot-swaps).
+### Design Unification (with Portfolio+)
+- **Toast system** — replaced single error toast with stacking toast notifications (success/error/info, bottom-right)
+- **Custom confirm modal** — all native `confirm()` dialogs replaced with styled modal (consistent cross-platform)
+- **Badge radius** — standardized to `border-radius: 12px`
+- **Summary gap** — unified to 16px
+- **Chart.js** — pinned to v4.4.7, loaded at end of body (was unpinned in head)
+- **Autocomplete** — dropdown restyled: 6px border-radius, accent-bg hover, matching z-index
+- **Focus-visible** — already present (Portfolio+ added to match)
 
-### Accessibility
-- Focus trapping in all modals.
-- `aria-label` on all icon buttons.
-- `aria-modal`, `aria-labelledby`, `aria-expanded` on interactive elements.
-- `:focus-visible` outlines globally.
-- Keyboard navigation for report expand/collapse rows.
+## Features
 
-### Bug Fixes
-- Category reorder waits for DB writes before responding.
-- Category rename wrapped in SQLite transaction.
-- Copy expense date calculation rewritten (no more month overflow bugs).
-- Report charts respect custom date range filters.
-- Lock setup now authenticates the session immediately (no refresh needed to disable).
-
-### Developer
-- No new npm dependencies.
-- All fixes use built-in Node.js crypto module.
+- **Add expenses** — date, details (with smart autocomplete + auto-category), category, amount
+- **Monthly summary** — color-coded category totals with total at a glance
+- **Reports** — yearly/monthly pivot table with expand/collapse, pie charts, bar chart, CSV export
+- **Batch operations** — rename details across entries, reassign categories in bulk
+- **Copy expense** — duplicate an expense across multiple months
+- **Categories** — up to 15, custom colors, rename propagates everywhere
+- **Date format** — configurable (MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD)
+- **App Lock** — 6-digit PIN with PBKDF2 hashing, recovery code, rate limiting
+- **Dark mode** — full dark theme toggle
+- **PWA** — installable, service worker for offline shell
+- **Notifications** — in-app notification panel
 
 ## Setup
 
@@ -51,7 +47,16 @@ npm start
 Runs at http://localhost:3000
 
 ## Tech Stack
-- Node.js + Express
-- SQLite3
-- Vanilla JS frontend (PWA)
-- Chart.js (CDN)
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | Node.js, Express |
+| Database | SQLite3 |
+| Frontend | Vanilla JS (no framework, no build step) |
+| Charts | Chart.js 4.4.7 (CDN) |
+| Security | PBKDF2 PIN hashing, express-session, rate limiting |
+| PWA | Service worker, Web App Manifest |
+
+## Data
+
+All data stored in `data/expenses.db` (SQLite). Back up this file to preserve your expenses.

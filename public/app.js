@@ -1629,6 +1629,8 @@ async function initApp() {
 
 initApp();
 
+checkLockAndInit();
+
 // ===== NOTIFICATION SYSTEM (Recurring Expense Ending) =====
 const NOTIFICATIONS_KEY = "expense-notifications";
 const DISMISSED_KEY = "expense-dismissed-notifs";

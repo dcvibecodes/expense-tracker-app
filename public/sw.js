@@ -1,9 +1,6 @@
-const CACHE_NAME = "expense-tracker-v7";
+const CACHE_NAME = "expense-tracker-v8";
 const STATIC_ASSETS = [
   "/",
-  "/index.html",
-  "/styles.css",
-  "/app.js",
   "/manifest.json",
   "/favicon.svg",
   "/favicon-32.png",
@@ -59,17 +56,16 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Static assets: cache-first
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
-        if (response.ok && event.request.method === "GET") {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
-        return response;
-      });
+  // Static assets: network-first
+event.respondWith(
+  fetch(event.request)
+    .then((response) => {
+      if (response.ok && event.request.method === "GET") {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+      }
+      return response;
     })
-  );
+    .catch(() => caches.match(event.request))
+);
 });

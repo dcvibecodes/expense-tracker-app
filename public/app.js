@@ -1032,10 +1032,24 @@ function renderReportTable(data) {
 
       for (const day of mo.days) {
         const dayLabel = `${day.day} ${monthName.slice(0,3)}`;
+
+        const detailsList = day.expenses.map(e => e.details);
+
+        const preview =
+        detailsList.length <= 4
+          ? detailsList.join(", ")
+          : `${detailsList.slice(0, 4).join(", ")} +${detailsList.length - 4} more`;
+
         const dId = `rg-${reportUid++}`;
-        html += `<div class="rpt-row rpt-day" data-toggle="${dId}" tabindex="0" role="button" aria-expanded="false">`;
+
+        html += `<div class="rpt-row rpt-day" data-toggle="${dId}">`;
         html += `  <span class="rpt-chevron"></span>`;
-        html += `  <span class="rpt-label">${escapeHtml(dayLabel)}</span>`;
+       html += `
+          <span class="rpt-label">
+            <span class="rpt-day-text">${dayLabel}</span>
+            <span class="rpt-preview">${escapeHtml(preview)}</span>
+          </span>
+        `;
         html += `  <span class="rpt-cat"></span>`;
         html += `  <span class="rpt-amt">${formatAmount(day.total)}</span>`;
         html += `  <span class="rpt-actions"></span>`;
@@ -1110,10 +1124,13 @@ reportWrap.addEventListener("click", async e => {
   const chevron = row.querySelector(".rpt-chevron");
   const isExpanded = chevron.classList.toggle("expanded");
   children.classList.toggle("collapsed", !isExpanded);
-  row.setAttribute("aria-expanded", String(isExpanded));
+
   const preview = row.querySelector(".rpt-preview");
-  if (preview) preview.style.display = isExpanded ? "none" : "inline";
-});
+  if (preview) {
+    preview.style.display = isExpanded ? "none" : "inline";
+  }
+  row.setAttribute("aria-expanded", String(isExpanded));
+  });
 
 // Also allow keyboard activation for report rows
 reportWrap.addEventListener("keydown", e => {

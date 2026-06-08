@@ -314,8 +314,34 @@ tbody tr:hover td { background: rgba(59, 130, 246, 0.03); }
 .rpt-chevron.expanded::after { transform: rotate(45deg); }
 .rpt-row:hover .rpt-chevron { background: var(--border); }
 
-.rpt-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
-.rpt-preview { color: var(--text-secondary); font-weight: 400; font-size: 0.75rem; }
+/* Day rows: let Description span Description + Category columns */
+.rpt-day .rpt-label {
+  grid-column: 2 / 4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Hide the empty category cell on day rows */
+.rpt-day .rpt-cat {
+  display: none;
+}
+.rpt-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.rpt-preview {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .rpt-cat { text-align: left; }
 .rpt-amt { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; padding-right: 16px; }
 .rpt-actions { display: flex; gap: 4px; justify-content: center; }
@@ -620,4 +646,10 @@ html, body { max-width: 100vw; overflow-x: hidden; }
 
   /* Range selectors wrap */
   .range-selector, .range-selector-trend { flex-wrap: wrap; }
+}
+
+
+.rpt-day-text {
+  flex-shrink: 0;
+  font-weight: 600;
 }

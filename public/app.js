@@ -1629,7 +1629,7 @@ async function initApp() {
 
 initApp();
 
-checkLockAndInit();
+initApp();
 
 // ===== NOTIFICATION SYSTEM (Recurring Expense Ending) =====
 const NOTIFICATIONS_KEY = "expense-notifications";

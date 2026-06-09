@@ -49,10 +49,40 @@ function showConfirm(title, message) {
 function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
   localStorage.setItem("theme", theme);
+
   const btn = document.getElementById("theme-toggle");
+
   if (btn) {
-    btn.textContent = theme === "dark" ? "☀️" : "🌙";
-    btn.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+    btn.innerHTML = theme === "dark"
+      ? `
+        <svg class="theme-icon" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      `
+      : `
+        <svg class="theme-icon" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3a7 7 0 1 0 9 9a9 9 0 1 1-9-9z"></path>
+      </svg>
+      `;
+
+    btn.setAttribute(
+      "aria-label",
+      theme === "dark"
+        ? "Switch to light mode"
+        : "Switch to dark mode"
+    );
   }
 }
 // Apply saved theme immediately
@@ -1733,7 +1763,14 @@ function renderNotificationPanel() {
 
   if (!notifs.length) {
     list.innerHTML = `<div class="notification-item" style="color:var(--text-muted);text-align:center;padding:24px;">
-      <div style="font-size:20px;margin-bottom:8px;">🔔</div>
+      <div style="margin-bottom:8px;display:flex;justify-content:center;">
+        <svg class="header-icon" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 01-3.46 0"></path>
+        </svg>
+      </div>
       <div style="font-weight:600;margin-bottom:6px;">No notifications</div>
       <div style="font-size:12px;line-height:1.5;">Recurring expense reminders will appear here when a copied series is approaching its last occurrence.</div>
     </div>`;

@@ -245,6 +245,7 @@ const clearRangeButton = document.getElementById("clear-range");
 const rowsEl = document.getElementById("expense-rows");
 const summaryGrid = document.getElementById("summary-grid");
 const summaryHeading = document.getElementById("summary-heading");
+const comparisonCtx = document.getElementById("comparison-chart");
 const barCtx = document.getElementById("bar-chart");
 const detailsList = document.getElementById("details-list");
 
@@ -259,6 +260,7 @@ const editCancel = document.getElementById("edit-cancel");
 
 let currentRows = [];
 let comparisonChart;
+let yearlyChart;
 let allDetails = [];
 
 // ===== CUSTOM AUTOCOMPLETE =====
@@ -966,10 +968,30 @@ async function fetchCharts() {
     )
   );
 
-  return {
-    months,
-    data: responses.map(r => r ? r.pie : {})
-  };
+  const currentYear = year;
+
+const yearlyResponses = await Promise.all(
+  Array.from({ length: 12 }, (_, i) =>
+    fetch(`/api/charts?month=${i + 1}&year=${currentYear}`)
+      .then(r => r.ok ? r.json() : null)
+  )
+);
+
+return {
+  months,
+  data: responses.map(r => r ? r.pie : {}),
+  yearly: yearlyResponses.map(r => {
+    if (!r) return 0;
+    return Object.values(r.pie || {}).reduce(
+      (sum, value) => sum + Number(value || 0),
+      0
+    );
+  }),
+  year: currentYear
+};
+}
+
+function renderCharts(chartData) {
 }
 
 function renderCharts(chartData) {
@@ -1015,7 +1037,7 @@ const datasets = categories.map((category, index) => ({
     comparisonChart.destroy();
   }
 
-  comparisonChart = new Chart(barCtx, {
+  comparisonChart = new Chart(comparisonCtx, {
     type: "bar",
     data: {
       labels,
@@ -1045,6 +1067,44 @@ const datasets = categories.map((category, index) => ({
       }
     }
   });
+
+  if (yearlyChart) {
+  yearlyChart.destroy();
+}
+
+yearlyChart = new Chart(barCtx, {
+  type: "bar",
+  data: {
+    labels: MONTH_NAMES,
+    datasets: [{
+      label: `Total Spending (${chartData.year})`,
+      data: chartData.yearly,
+      borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        callbacks: {
+          label: ctx => formatAmount(ctx.parsed.y)
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: value => formatAmount(value)
+        }
+      }
+    }
+  }
+});
 }
 
 async function loadReports() {

@@ -163,7 +163,7 @@ button, a, input, select, textarea, [tabindex] {
 .tab-content.active { display: block; }
 
 /* ---- Layout ---- */
-.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.container { max-width: 1120px; margin: 0 auto; padding: 20px; }
 
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);

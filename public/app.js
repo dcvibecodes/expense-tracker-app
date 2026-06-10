@@ -258,8 +258,7 @@ const editAmount = document.getElementById("edit-amount");
 const editCancel = document.getElementById("edit-cancel");
 
 let currentRows = [];
-let pieCharts = [null, null];
-let barChart;
+let comparisonChart;
 let allDetails = [];
 
 // ===== CUSTOM AUTOCOMPLETE =====
@@ -932,73 +931,119 @@ populateGenericYearPicker(reportYear);
 setReportDefaults();
 
 async function fetchCharts() {
-  // If custom date range is set, derive month/year from it for charts
   let month, year;
-  if (reportFrom.value) {
-    const parts = reportFrom.value.split("-");
-    year = parseInt(parts[0], 10);
-    month = parseInt(parts[1], 10);
+
+  if (reportMonth.value) {
+    month = parseInt(reportMonth.value, 10);
+    year = parseInt(reportYear.value, 10);
   } else {
-    month = reportMonth.value ? parseInt(reportMonth.value, 10) : (new Date().getMonth() + 1);
-    year = parseInt(reportYear.value, 10) || new Date().getFullYear();
+    month = reportMonth.value
+      ? parseInt(reportMonth.value, 10)
+      : (new Date().getMonth() + 1);
+
+    year = parseInt(reportYear.value, 10)
+      || new Date().getFullYear();
   }
 
-  // Calculate selected month + 1 previous month
   const months = [];
-  for (let i = 1; i >= 0; i--) {
+
+  for (let i = 0; i < 3; i++) {
     let m = month - i;
     let y = year;
-    while (m <= 0) { m += 12; y--; }
+
+    while (m <= 0) {
+      m += 12;
+      y--;
+    }
+
     months.push({ month: m, year: y });
   }
 
-  const [pie0, pie1] = await Promise.all(
-    months.map(({ month: m, year: y }) =>
-      fetch(`/api/charts?month=${m}&year=${y}`).then(r => r.ok ? r.json() : null)
+  const responses = await Promise.all(
+    months.map(({ month, year }) =>
+      fetch(`/api/charts?month=${month}&year=${year}`)
+        .then(r => r.ok ? r.json() : null)
     )
   );
 
   return {
     months,
-    pies: [pie0 ? pie0.pie : {}, pie1 ? pie1.pie : {}],
-    bar: pie1 ? pie1.bar : {}
+    data: responses.map(r => r ? r.pie : {})
   };
 }
 
 function renderCharts(chartData) {
-  const { months, pies, bar: barData } = chartData;
 
-  // Render 2 pie charts
-  for (let i = 0; i < 2; i++) {
-    const canvas = document.getElementById(`pie-chart-${i}`);
-    const heading = document.getElementById(`pie-heading-${i}`);
-    if (!canvas || !heading) continue;
+  const { months, data } = chartData;
 
-    heading.textContent = `${MONTH_NAMES[months[i].month - 1]} ${months[i].year}`;
+  const categoriesSet = new Set();
 
-    if (pieCharts[i]) pieCharts[i].destroy();
-    const pieData = pies[i];
-    const labels = Object.keys(pieData).map(formatCategory);
-    const values = Object.values(pieData);
-    const colors = Object.keys(pieData).map(getCategoryColor);
-
-    pieCharts[i] = new Chart(canvas, {
-      type: "pie",
-      data: {
-        labels,
-        datasets: [{ data: values, backgroundColor: colors, borderColor: ["#fff"], borderWidth: 3 }]
-      },
-      options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => { const t = ctx.dataset.data.reduce((a, b) => a + b, 0); return ` ${ctx.label}: ${formatAmount(ctx.parsed)} (${t > 0 ? ((ctx.parsed / t) * 100).toFixed(1) : 0}%)`; } } } } }
+  data.forEach(monthData => {
+    Object.keys(monthData).forEach(cat => {
+      categoriesSet.add(cat);
     });
+  });
+
+  const categories = [...categoriesSet];
+
+const labels = months.map(
+  m => `${MONTH_NAMES[m.month - 1]} ${m.year}`
+);
+
+const categoryColors = [
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#8b5cf6",
+  "#ef4444",
+  "#14b8a6",
+  "#f97316",
+  "#84cc16"
+];
+
+const datasets = categories.map((category, index) => ({
+  label: formatCategory(category),
+  data: months.map((_, monthIndex) =>
+    data[monthIndex][category] || 0
+  ),
+  backgroundColor:
+    categoryColors[index % categoryColors.length],
+  borderRadius: 6
+}));
+
+  if (comparisonChart) {
+    comparisonChart.destroy();
   }
 
-  // Render bar chart
-  const labels = Object.keys(barData).map(ym => MONTH_NAMES[parseInt(ym.slice(5), 10) - 1].slice(0, 3));
-  if (barChart) barChart.destroy();
-  barChart = new Chart(barCtx, {
+  comparisonChart = new Chart(barCtx, {
     type: "bar",
-    data: { labels, datasets: [{ label: "Total", data: Object.values(barData), backgroundColor: "#3b82f6", borderRadius: 6, borderSkipped: false }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${formatAmount(ctx.parsed?.y ?? ctx.parsed)}` } } }, scales: { y: { beginAtZero: true, grid: { color: "rgba(0,0,0,0.06)" }, ticks: { callback: v => formatAmount(v) } }, x: { grid: { display: false } } } }
+    data: {
+      labels,
+      datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx =>
+              `${ctx.dataset.label}: ${formatAmount(ctx.parsed.y)}`
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: value => formatAmount(value)
+          }
+        }
+      }
+    }
   });
 }
 

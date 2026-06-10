@@ -991,8 +991,6 @@ return {
 };
 }
 
-function renderCharts(chartData) {
-}
 
 function renderCharts(chartData) {
 
@@ -1006,32 +1004,24 @@ function renderCharts(chartData) {
     });
   });
 
-  const categories = [...categoriesSet];
+  const chartCategories = categories
+  .map(c => c.name)
+  .filter(name => categoriesSet.has(name));
 
 const labels = months.map(
   m => `${MONTH_NAMES[m.month - 1]} ${m.year}`
 );
 
-const categoryColors = [
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ef4444",
-  "#14b8a6",
-  "#f97316",
-  "#84cc16"
-];
-
-const datasets = categories.map((category, index) => ({
+const datasets = chartCategories.map(category => ({
   label: formatCategory(category),
   data: months.map((_, monthIndex) =>
     data[monthIndex][category] || 0
   ),
-  backgroundColor:
-    categoryColors[index % categoryColors.length],
+  backgroundColor: getCategoryColor(category),
   borderRadius: 6
 }));
+
+
 
   if (comparisonChart) {
     comparisonChart.destroy();
@@ -1047,17 +1037,31 @@ const datasets = categories.map((category, index) => ({
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: {
-          display: true
-        },
-        tooltip: {
-          callbacks: {
-            label: ctx =>
-              `${ctx.dataset.label}: ${formatAmount(ctx.parsed.y)}`
-          }
-        }
-      },
-      scales: {
+  legend: {
+    display: true
+  },
+  tooltip: {
+    callbacks: {
+      label: ctx => {
+        const monthIndex = ctx.dataIndex;
+
+        const monthTotal = datasets.reduce(
+          (sum, ds) => sum + (ds.data[monthIndex] || 0),
+          0
+        );
+
+        const value = ctx.parsed.y || 0;
+
+        const pct = monthTotal
+          ? ((value / monthTotal) * 100).toFixed(1)
+          : 0;
+
+        return `${ctx.dataset.label}: ${formatAmount(value)} (${pct}%)`;
+      }
+    }
+  }
+},
+scales: {
         y: {
           beginAtZero: true,
           ticks: {

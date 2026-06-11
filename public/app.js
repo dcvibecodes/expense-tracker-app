@@ -1775,165 +1775,60 @@ async function initApp() {
   populateDetailsList();
   await refreshAll();
 
-  generateTodayRecurringNotifications();
   loadReports();
   loadLockSettings();
 }
 
 initApp();
 
-initApp();
+// ===== NOTIFICATION SYSTEM (Server-side persistent) =====
+let cachedNotifications = [];
 
-// ===== NOTIFICATION SYSTEM (Recurring Expense Ending) =====
-const NOTIFICATIONS_KEY = "expense-notifications";
-const DISMISSED_KEY = "expense-dismissed-notifs";
-
-function getNotifications() {
-  try { return JSON.parse(localStorage.getItem(NOTIFICATIONS_KEY) || "[]"); } catch { return []; }
-}
-function saveNotifications(notifs) {
-  localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifs));
-}
-function getDismissedIds() {
-  try { return JSON.parse(localStorage.getItem(DISMISSED_KEY) || "[]"); } catch { return []; }
-}
-function saveDismissedIds(ids) {
-  localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids));
+async function fetchNotifications() {
+  try {
+    const res = await fetch("/api/notifications");
+    if (!res.ok) return [];
+    cachedNotifications = await res.json();
+    return cachedNotifications;
+  } catch { return cachedNotifications; }
 }
 
-function createNotification(title, desc, { dates, details, amount, type = "ending" }) {
-  const isDup = notifs.some(n =>
-  n.type === type &&
-  n.details === details &&
-  n.amount === amount &&
-  n.dates.length === dates.length
-);
-  if (isDup) return;
-  // Guard against localStorage overflow
-  if (notifs.length > 50) {
-    notifs.splice(0, notifs.length - 50);
-  }
-  notifs.push({
-  id: Date.now(),
-  type,
-  title,
-  desc,
-  details,
-  amount,
-  dates,
-  createdAt: new Date().toISOString()
-});
-  saveNotifications(notifs);
-  updateNotificationBadge();
+async function createNotification(title, desc, { dates, details, amount, type = "ending" }) {
+  try {
+    await fetch("/api/notifications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, title, desc, details, amount, dates })
+    });
+    await refreshNotifications();
+  } catch {}
 }
 
-function generateTodayRecurringNotifications() {
-  const today = todayStr();
-
-  const notifs = getNotifications();
-
-  const recurringSeries = notifs.filter(
-    n => (n.type || "ending") === "ending"
-  );
-
-  for (const series of recurringSeries) {
-  if (!series.dates?.includes(today)) continue;
-
-  const todayNotificationExists = notifs.some(n =>
-    n.type === "today" &&
-    n.details === series.details &&
-    n.amount === series.amount &&
-    n.dates?.[0] === today
-  );
-
-  if (!todayNotificationExists) {
-    const formattedDate = formatDate(today);
-
-    createNotification(
-      "Recurring Expense Appeared",
-      `${series.details} — Recurring expense occurred on ${formattedDate}. Check that the amount is still correct.`,
-      {
-        dates: [today],
-        details: series.details,
-        amount: series.amount,
-        type: "today"
-      }
-    );
-  }
-
-  const lastDate = series.dates[series.dates.length - 1];
-
-  if (lastDate === today) {
-    const endingNotificationExists = notifs.some(n =>
-      n.type === "ending-today" &&
-      n.details === series.details &&
-      n.amount === series.amount &&
-      n.dates?.[0] === today
-    );
-
-    if (!endingNotificationExists) {
-      const formattedDate = formatDate(today);
-
-    createNotification(
-      "Recurring Series Ended",
-      `${series.details} — Final recurring occurrence was ${formattedDate}. Extend it if you want future entries to continue.`,
-      {
-        dates: [today],
-        details: series.details,
-        amount: series.amount,
-        type: "ending-today"
-      }
-    );
-    }
-  }
-}
-}
-
-function checkNotifications() {
-  let notifs = getNotifications();
-  const dismissed = getDismissedIds();
+async function refreshNotifications() {
+  const notifs = await fetchNotifications();
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
-  const activeNotifs = [];
-  const expiredIds = [];
   let unreadCount = 0;
 
   for (const n of notifs) {
+    if (n.dismissed) continue;
+
     if (n.type === "today" || n.type === "ending-today") {
-      activeNotifs.push(n);
-
-      if (!dismissed.includes(n.id)) {
-        unreadCount++;
-      }
-
+      unreadCount++;
       continue;
     }
 
-const lastDateStr = n.dates[n.dates.length - 1];
-    if (!lastDateStr) { expiredIds.push(n.id); continue; }
+    const lastDateStr = n.dates[n.dates.length - 1];
+    if (!lastDateStr) continue;
 
     const lastDate = new Date(lastDateStr + "T00:00:00");
     const expiresAt = new Date(lastDate);
     expiresAt.setDate(expiresAt.getDate() + 7);
 
-    if (now > expiresAt) {
-      expiredIds.push(n.id);
-      continue;
-    }
-
     if (now >= lastDate && now <= expiresAt) {
-      if (!dismissed.includes(n.id)) {
-        unreadCount++;
-      }
+      unreadCount++;
     }
-
-    activeNotifs.push(n);
-  }
-
-  if (expiredIds.length) {
-    saveNotifications(activeNotifs);
-    saveDismissedIds(dismissed.filter(id => !expiredIds.includes(id)));
   }
 
   const badge = document.getElementById("notification-badge");
@@ -1948,14 +1843,13 @@ const lastDateStr = n.dates[n.dates.length - 1];
       bell.setAttribute("aria-label", "Notifications");
     }
   }
-  renderNotificationPanel();
+  renderNotificationPanel(notifs);
 }
 
-function renderNotificationPanel() {
+function renderNotificationPanel(notifs) {
   const list = document.getElementById("notification-list");
   if (!list) return;
-  const notifs = getNotifications();
-  const dismissed = getDismissedIds();
+  if (!notifs) notifs = cachedNotifications;
 
   if (!notifs.length) {
     list.innerHTML = `<div class="notification-item" style="color:var(--text-muted);text-align:center;padding:24px;">
@@ -1974,8 +1868,8 @@ function renderNotificationPanel() {
   }
 
   list.innerHTML = "";
-  for (const n of [...notifs].reverse()) {
-    const isDismissed = dismissed.includes(n.id);
+  for (const n of notifs) {
+    const isDismissed = n.dismissed;
     const div = document.createElement("div");
     div.className = `notification-item ${isDismissed ? "read" : "unread"}`;
     const lastDate = n.dates[n.dates.length - 1] || "";
@@ -1994,16 +1888,19 @@ const notifOverlay = document.createElement("div");
 notifOverlay.className = "notif-overlay";
 document.body.appendChild(notifOverlay);
 
-document.getElementById("notification-bell")?.addEventListener("click", () => {
+document.getElementById("notification-bell")?.addEventListener("click", async () => {
   const panel = document.getElementById("notification-panel");
   if (!panel) return;
-  const dismissed = getDismissedIds();
-  const notifs = getNotifications();
-  const newlyRead = notifs.filter(n => !dismissed.includes(n.id)).map(n => n.id);
-  if (newlyRead.length) {
-    saveDismissedIds([...dismissed, ...newlyRead]);
-    updateNotificationBadge();
-    renderNotificationPanel();
+  // Mark all unread as dismissed on the server
+  const notifs = cachedNotifications;
+  const unread = notifs.filter(n => !n.dismissed);
+  for (const n of unread) {
+    try {
+      await fetch(`/api/notifications/${n.id}/dismiss`, { method: "PATCH" });
+    } catch {}
+  }
+  if (unread.length) {
+    await refreshNotifications();
   }
   panel.classList.add("open");
   notifOverlay.classList.add("open");
@@ -2019,25 +1916,26 @@ notifOverlay.addEventListener("click", () => {
   notifOverlay.classList.remove("open");
 });
 
-document.addEventListener("click", e => {
+document.addEventListener("click", async e => {
   const dismissBtn = e.target.closest(".dismiss-btn");
   if (!dismissBtn) return;
   const nid = parseInt(dismissBtn.dataset.nid, 10);
   if (!nid) return;
-  const dismissed = getDismissedIds();
-  if (dismissed.includes(nid)) {
-    saveDismissedIds(dismissed.filter(id => id !== nid));
-    let notifs = getNotifications();
-    notifs = notifs.filter(n => n.id !== nid);
-    saveNotifications(notifs);
-  } else {
-    saveDismissedIds([...dismissed, nid]);
-  }
-  updateNotificationBadge();
-  renderNotificationPanel();
+  const n = cachedNotifications.find(x => x.id === nid);
+  if (!n) return;
+  try {
+    if (n.dismissed) {
+      // Already dismissed — remove it entirely
+      await fetch(`/api/notifications/${nid}`, { method: "DELETE" });
+    } else {
+      // Mark as dismissed
+      await fetch(`/api/notifications/${nid}/dismiss`, { method: "PATCH" });
+    }
+    await refreshNotifications();
+  } catch {}
 });
 
-// Hook into fetch to create notification after copy success
+// Hook into copy success to create notification on server
 const _origFetch = window.fetch;
 window.fetch = function(...args) {
   return _origFetch.apply(this, args).then(async response => {
@@ -2057,7 +1955,7 @@ window.fetch = function(...args) {
               const copyInfoEl = document.getElementById("copy-info");
               const infoText = copyInfoEl?.textContent || "";
               const [details = "Expense", amount = ""] = infoText.split(" — ");
-              createNotification(
+              await createNotification(
                 "Recurring Expense Created",
                 `${details} — Recurring for ${months} month${months > 1 ? "s" : ""}`,
                 { dates, details, amount: amount.trim() }
@@ -2072,16 +1970,12 @@ window.fetch = function(...args) {
   }).catch(err => { throw err; });
 };
 
-function updateNotificationBadge() {
-  checkNotifications();
-}
-
-checkNotifications();
+refreshNotifications();
 
 document.querySelectorAll(".bottom-nav-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     if (btn.dataset.tab === "tracker") {
-      checkNotifications();
+      refreshNotifications();
     }
   });
 });

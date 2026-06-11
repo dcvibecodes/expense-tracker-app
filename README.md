@@ -1,6 +1,18 @@
-# Expenses+ v3.1.0
+# Expenses+ v3.2.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.2.0
+
+### Server-side Notifications
+- **Persistent notifications** — notification data now stored in SQLite instead of browser localStorage; notifications persist across browsers, devices, and cleared browser data
+- **Server-side recurring checks** — the server generates daily "Recurring Expense Appeared" and "Recurring Series Ended" notifications automatically (hourly check), even if the app isn't open
+- **Automatic cleanup** — expired notifications (7 days past last date) are pruned server-side every 6 hours
+- **New API endpoints** — `GET /api/notifications`, `POST /api/notifications`, `PATCH /api/notifications/:id/dismiss`, `DELETE /api/notifications/:id`
+- **Zero impact on existing data** — new `notifications` table is created alongside existing tables with no schema changes to `expenses`, `categories`, `settings`, or `app_lock`
+
+### Note
+Recurring series set up before this update will not automatically generate notifications. Only new copies made after deploying v3.2.0 will be tracked by the notification system.
 
 ## What's New in v3.1.0
 
@@ -35,7 +47,7 @@ Personal expense tracking PWA with SQLite database. Part of a unified suite with
 - **App Lock** — 6-digit PIN with PBKDF2 hashing, recovery code, rate limiting
 - **Dark mode** — full dark theme toggle
 - **PWA** — installable, service worker for offline shell
-- **Notifications** — in-app notification panel
+- **Notifications** — server-side persistent notification system for recurring expense reminders (survives browser/device switches)
 
 ## Setup
 

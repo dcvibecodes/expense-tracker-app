@@ -259,6 +259,7 @@ const editCancel = document.getElementById("edit-cancel");
 
 let currentRows = [];
 let comparisonChart;
+let chartView = "amounts";
 let allDetails = [];
 
 // ===== CUSTOM AUTOCOMPLETE =====
@@ -930,6 +931,32 @@ reportFiltersToggle.addEventListener("click", () => {
 populateGenericYearPicker(reportYear);
 setReportDefaults();
 
+document.addEventListener("click", e => {
+  if (e.target.id === "chart-view-amounts") {
+    chartView = "amounts";
+
+    document.getElementById("chart-view-amounts")
+      .classList.add("active");
+
+    document.getElementById("chart-view-percentages")
+      .classList.remove("active");
+
+    loadReports();
+  }
+
+  if (e.target.id === "chart-view-percentages") {
+    chartView = "percentages";
+
+    document.getElementById("chart-view-percentages")
+      .classList.add("active");
+
+    document.getElementById("chart-view-amounts")
+      .classList.remove("active");
+
+    loadReports();
+  }
+});
+
 async function fetchCharts() {
   let month, year;
 
@@ -992,14 +1019,41 @@ const labels = months.map(
   m => `${MONTH_NAMES[m.month - 1]} ${m.year}`
 );
 
-const datasets = chartCategories.map(category => ({
-  label: formatCategory(category),
-  data: months.map((_, monthIndex) =>
-    data[monthIndex][category] || 0
-  ),
-  backgroundColor: getCategoryColor(category),
-  borderRadius: 0
-}));
+let datasets;
+
+if (chartView === "amounts") {
+
+  datasets = chartCategories.map(category => ({
+    label: formatCategory(category),
+    data: months.map((_, monthIndex) =>
+      data[monthIndex][category] || 0
+    ),
+    backgroundColor: getCategoryColor(category),
+    borderRadius: 0
+  }));
+
+} else {
+
+  datasets = chartCategories.map(category => ({
+    label: formatCategory(category),
+    data: months.map((_, monthIndex) => {
+
+      const monthTotal = Object.values(
+        data[monthIndex]
+      ).reduce((s, v) => s + v, 0);
+
+      return monthTotal
+        ? ((data[monthIndex][category] || 0) / monthTotal) * 100
+        : 0;
+
+    }),
+    borderColor: getCategoryColor(category),
+    backgroundColor: getCategoryColor(category),
+    tension: 0.3,
+    fill: false
+  }));
+
+}
 
 
 
@@ -1008,7 +1062,7 @@ const datasets = chartCategories.map(category => ({
   }
 
   comparisonChart = new Chart(comparisonCtx, {
-    type: "bar",
+    type: chartView === "amounts" ? "bar" : "line",
     data: {
       labels,
       datasets
@@ -1048,17 +1102,22 @@ const datasets = chartCategories.map(category => ({
   }
 },
 scales: {
-    x: {
-      stacked: true
-    },
-    y: {
-      stacked: true,
-      beginAtZero: true,
-      ticks: {
-        callback: value => formatAmount(value)
-      }
+  x: {
+    stacked: chartView === "amounts"
+  },
+  y: {
+    stacked: chartView === "amounts",
+    beginAtZero: true,
+    max: chartView === "percentages" ? 100 : undefined,
+
+    ticks: {
+      callback: value =>
+        chartView === "percentages"
+          ? value + "%"
+          : formatAmount(value)
     }
   }
+}
 }
 });
 

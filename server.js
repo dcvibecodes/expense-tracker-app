@@ -124,6 +124,21 @@ db.serialize(() => {
       db.run("ALTER TABLE app_lock ADD COLUMN recovery_salt TEXT NOT NULL DEFAULT ''");
     }
   });
+  // --- Notifications table (server-side persistence) ---
+  db.run(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL DEFAULT 'ending',
+      title TEXT NOT NULL,
+      desc TEXT NOT NULL,
+      details TEXT,
+      amount TEXT,
+      dates TEXT NOT NULL DEFAULT '[]',
+      dismissed INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
   // Seed default categories if table is empty
   db.get("SELECT COUNT(*) AS cnt FROM categories", (err, row) => {
     if (!err && row && row.cnt === 0) {
@@ -1071,6 +1086,166 @@ app.put("/api/settings", (req, res) => {
     res.status(400).json({ error: "No settings provided." });
   }
 });
+
+// --- Notifications API ---
+
+app.get("/api/notifications", (req, res) => {
+  db.all("SELECT * FROM notifications ORDER BY created_at DESC", (err, rows) => {
+    if (err) return res.status(500).json({ error: "Failed to fetch notifications." });
+    // Parse dates JSON string back to array
+    const result = rows.map(r => ({
+      ...r,
+      dates: JSON.parse(r.dates || "[]"),
+      dismissed: Boolean(r.dismissed)
+    }));
+    return res.json(result);
+  });
+});
+
+app.post("/api/notifications", (req, res) => {
+  const { type, title, desc, details, amount, dates } = req.body;
+  if (!title || !desc) {
+    return res.status(400).json({ error: "title and desc are required." });
+  }
+  if (!Array.isArray(dates)) {
+    return res.status(400).json({ error: "dates must be an array." });
+  }
+
+  const notifType = type || "ending";
+  const datesJson = JSON.stringify(dates);
+
+  // Deduplication: check for existing notification with same type, details, amount, and date count
+  const dupSql = `SELECT id FROM notifications WHERE type = ? AND details = ? AND amount = ? AND json_array_length(dates) = ?`;
+  db.get(dupSql, [notifType, details || "", amount || "", dates.length], (dupErr, dupRow) => {
+    if (dupErr) {
+      // If json_array_length isn't available (older sqlite), fall back without dedup check
+      // Just insert
+    }
+    if (dupRow) {
+      return res.json({ id: dupRow.id, duplicate: true });
+    }
+
+    // Cap at 50 notifications
+    db.get("SELECT COUNT(*) AS cnt FROM notifications", (cntErr, cntRow) => {
+      if (!cntErr && cntRow && cntRow.cnt >= 50) {
+        // Delete oldest entries to make room
+        db.run("DELETE FROM notifications WHERE id IN (SELECT id FROM notifications ORDER BY created_at ASC LIMIT ?)", [cntRow.cnt - 49]);
+      }
+
+      db.run(
+        "INSERT INTO notifications (type, title, desc, details, amount, dates) VALUES (?, ?, ?, ?, ?, ?)",
+        [notifType, title, desc, details || "", amount || "", datesJson],
+        function(insertErr) {
+          if (insertErr) return res.status(500).json({ error: "Failed to create notification." });
+          return res.json({ id: this.lastID, duplicate: false });
+        }
+      );
+    });
+  });
+});
+
+app.patch("/api/notifications/:id/dismiss", (req, res) => {
+  const { id } = req.params;
+  db.run("UPDATE notifications SET dismissed = 1 WHERE id = ?", [id], function(err) {
+    if (err) return res.status(500).json({ error: "Failed to dismiss notification." });
+    if (this.changes === 0) return res.status(404).json({ error: "Notification not found." });
+    return res.json({ success: true });
+  });
+});
+
+app.delete("/api/notifications/:id", (req, res) => {
+  const { id } = req.params;
+  db.run("DELETE FROM notifications WHERE id = ?", [id], function(err) {
+    if (err) return res.status(500).json({ error: "Failed to delete notification." });
+    if (this.changes === 0) return res.status(404).json({ error: "Notification not found." });
+    return res.json({ success: true });
+  });
+});
+
+// --- Cleanup expired notifications (runs on server start and periodically) ---
+function cleanupExpiredNotifications() {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const nowIso = now.toISOString().slice(0, 10);
+
+  // For "ending" type: expire 7 days after last date
+  // We need to check each notification's last date
+  db.all("SELECT id, type, dates FROM notifications", (err, rows) => {
+    if (err) return;
+    const toDelete = [];
+    for (const row of rows) {
+      if (row.type === "today" || row.type === "ending-today") continue;
+      const dates = JSON.parse(row.dates || "[]");
+      const lastDateStr = dates[dates.length - 1];
+      if (!lastDateStr) { toDelete.push(row.id); continue; }
+      const lastDate = new Date(lastDateStr + "T00:00:00");
+      const expiresAt = new Date(lastDate);
+      expiresAt.setDate(expiresAt.getDate() + 7);
+      if (now > expiresAt) {
+        toDelete.push(row.id);
+      }
+    }
+    if (toDelete.length) {
+      const placeholders = toDelete.map(() => "?").join(",");
+      db.run(`DELETE FROM notifications WHERE id IN (${placeholders})`, toDelete);
+    }
+  });
+}
+
+cleanupExpiredNotifications();
+setInterval(cleanupExpiredNotifications, 6 * 60 * 60 * 1000); // every 6 hours
+
+// --- Generate daily recurring notifications server-side ---
+function generateDailyRecurringNotifications() {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+  db.all("SELECT * FROM notifications WHERE type = 'ending'", (err, seriesList) => {
+    if (err) return;
+
+    for (const series of seriesList) {
+      const dates = JSON.parse(series.dates || "[]");
+      if (!dates.includes(today)) continue;
+
+      // Check if "today" notification already exists for this series + today
+      db.get(
+        "SELECT id FROM notifications WHERE type = 'today' AND details = ? AND amount = ? AND dates = ?",
+        [series.details, series.amount, JSON.stringify([today])],
+        (err2, existing) => {
+          if (err2 || existing) return; // already exists or error
+
+          const desc = `${series.details} — Recurring expense occurred on ${today}. Check that the amount is still correct.`;
+          db.run(
+            "INSERT INTO notifications (type, title, desc, details, amount, dates) VALUES (?, ?, ?, ?, ?, ?)",
+            ["today", "Recurring Expense Appeared", desc, series.details, series.amount, JSON.stringify([today])]
+          );
+        }
+      );
+
+      // Check if today is the last date in the series
+      const lastDate = dates[dates.length - 1];
+      if (lastDate === today) {
+        db.get(
+          "SELECT id FROM notifications WHERE type = 'ending-today' AND details = ? AND amount = ? AND dates = ?",
+          [series.details, series.amount, JSON.stringify([today])],
+          (err3, existing2) => {
+            if (err3 || existing2) return;
+
+            const desc = `${series.details} — Final recurring occurrence was ${today}. Extend it if you want future entries to continue.`;
+            db.run(
+              "INSERT INTO notifications (type, title, desc, details, amount, dates) VALUES (?, ?, ?, ?, ?, ?)",
+              ["ending-today", "Recurring Series Ended", desc, series.details, series.amount, JSON.stringify([today])]
+            );
+          }
+        );
+      }
+    }
+  });
+}
+
+// Run on server start and every hour
+generateDailyRecurringNotifications();
+setInterval(generateDailyRecurringNotifications, 60 * 60 * 1000);
 
 app.listen(PORT, () => {
   console.log(`Expenses+ running at http://localhost:${PORT}`);

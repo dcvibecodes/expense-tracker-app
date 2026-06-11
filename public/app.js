@@ -1774,6 +1774,8 @@ async function initApp() {
   setDateRangeToCurrentMonth();
   populateDetailsList();
   await refreshAll();
+
+  generateTodayRecurringNotifications();
   loadReports();
   loadLockSettings();
 }
@@ -1799,29 +1801,92 @@ function saveDismissedIds(ids) {
   localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids));
 }
 
-function createNotification(title, desc, { dates, details, amount }) {
-  const notifs = getNotifications();
+function createNotification(title, desc, { dates, details, amount, type = "ending" }) {
   const isDup = notifs.some(n =>
-    n.details === details &&
-    n.amount === amount &&
-    n.dates.length === dates.length
-  );
+  n.type === type &&
+  n.details === details &&
+  n.amount === amount &&
+  n.dates.length === dates.length
+);
   if (isDup) return;
   // Guard against localStorage overflow
   if (notifs.length > 50) {
     notifs.splice(0, notifs.length - 50);
   }
   notifs.push({
-    id: Date.now(),
-    title,
-    desc,
-    details,
-    amount,
-    dates,
-    createdAt: new Date().toISOString()
-  });
+  id: Date.now(),
+  type,
+  title,
+  desc,
+  details,
+  amount,
+  dates,
+  createdAt: new Date().toISOString()
+});
   saveNotifications(notifs);
   updateNotificationBadge();
+}
+
+function generateTodayRecurringNotifications() {
+  const today = todayStr();
+
+  const notifs = getNotifications();
+
+  const recurringSeries = notifs.filter(
+    n => (n.type || "ending") === "ending"
+  );
+
+  for (const series of recurringSeries) {
+  if (!series.dates?.includes(today)) continue;
+
+  const todayNotificationExists = notifs.some(n =>
+    n.type === "today" &&
+    n.details === series.details &&
+    n.amount === series.amount &&
+    n.dates?.[0] === today
+  );
+
+  if (!todayNotificationExists) {
+    const formattedDate = formatDate(today);
+
+    createNotification(
+      "Recurring Expense Appeared",
+      `${series.details} — Recurring expense occurred on ${formattedDate}. Check that the amount is still correct.`,
+      {
+        dates: [today],
+        details: series.details,
+        amount: series.amount,
+        type: "today"
+      }
+    );
+  }
+
+  const lastDate = series.dates[series.dates.length - 1];
+
+  if (lastDate === today) {
+    const endingNotificationExists = notifs.some(n =>
+      n.type === "ending-today" &&
+      n.details === series.details &&
+      n.amount === series.amount &&
+      n.dates?.[0] === today
+    );
+
+    if (!endingNotificationExists) {
+      const formattedDate = formatDate(today);
+
+    createNotification(
+      "Recurring Series Ended",
+      `${series.details} — Final recurring occurrence was ${formattedDate}. Extend it if you want future entries to continue.`,
+      {
+        dates: [today],
+        details: series.details,
+        amount: series.amount,
+        type: "ending-today"
+      }
+    );
+    }
+  }
+}
 }
 
 function checkNotifications() {
@@ -1835,7 +1900,17 @@ function checkNotifications() {
   let unreadCount = 0;
 
   for (const n of notifs) {
-    const lastDateStr = n.dates[n.dates.length - 1];
+    if (n.type === "today" || n.type === "ending-today") {
+      activeNotifs.push(n);
+
+      if (!dismissed.includes(n.id)) {
+        unreadCount++;
+      }
+
+      continue;
+    }
+
+const lastDateStr = n.dates[n.dates.length - 1];
     if (!lastDateStr) { expiredIds.push(n.id); continue; }
 
     const lastDate = new Date(lastDateStr + "T00:00:00");

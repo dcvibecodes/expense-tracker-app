@@ -1200,12 +1200,31 @@ function generateDailyRecurringNotifications() {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
+  const REMINDER_DAYS = 3;
+
   db.all("SELECT * FROM notifications WHERE type = 'ending'", (err, seriesList) => {
     if (err) return;
 
     for (const series of seriesList) {
       const dates = JSON.parse(series.dates || "[]");
-      if (!dates.includes(today)) continue;
+
+      let upcomingDate = null;
+
+      for (const dateStr of dates) {
+        const recurrenceDate = new Date(dateStr + "T00:00:00");
+        const reminderDate = new Date(recurrenceDate);
+        reminderDate.setDate(reminderDate.getDate() - REMINDER_DAYS);
+
+        const reminderDateStr =
+          `${reminderDate.getFullYear()}-${String(reminderDate.getMonth() + 1).padStart(2, "0")}-${String(reminderDate.getDate()).padStart(2, "0")}`;
+
+        if (reminderDateStr === today) {
+          upcomingDate = dateStr;
+          break;
+        }
+      }
+
+      if (!upcomingDate) continue;
 
       // Check if "today" notification already exists for this series + today
       db.get(
@@ -1214,10 +1233,10 @@ function generateDailyRecurringNotifications() {
         (err2, existing) => {
           if (err2 || existing) return; // already exists or error
 
-          const desc = `${series.details} — Recurring expense occurred on ${today}. Check that the amount is still correct.`;
+          const desc = `${series.details} — A recurring expense is due on ${upcomingDate}. Review the amount and update it if needed.`;
           db.run(
             "INSERT INTO notifications (type, title, desc, details, amount, dates) VALUES (?, ?, ?, ?, ?, ?)",
-            ["today", "Recurring Expense Appeared", desc, series.details, series.amount, JSON.stringify([today])]
+            ["today", "Recurring Expense Due Soon", desc, series.details, series.amount, JSON.stringify([upcomingDate])]
           );
         }
       );
@@ -1231,10 +1250,10 @@ function generateDailyRecurringNotifications() {
           (err3, existing2) => {
             if (err3 || existing2) return;
 
-            const desc = `${series.details} — Final recurring occurrence was ${today}. Extend it if you want future entries to continue.`;
+            const desc = `${series.details} — The final recurring expense will occur on ${lastDate}. Extend the series if you want future entries to continue.`;
             db.run(
               "INSERT INTO notifications (type, title, desc, details, amount, dates) VALUES (?, ?, ?, ?, ?, ?)",
-              ["ending-today", "Recurring Series Ended", desc, series.details, series.amount, JSON.stringify([today])]
+              ["ending-today", "Recurring Series Ending Soon", desc, series.details, series.amount, JSON.stringify([lastDate])]
             );
           }
         );

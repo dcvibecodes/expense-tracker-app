@@ -1081,25 +1081,24 @@ if (chartView === "amounts") {
     display: true
   },
   tooltip: {
-    callbacks: {
-      label: ctx => {
-        const monthIndex = ctx.dataIndex;
+  callbacks: {
+    label: ctx => {
+      const monthIndex = ctx.dataIndex;
+      const category = ctx.dataset.label.toLowerCase();
 
-        const monthTotal = datasets.reduce(
-          (sum, ds) => sum + (ds.data[monthIndex] || 0),
-          0
-        );
+      const actualAmount =
+        data[monthIndex][category] || 0;
 
-        const value = ctx.parsed.y || 0;
+      if (chartView === "percentages") {
+        const percentage = ctx.parsed.y || 0;
 
-        const pct = monthTotal
-          ? ((value / monthTotal) * 100).toFixed(1)
-          : 0;
-
-        return `${ctx.dataset.label}: ${formatAmount(value)} (${pct}%)`;
+        return `${ctx.dataset.label}: ${formatAmount(actualAmount)} (${percentage.toFixed(1)}%)`;
       }
+
+      return `${ctx.dataset.label}: ${formatAmount(actualAmount)}`;
     }
   }
+}
 },
 scales: {
   x: {

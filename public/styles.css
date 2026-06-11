@@ -287,13 +287,27 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 
 .chart-toggle-btn {
   padding: 8px 14px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border);
   border-radius: 8px;
   cursor: pointer;
+
+  background: var(--surface);
+  color: var(--text-secondary);
+
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.chart-toggle-btn:hover {
+  border-color: var(--text);
+  color: var(--text);
 }
 
 .chart-toggle-btn.active {
-  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
 /* ---- Filters ---- */
 .filters-toggle-btn {

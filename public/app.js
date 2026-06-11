@@ -246,7 +246,6 @@ const rowsEl = document.getElementById("expense-rows");
 const summaryGrid = document.getElementById("summary-grid");
 const summaryHeading = document.getElementById("summary-heading");
 const comparisonCtx = document.getElementById("comparison-chart");
-const barCtx = document.getElementById("bar-chart");
 const detailsList = document.getElementById("details-list");
 
 const editModal = document.getElementById("edit-modal");
@@ -260,7 +259,6 @@ const editCancel = document.getElementById("edit-cancel");
 
 let currentRows = [];
 let comparisonChart;
-let yearlyChart;
 let allDetails = [];
 
 // ===== CUSTOM AUTOCOMPLETE =====
@@ -949,7 +947,7 @@ async function fetchCharts() {
 
   const months = [];
 
-  for (let i = 0; i < 3; i++) {
+    for (let i = 11; i >= 0; i--) {
     let m = month - i;
     let y = year;
 
@@ -962,35 +960,17 @@ async function fetchCharts() {
   }
 
   const responses = await Promise.all(
-    months.map(({ month, year }) =>
-      fetch(`/api/charts?month=${month}&year=${year}`)
-        .then(r => r.ok ? r.json() : null)
-    )
-  );
-
-  const currentYear = year;
-
-const yearlyResponses = await Promise.all(
-  Array.from({ length: 12 }, (_, i) =>
-    fetch(`/api/charts?month=${i + 1}&year=${currentYear}`)
+  months.map(({ month, year }) =>
+    fetch(`/api/charts?month=${month}&year=${year}`)
       .then(r => r.ok ? r.json() : null)
   )
 );
 
 return {
   months,
-  data: responses.map(r => r ? r.pie : {}),
-  yearly: yearlyResponses.map(r => {
-    if (!r) return 0;
-    return Object.values(r.pie || {}).reduce(
-      (sum, value) => sum + Number(value || 0),
-      0
-    );
-  }),
-  year: currentYear
+  data: responses.map(r => r ? r.pie : {})
 };
 }
-
 
 function renderCharts(chartData) {
 
@@ -1034,9 +1014,9 @@ const datasets = chartCategories.map(category => ({
       datasets
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
   legend: {
     display: true
   },
@@ -1062,53 +1042,21 @@ const datasets = chartCategories.map(category => ({
   }
 },
 scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            callback: value => formatAmount(value)
-          }
-        }
-      }
-    }
-  });
-
-  if (yearlyChart) {
-  yearlyChart.destroy();
-}
-
-yearlyChart = new Chart(barCtx, {
-  type: "bar",
-  data: {
-    labels: MONTH_NAMES,
-    datasets: [{
-      label: `Total Spending (${chartData.year})`,
-      data: chartData.yearly,
-      borderRadius: 6
-    }]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false
-      },
-      tooltip: {
-        callbacks: {
-          label: ctx => formatAmount(ctx.parsed.y)
-        }
-      }
+    x: {
+      stacked: true
     },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          callback: value => formatAmount(value)
-        }
+    y: {
+      stacked: true,
+      beginAtZero: true,
+      ticks: {
+        callback: value => formatAmount(value)
       }
     }
   }
+}
 });
+
+
 }
 
 async function loadReports() {

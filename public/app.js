@@ -998,7 +998,7 @@ const datasets = chartCategories.map(category => ({
     data[monthIndex][category] || 0
   ),
   backgroundColor: getCategoryColor(category),
-  borderRadius: 6
+  borderRadius: 0
 }));
 
 
@@ -1016,6 +1016,12 @@ const datasets = chartCategories.map(category => ({
     options: {
   responsive: true,
   maintainAspectRatio: false,
+
+  elements: {
+    bar: {
+      borderRadius: 8
+    }
+  },
   plugins: {
   legend: {
     display: true

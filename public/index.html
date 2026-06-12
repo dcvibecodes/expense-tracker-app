@@ -81,34 +81,41 @@
       <!-- ===== TRACKER TAB ===== --> 
       <div id="tab-tracker" class="tab-content active"> 
 
-        <section class="card"> 
-          <h2>Add Expense</h2> 
-          <form id="expense-form" class="grid add-grid"> 
-            <label>Date 
-              <div class="date-with-today"> 
-                <input type="date" id="date" required /> 
-                <button type="button" id="date-today-btn" class="today-btn" title="Reset to today">Today</button> 
-              </div> 
-            </label> 
-            <label>Details 
-              <input type="text" id="details" placeholder="e.g. Milk, Wifi Recharge" list="details-list" autocomplete="off" required /> 
-              <datalist id="details-list"></datalist> 
-            </label> 
-            <label>Category 
-              <select id="category" required></select> 
-            </label> 
-            <label>Amount <input type="text" id="amount" inputmode="decimal" placeholder="0.00" autocomplete="off" required /></label> 
-            <div style="grid-column: 1/-1; display: flex; gap: 10px;">
-              <button type="submit" class="add-btn" id="add-btn">+ Add</button> 
-              <button type="button" class="cancel-btn" id="clear-form-btn">Clear</button>
-            </div> 
-          </form> 
-          <p id="add-expense-msg" class="form-msg"></p> 
-        </section> 
+        <section class="card summary-card" id="summary-panel">
+          <h2 id="summary-heading">This Month Summary</h2>
+          <div class="summary-grid" id="summary-grid"></div>
+        </section>
 
-        <section class="card summary-card" id="summary-panel"> 
-          <h2 id="summary-heading">This Month Summary</h2> 
-          <div class="summary-grid" id="summary-grid"></div> 
+        <section class="card">
+          <h2>Add Expense</h2>
+          <form id="expense-form" class="grid add-grid">
+            <label>Date
+              <div class="date-with-today">
+                <input type="date" id="date" required />
+                <button type="button" id="date-today-btn" class="today-btn" title="Reset to today">Today</button>
+              </div>
+            </label>
+
+            <label>Details
+              <input type="text" id="details" placeholder="e.g. Milk, Wifi Recharge" list="details-list" autocomplete="off" required />
+              <datalist id="details-list"></datalist>
+            </label>
+
+            <label>Category
+              <select id="category" required></select>
+            </label>
+
+            <label>Amount
+              <input type="text" id="amount" inputmode="decimal" placeholder="0.00" autocomplete="off" required />
+            </label>
+
+            <div style="grid-column: 1/-1; display: flex; gap: 10px;">
+              <button type="submit" class="add-btn" id="add-btn">+ Add</button>
+              <button type="button" class="cancel-btn" id="clear-form-btn">Clear</button>
+            </div>
+          </form>
+
+          <p id="add-expense-msg" class="form-msg"></p>
         </section> 
 
         <section class="card"> 

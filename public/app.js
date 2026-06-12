@@ -127,7 +127,7 @@ function formatCategory(value) {
 function lastDayOfMonth(year, month) { return new Date(year, month, 0); }
 function populateGenericYearPicker(sel, includeAll) {
   const cur = new Date().getFullYear();
-  const start = 2026, end = Math.max(cur + 2, 2032);
+  const start = 2020, end = Math.max(cur + 2, 2032);
   sel.innerHTML = "";
   if (includeAll) {
     const o = document.createElement("option");

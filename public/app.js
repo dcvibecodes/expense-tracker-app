@@ -237,11 +237,7 @@ const dateInput = document.getElementById("date");
 const detailsInput = document.getElementById("details");
 const categoryInput = document.getElementById("category");
 const amountInput = document.getElementById("amount");
-const startDateInput = document.getElementById("start-date");
-const endDateInput = document.getElementById("end-date");
-const categoryFilterInput = document.getElementById("category-filter");
 const searchInput = document.getElementById("search");
-const clearRangeButton = document.getElementById("clear-range");
 const rowsEl = document.getElementById("expense-rows");
 const summaryGrid = document.getElementById("summary-grid");
 const summaryHeading = document.getElementById("summary-heading");
@@ -367,43 +363,18 @@ if (detailsList) {
   detailsInput.removeAttribute("list");
 }
 
-// ===== COLLAPSIBLE FILTERS =====
-const filtersToggle = document.getElementById("filters-toggle");
-const filtersContent = document.getElementById("filters-content");
-
-filtersToggle.addEventListener("click", () => {
-  const isExpanded = filtersContent.style.display !== "none";
-  filtersContent.style.display = isExpanded ? "none" : "block";
-  filtersToggle.setAttribute("aria-expanded", String(!isExpanded));
-  filtersToggle.textContent = isExpanded ? "🔍 Filters & Batch Actions" : "🔍 Hide Filters";
-});
-
-function setDateRangeToCurrentMonth() {
-  const now = new Date();
-  const month = now.getMonth() + 1, year = now.getFullYear();
-  const start = new Date(year, month - 1, 1);
-  const end = lastDayOfMonth(year, month);
-  const effectiveEnd = end > now ? now : end;
-  startDateInput.value = localDateStr(start);
-  endDateInput.value = localDateStr(effectiveEnd);
-}
-
-// ===== DEBOUNCED REFRESH =====
-let refreshDebounce = null;
-function debouncedRefresh() {
-  clearTimeout(refreshDebounce);
-  refreshDebounce = setTimeout(refreshAll, 150);
-}
-
 async function fetchExpenses() {
   const search = searchInput.value.trim();
   const params = new URLSearchParams();
-  if (!search) {
-    if (startDateInput.value) params.set("startDate", startDateInput.value);
-    if (endDateInput.value) params.set("endDate", endDateInput.value);
+  if (search) {
+    // Search across all data
+    params.set("search", search);
+  } else {
+    // Default: current month
+    const now = new Date();
+    params.set("year", now.getFullYear());
+    params.set("month", now.getMonth() + 1);
   }
-  if (categoryFilterInput.value !== "all") params.set("category", categoryFilterInput.value);
-  if (search) params.set("search", search);
   const res = await safeFetch(`/api/expenses?${params}`);
   if (!res.ok) throw new Error("Failed to fetch expenses");
   return res.json();
@@ -874,15 +845,13 @@ expenseForm.addEventListener("submit", async e => {
   addBtn.textContent = "+ Add";
 });
 
-startDateInput.addEventListener("change", debouncedRefresh);
-endDateInput.addEventListener("change", debouncedRefresh);
-categoryFilterInput.addEventListener("change", debouncedRefresh);
 let searchDebounce = null;
 searchInput.addEventListener("input", () => {
   clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(refreshAll, 300);
+  const q = searchInput.value.trim();
+  if (q.length === 1) return; // wait for at least 2 chars
+  searchDebounce = setTimeout(refreshAll, 400);
 });
-clearRangeButton.addEventListener("click", () => { categoryFilterInput.value = "all"; searchInput.value = ""; setDateRangeToCurrentMonth(); refreshAll(); });
 
 document.getElementById("date-today-btn").addEventListener("click", () => {
   dateInput.value = todayStr();
@@ -913,8 +882,7 @@ document.addEventListener("keydown", e => {
 const reportYear = document.getElementById("report-year");
 const reportMonth = document.getElementById("report-month");
 const reportCategory = document.getElementById("report-category");
-const reportFrom = document.getElementById("report-from");
-const reportTo = document.getElementById("report-to");
+const reportSearch = document.getElementById("report-search");
 const reportWrap = document.getElementById("report-table-wrap");
 const chartsContent = document.getElementById("charts-content");
 
@@ -925,10 +893,10 @@ reportFiltersToggle.addEventListener("click", () => {
   const isExpanded = reportFiltersContent.style.display !== "none";
   reportFiltersContent.style.display = isExpanded ? "none" : "block";
   reportFiltersToggle.setAttribute("aria-expanded", String(!isExpanded));
-  reportFiltersToggle.textContent = isExpanded ? "🔍 Filters & Options" : "🔍 Hide Filters";
+  reportFiltersToggle.textContent = isExpanded ? "🔍 Filters" : "🔍 Hide Filters";
 });
 
-populateGenericYearPicker(reportYear);
+populateGenericYearPicker(reportYear, true);
 setReportDefaults();
 
 document.addEventListener("click", e => {
@@ -962,14 +930,13 @@ async function fetchCharts() {
 
   if (reportMonth.value) {
     month = parseInt(reportMonth.value, 10);
-    year = parseInt(reportYear.value, 10);
+    year = (reportYear.value && reportYear.value !== "all") ? parseInt(reportYear.value, 10) : new Date().getFullYear();
   } else {
     month = reportMonth.value
       ? parseInt(reportMonth.value, 10)
       : (new Date().getMonth() + 1);
 
-    year = parseInt(reportYear.value, 10)
-      || new Date().getFullYear();
+    year = (reportYear.value && reportYear.value !== "all") ? parseInt(reportYear.value, 10) : new Date().getFullYear();
   }
 
   const months = [];
@@ -1125,9 +1092,14 @@ scales: {
 
 async function loadReports() {
   const params = new URLSearchParams();
-  if (reportFrom.value) {
-    params.set("startDate", reportFrom.value);
-    if (reportTo.value) params.set("endDate", reportTo.value);
+  const search = reportSearch.value.trim();
+
+  if (search) {
+    // Search overrides year/month filters — searches across all data
+    params.set("search", search);
+  } else if (reportYear.value === "all") {
+    // All Years — no year/month filter, fetch everything
+    params.set("year", "all");
   } else if (reportYear.value) {
     params.set("year", reportYear.value);
     if (reportMonth.value) params.set("month", reportMonth.value);
@@ -1142,8 +1114,11 @@ async function loadReports() {
     const data = await res.json();
     renderReportTable(data);
 
-    const charts = await fetchCharts();
-    renderCharts(charts);
+    // Don't update chart when searching — chart shows broad trends
+    if (!search) {
+      const charts = await fetchCharts();
+      renderCharts(charts);
+    }
   } catch {
     reportWrap.innerHTML = `<p class="report-empty">Failed to load reports.</p>`;
   }
@@ -1152,7 +1127,12 @@ async function loadReports() {
 let reportUid = 0;
 
 function renderReportTable(data) {
-  if (!data.length) { reportWrap.innerHTML = `<p class="report-empty">No data for selected range.</p>`; return; }
+  if (!data.length) {
+    const search = reportSearch.value.trim();
+    const msg = search ? "No results found." : "No data for selected period.";
+    reportWrap.innerHTML = `<p class="report-empty">${msg}</p>`;
+    return;
+  }
 
   reportUid = 0;
   let html = `<div class="rpt">`;
@@ -1336,13 +1316,49 @@ document.getElementById("report-default-view").addEventListener("click", () => {
   });
 });
 
-document.getElementById("report-apply").addEventListener("click", loadReports);
+// Dynamic filter listeners (no Apply button — filters trigger immediately)
+let reportFilterDebounce = null;
+function debouncedLoadReports() {
+  clearTimeout(reportFilterDebounce);
+  reportFilterDebounce = setTimeout(loadReports, 300);
+}
+
+// When user changes year/month/category, clear search (they want filtered browsing)
+function onReportFilterChange() {
+  if (reportSearch.value.trim()) {
+    reportSearch.value = "";
+    updateReportFilterState();
+  }
+  debouncedLoadReports();
+}
+
+reportYear.addEventListener("change", onReportFilterChange);
+reportMonth.addEventListener("change", onReportFilterChange);
+reportCategory.addEventListener("change", onReportFilterChange);
+
+// Report search — as-you-type, overrides date filters, min 2 chars
+reportSearch.addEventListener("input", () => {
+  updateReportFilterState();
+  clearTimeout(reportFilterDebounce);
+  const q = reportSearch.value.trim();
+  if (q.length === 1) return; // wait for at least 2 chars
+  reportFilterDebounce = setTimeout(loadReports, 400);
+});
+
+// Visual feedback: dim year/month/category when search is active
+function updateReportFilterState() {
+  const hasSearch = reportSearch.value.trim().length >= 2;
+  reportYear.style.opacity = hasSearch ? "0.5" : "";
+  reportMonth.style.opacity = hasSearch ? "0.5" : "";
+  reportYear.closest("label").style.opacity = hasSearch ? "0.5" : "";
+  reportMonth.closest("label").style.opacity = hasSearch ? "0.5" : "";
+}
+
 document.getElementById("report-reset").addEventListener("click", () => {
-  reportFrom.value = ""; reportTo.value = "";
-  syncDateOptionalClass(reportFrom);
-  syncDateOptionalClass(reportTo);
+  reportSearch.value = "";
   reportCategory.value = "all";
   setReportDefaults();
+  updateReportFilterState();
   loadReports();
 });
 
@@ -1350,18 +1366,18 @@ function setReportDefaults() {
   const now = new Date();
   reportYear.value = now.getFullYear();
   reportMonth.value = String(now.getMonth() + 1);
-  reportFrom.value = "";
-  reportTo.value = "";
-  syncDateOptionalClass(reportFrom);
-  syncDateOptionalClass(reportTo);
+  reportSearch.value = "";
 }
 
 // ===== CSV DOWNLOAD (uses report filters) =====
 document.getElementById("report-csv-btn").addEventListener("click", async () => {
   const params = new URLSearchParams();
-  if (reportFrom.value) {
-    params.set("startDate", reportFrom.value);
-    if (reportTo.value) params.set("endDate", reportTo.value);
+  const search = reportSearch.value.trim();
+
+  if (search) {
+    params.set("search", search);
+  } else if (reportYear.value === "all") {
+    params.set("year", "all");
   } else if (reportYear.value) {
     params.set("year", reportYear.value);
     if (reportMonth.value) params.set("month", reportMonth.value);
@@ -1455,7 +1471,6 @@ async function loadCategories() {
   } catch {}
   renderCategoriesList();
   populateCategorySelect(categoryInput, false);
-  populateCategorySelect(categoryFilterInput, true);
   populateCategorySelect(reportCategory, true);
   if (reportCategory.options[0]) reportCategory.options[0].textContent = "All Categories";
   renderColorSwatches(newCategorySwatches, selectedNewColor, c => { selectedNewColor = c; });
@@ -1771,7 +1786,6 @@ async function initApp() {
   dateInput.value = todayStr();
   await loadCategories();
   await loadDateFormatSetting();
-  setDateRangeToCurrentMonth();
   populateDetailsList();
   await refreshAll();
 

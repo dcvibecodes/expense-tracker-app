@@ -1,6 +1,31 @@
-# Expenses+ v3.2.0
+# Expenses+ v3.3.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.3.0
+
+### Reports Tab Redesign
+- **Spending Trends moved to top** — chart is now the first thing you see on the Reports tab
+- **Filters integrated into report table** — eliminated the separate filters card; filters now live inside the report table container alongside Expand All / Collapse All / Default View buttons
+- **Dynamic filtering** — all filters apply instantly as you change them (no Apply button)
+- **Search on Reports** — full-text search across all expense data, returns results as you type; overrides year/month filters when active
+- **All Years option** — year dropdown now includes "All Years" for viewing data across all time
+- **Visual feedback** — year/month labels dim when search is active to indicate they're overridden
+- **Smart search UX** — changing a filter auto-clears search; minimum 2 characters before search fires
+- **Better empty states** — "No results found" for search vs "No data for selected period" for filters
+
+### Tracker Tab Simplified
+- **Removed full filter panel** — no more Year, Month, Category dropdowns on the Tracker tab
+- **Inline search bar** — clean search input directly above the expenses table; shows current month by default, search overrides to all data
+- **Batch operations moved to Settings** — Batch Rename and Batch Category are now in Settings under a new "Batch Operations" section
+
+### Date Range Selectors Removed
+- **Year + Month replaces From/To** — date range pickers removed from both tabs; Year and Month dropdowns provide the same functionality more simply
+- **Server endpoints updated** — `/api/expenses`, `/api/reports`, `/api/export/csv` all use year/month parameters instead of startDate/endDate
+
+### UI Polish
+- **Consistent button sizing** — Filters toggle button now matches the size of toolbar buttons across both tabs
+- **Mobile layout** — toolbar buttons span full width and align properly on small screens
 
 ## What's New in v3.2.0
 
@@ -39,8 +64,10 @@ Recurring series set up before this update will not automatically generate notif
 
 - **Add expenses** — date, details (with smart autocomplete + auto-category), category, amount
 - **Monthly summary** — color-coded category totals with total at a glance
-- **Reports** — yearly/monthly pivot table with expand/collapse, pie charts, bar chart, CSV export
-- **Batch operations** — rename details across entries, reassign categories in bulk
+- **Inline search** — search expenses as you type from the Tracker tab; searches across all data
+- **Reports** — spending trends chart, yearly/monthly pivot table with expand/collapse, CSV export
+- **Report filters** — year, month, category, and full-text search with dynamic instant filtering
+- **Batch operations** — rename details across entries, reassign categories in bulk (in Settings)
 - **Copy expense** — duplicate an expense across multiple months
 - **Categories** — up to 15, custom colors, rename propagates everywhere
 - **Date format** — configurable (MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD)

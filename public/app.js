@@ -87,6 +87,9 @@ function applyTheme(theme) {
 }
 // Apply saved theme immediately
 applyTheme(localStorage.getItem("theme") || "light");
+if ("scrollRestoration" in history) {
+  history.scrollRestoration = "manual";
+}
 
 // ===== HELPERS =====
 
@@ -238,6 +241,10 @@ const detailsInput = document.getElementById("details");
 const categoryInput = document.getElementById("category");
 const amountInput = document.getElementById("amount");
 const searchInput = document.getElementById("expense-search");
+window.addEventListener("load", () => {
+  document.activeElement?.blur();
+  window.scrollTo(0, 0);
+});
 const rowsEl = document.getElementById("expense-rows");
 const summaryGrid = document.getElementById("summary-grid");
 const summaryHeading = document.getElementById("summary-heading");
@@ -1784,13 +1791,16 @@ document.querySelectorAll('#settings-pin, #settings-pin-confirm, #settings-disab
 // ===== APP INIT =====
 async function initApp() {
   dateInput.value = todayStr();
+
   await loadCategories();
   await loadDateFormatSetting();
-  populateDetailsList();
+  await populateDetailsList();
   await refreshAll();
+  await loadReports();
 
-  loadReports();
   loadLockSettings();
+
+  window.scrollTo(0, 0);
 }
 
 initApp();

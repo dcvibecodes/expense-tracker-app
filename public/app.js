@@ -238,7 +238,6 @@ const detailsInput = document.getElementById("details");
 const categoryInput = document.getElementById("category");
 const amountInput = document.getElementById("amount");
 const searchInput = document.getElementById("expense-search");
-searchInput.value = "";
 const rowsEl = document.getElementById("expense-rows");
 const summaryGrid = document.getElementById("summary-grid");
 const summaryHeading = document.getElementById("summary-heading");

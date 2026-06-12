@@ -120,24 +120,9 @@
 
         <section class="card"> 
           <h2>Expenses</h2> 
-          <button id="filters-toggle" type="button" class="filters-toggle-btn" aria-expanded="false">🔍 Filters & Batch Actions</button> 
-          <div id="filters-content" class="filters-collapsible" style="display:none;"> 
-            <div class="filters"> 
-              <label>Start Date <input type="date" id="start-date" /></label> 
-              <label>End Date <input type="date" id="end-date" /></label> 
-              <label>Category 
-                <select id="category-filter"> 
-                  <option value="all">All</option> 
-                </select> 
-              </label> 
-              <label>Search <input type="text" id="search" placeholder="Search" /> </label> 
-              <div class="buttons"> 
-                <button id="clear-range" type="button">Reset</button> 
-                <button id="batch-edit-btn" type="button" class="batch-btn">Batch Rename</button> 
-                <button id="batch-cat-btn" type="button" class="batch-btn">Batch Category</button> 
-              </div> 
-            </div> 
-          </div> 
+          <div class="tracker-search-bar">
+            <input type="text" id="search" placeholder="Search expenses..." autocomplete="off" />
+          </div>
           <div class="table-wrap"> 
             <table> 
               <thead><tr> 
@@ -151,36 +136,6 @@
 
       <!-- ===== REPORTS TAB ===== --> 
       <div id="tab-reports" class="tab-content"> 
-        <section class="card"> 
-          <button id="report-filters-toggle" type="button" class="filters-toggle-btn" aria-expanded="false">🔍 Filters & Options</button>
-          <div id="report-filters-content" style="display:none;">
-            <div class="report-range"> 
-              <label>Year <select id="report-year"></select></label> 
-              <label>Month 
-                <select id="report-month"> 
-                  <option value="">All Months</option> 
-                  <option value="1">January</option><option value="2">February</option><option value="3">March</option> 
-                  <option value="4">April</option><option value="5">May</option><option value="6">June</option> 
-                  <option value="7">July</option><option value="8">August</option><option value="9">September</option> 
-                  <option value="10">October</option><option value="11">November</option><option value="12">December</option> 
-                </select> 
-              </label> 
-              <label>From <input type="date" id="report-from" class="date-optional" /></label> 
-              <label>To <input type="date" id="report-to" class="date-optional" /> </label> 
-              <label>Category 
-                <select id="report-category"> 
-                  <option value="all">All Categories</option> 
-                </select> 
-              </label> 
-              <div class="report-range-btns"> 
-                <button id="report-apply" type="button" class="add-btn">Apply</button> 
-                <button id="report-reset" type="button" class="btn-secondary">Reset</button> 
-                <button id="report-csv-btn" type="button" class="btn-secondary">⬇ CSV</button> 
-              </div> 
-            </div> 
-          </div>
-        </section> 
-
         <section class="card charts-card" id="charts-panel"> 
           <h2 id="charts-heading">Spending Trends</h2>
           <div class="chart-view-toggle">
@@ -207,10 +162,37 @@
 
         <section class="card report-table-card"> 
           <div class="report-toolbar"> 
-            <button id="report-expand-all" type="button" class="report-toolbar-btn">Expand All</button> 
-            <button id="report-collapse-all" type="button" class="report-toolbar-btn">Collapse All</button> 
-            <button id="report-default-view" type="button" class="report-toolbar-btn">Default View</button> 
+            <button id="report-filters-toggle" type="button" class="filters-toggle-btn" aria-expanded="false">🔍 Filters</button>
+            <div class="report-toolbar-actions">
+              <button id="report-expand-all" type="button" class="report-toolbar-btn">Expand All</button> 
+              <button id="report-collapse-all" type="button" class="report-toolbar-btn">Collapse All</button> 
+              <button id="report-default-view" type="button" class="report-toolbar-btn">Default View</button> 
+            </div>
           </div> 
+          <div id="report-filters-content" class="report-filters-content" style="display:none;">
+            <div class="report-range"> 
+              <label>Search <input type="text" id="report-search" placeholder="Search across all data" autocomplete="off" /></label>
+              <label>Year <select id="report-year"></select></label> 
+              <label>Month 
+                <select id="report-month"> 
+                  <option value="">All Months</option> 
+                  <option value="1">January</option><option value="2">February</option><option value="3">March</option> 
+                  <option value="4">April</option><option value="5">May</option><option value="6">June</option> 
+                  <option value="7">July</option><option value="8">August</option><option value="9">September</option> 
+                  <option value="10">October</option><option value="11">November</option><option value="12">December</option> 
+                </select> 
+              </label> 
+              <label>Category 
+                <select id="report-category"> 
+                  <option value="all">All Categories</option> 
+                </select> 
+              </label> 
+              <div class="report-range-btns"> 
+                <button id="report-reset" type="button" class="btn-secondary">Reset</button> 
+                <button id="report-csv-btn" type="button" class="btn-secondary">⬇ CSV</button> 
+              </div> 
+            </div> 
+          </div>
           <div class="report-table-wrap" id="report-table-wrap"></div> 
         </section> 
       </div> 
@@ -232,6 +214,15 @@
             </div>
           </div> 
           <p id="category-message" class="form-msg"></p> 
+        </section> 
+
+        <section class="card"> 
+          <h2>Batch Operations</h2> 
+          <p class="settings-desc">Rename or reassign expenses in bulk.</p> 
+          <div class="batch-operations-row"> 
+            <button id="batch-edit-btn" type="button" class="btn-secondary">Batch Rename</button> 
+            <button id="batch-cat-btn" type="button" class="btn-secondary">Batch Category</button> 
+          </div> 
         </section> 
 
         <section class="card"> 

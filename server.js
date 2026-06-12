@@ -493,7 +493,7 @@ app.post("/api/expenses", (req, res) => {
 });
 
 app.get("/api/expenses", (req, res) => {
-  const { startDate, endDate, category, search } = req.query;
+  const { year, month, category, search } = req.query;
 
   const where = [];
   const params = [];
@@ -501,14 +501,22 @@ app.get("/api/expenses", (req, res) => {
   const useGlobalSearch = Boolean(trimmedSearch);
 
   if (!useGlobalSearch) {
-    if (startDate && isValidDate(startDate)) {
-      where.push("date >= ?");
-      params.push(startDate);
+    if (year && year !== "all") {
+      where.push("substr(date, 1, 4) = ?");
+      params.push(String(year));
+      if (month) {
+        where.push("substr(date, 6, 2) = ?");
+        params.push(String(month).padStart(2, "0"));
+      }
+    } else if (!year) {
+      // No year specified — default to current month
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      where.push("substr(date, 1, 7) = ?");
+      params.push(`${y}-${m}`);
     }
-    if (endDate && isValidDate(endDate)) {
-      where.push("date <= ?");
-      params.push(endDate);
-    }
+    // year === "all" — no date filter
   }
 
   if (category && category !== "all") {
@@ -803,31 +811,31 @@ app.get("/api/charts", (req, res) => {
 // --- Reports API ---
 
 app.get("/api/reports", (req, res) => {
-  const { year, month, startDate, endDate, category } = req.query;
+  const { year, month, category, search } = req.query;
   const where = [];
   const params = [];
+  const trimmedSearch = typeof search === "string" ? search.trim() : "";
 
-  if (startDate && isValidDate(startDate)) {
-    where.push("date >= ?");
-    params.push(startDate);
-    if (endDate && isValidDate(endDate)) {
-      where.push("date <= ?");
-      params.push(endDate);
-    }
-  } else if (year) {
+  if (trimmedSearch) {
+    // Search overrides year/month — searches across all data
+    where.push("lower(details) LIKE ?");
+    params.push(`%${trimmedSearch.toLowerCase()}%`);
+  } else if (year && year !== "all") {
     where.push("substr(date, 1, 4) = ?");
     params.push(String(year));
     if (month) {
       where.push("substr(date, 6, 2) = ?");
       params.push(String(month).padStart(2, "0"));
     }
-  } else {
+  } else if (!year) {
+    // No year specified at all — default to current month
     const now = new Date();
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, "0");
     where.push("substr(date, 1, 7) = ?");
     params.push(`${y}-${m}`);
   }
+  // year === "all" — no date filter, return everything
 
   if (category && category !== "all") {
     where.push("category = ?");
@@ -878,19 +886,16 @@ ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY date ASC, id ASC`
 // --- CSV Export API ---
 
 app.get("/api/export/csv", (req, res) => {
-  const { year, month, startDate, endDate, all } = req.query;
+  const { year, month, all, search } = req.query;
   const where = [];
   const params = [];
+  const trimmedSearch = typeof search === "string" ? search.trim() : "";
 
-  if (all === "true") {
+  if (trimmedSearch) {
+    where.push("lower(details) LIKE ?");
+    params.push(`%${trimmedSearch.toLowerCase()}%`);
+  } else if (all === "true" || year === "all") {
     // no filter
-  } else if (startDate && isValidDate(startDate)) {
-    where.push("date >= ?");
-    params.push(startDate);
-    if (endDate && isValidDate(endDate)) {
-      where.push("date <= ?");
-      params.push(endDate);
-    }
   } else if (year) {
     where.push("substr(date, 1, 4) = ?");
     params.push(String(year));

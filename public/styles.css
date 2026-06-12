@@ -286,17 +286,36 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 }
 
 .chart-toggle-btn {
-  padding: 8px 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 8px 18px;
 
   background: var(--surface);
-  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
 
   font-size: 0.85rem;
   font-weight: 600;
+  font-family: inherit;
+
+  color: var(--text-secondary);
+  cursor: pointer;
+
+  white-space: nowrap;
   transition: all 0.2s;
+}
+
+.chart-toggle-btn:hover {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.chart-toggle-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
 
 .chart-toggle-btn:hover {

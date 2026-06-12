@@ -339,6 +339,7 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 .filters label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--text-secondary); }
 .filters input, .filters select { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 16px; background: var(--bg); color: var(--text); min-height: 38px; font-family: inherit; }
 .tracker-search-bar { margin-bottom: 14px; }
+.tracker-search-bar .search-form-wrap { margin: 0; padding: 0; border: none; background: none; }
 .tracker-search-bar input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: var(--bg); color: var(--text); font-family: inherit; }
 .tracker-search-bar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,0.1); }
 .batch-operations-row { display: flex; gap: 8px; flex-wrap: wrap; }

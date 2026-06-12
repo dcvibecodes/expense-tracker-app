@@ -242,8 +242,12 @@ const categoryInput = document.getElementById("category");
 const amountInput = document.getElementById("amount");
 const searchInput = document.getElementById("expense-search");
 window.addEventListener("load", () => {
+  // Clear any browser-autofilled value in the search box
+  if (searchInput) searchInput.value = "";
   document.activeElement?.blur();
-  window.scrollTo(0, 0);
+  requestAnimationFrame(() => {
+    window.scrollTo(0, 0);
+  });
 });
 const rowsEl = document.getElementById("expense-rows");
 const summaryGrid = document.getElementById("summary-grid");

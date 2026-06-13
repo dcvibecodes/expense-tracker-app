@@ -1,6 +1,28 @@
-# Expenses+ v3.3.0
+# Expenses+ v3.4.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.4.0
+
+### Multi-Currency & Expenses Abroad
+- **Base currency setting** — dropdown to select your home currency from 36 supported currencies (INR, USD, EUR, GBP, VND, THB, etc.); all amounts display with the correct symbol
+- **Currency rates table** — define exchange rates for any foreign currency relative to your base currency; rates are editable at any time
+- **Expenses Abroad toggle** — flip a switch when traveling; expenses are entered in the foreign currency and auto-converted to base currency using the rate from settings
+- **Rate snapshot on save** — each expense stores the exchange rate used at the time of entry; updating rates in settings never retroactively changes past expenses
+- **Original amount display** — expenses entered abroad show the base-currency amount with the original foreign amount below in smaller text
+- **Abroad mode info line** — when abroad mode is on, the add-expense form shows: "Abroad mode is on. Amounts entered in VND will be converted to INR at the rate of 0.00356 set in your currency settings."
+- **Currency symbols everywhere** — amounts throughout the app (summary, table, reports, charts) now show the base currency symbol with proper spacing
+
+### UI Improvements
+- **Toggle switch** — abroad mode uses a clean iOS-style toggle instead of a raw checkbox
+- **Summary cards rounded** — monthly summary amounts are rounded to whole numbers for a cleaner look on mobile
+- **Summary card mobile fit** — reduced font size and padding on mobile to prevent overflow
+- **Amount column widened** — table amount column accommodates symbol + number without clipping
+
+### Database Migration (non-destructive)
+- New columns on `expenses`: `original_amount`, `original_currency`, `exchange_rate` (nullable, existing rows unaffected)
+- New table: `currency_rates` (code, name, rate, updated_at)
+- New settings keys: `base_currency`, `abroad_mode`
 
 ## What's New in v3.3.0
 
@@ -63,7 +85,8 @@ Recurring series set up before this update will not automatically generate notif
 ## Features
 
 - **Add expenses** — date, details (with smart autocomplete + auto-category), category, amount
-- **Monthly summary** — color-coded category totals with total at a glance
+- **Multi-currency** — set base currency, define exchange rates, toggle abroad mode when traveling; amounts auto-convert and display with correct currency symbol
+- **Monthly summary** — color-coded category totals with rounded amounts at a glance
 - **Inline search** — search expenses as you type from the Tracker tab; searches across all data
 - **Reports** — spending trends chart, yearly/monthly pivot table with expand/collapse, CSV export
 - **Report filters** — year, month, category, and full-text search with dynamic instant filtering

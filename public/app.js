@@ -1886,11 +1886,13 @@ function renderCurrencyRatesList() {
   for (const rate of currencyRates) {
     const div = document.createElement("div");
     div.className = "currency-rate-item";
+    div.dataset.code = rate.code;
     div.innerHTML = `
       <span class="rate-code">${escapeHtml(rate.code)}</span>
       <span class="rate-name">${escapeHtml(rate.name)}</span>
       <span class="rate-value">${rate.rate}</span>
-      <button class="rate-delete-btn" data-code="${escapeHtml(rate.code)}" title="Delete rate" aria-label="Delete ${escapeHtml(rate.code)} rate">🗑️</button>
+      <button class="cat-rename-btn rate-edit-btn" data-code="${escapeHtml(rate.code)}" title="Edit rate" aria-label="Edit ${escapeHtml(rate.code)} rate">✏️</button>
+      <button class="cat-delete-btn rate-delete-btn" data-code="${escapeHtml(rate.code)}" title="Delete rate" aria-label="Delete ${escapeHtml(rate.code)} rate">🗑️</button>
     `;
     list.appendChild(div);
   }
@@ -1969,6 +1971,124 @@ document.getElementById("add-rate-btn").addEventListener("click", async () => {
 });
 
 document.getElementById("currency-rates-list").addEventListener("click", async e => {
+  // Edit
+  const editBtn = e.target.closest(".rate-edit-btn");
+  if (editBtn) {
+    const code = editBtn.dataset.code;
+    const rate = currencyRates.find(r => r.code === code);
+    if (!rate) return;
+    const item = editBtn.closest(".currency-rate-item");
+
+    // Prevent double edit
+    if (item.querySelector(".rate-name-input")) return;
+
+    const codeSpan = item.querySelector(".rate-code");
+    const nameSpan = item.querySelector(".rate-name");
+    const valueSpan = item.querySelector(".rate-value");
+    const deleteBtn = item.querySelector(".rate-delete-btn");
+
+    // Replace with inputs
+    const codeInput = document.createElement("input");
+    codeInput.type = "text";
+    codeInput.className = "category-name-input";
+    codeInput.value = rate.code;
+    codeInput.maxLength = 5;
+    codeInput.style.cssText = "max-width:70px; text-transform:uppercase;";
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "category-name-input rate-name-input";
+    nameInput.value = rate.name;
+    nameInput.style.cssText = "flex:1;";
+
+    const valueInput = document.createElement("input");
+    valueInput.type = "text";
+    valueInput.className = "category-name-input";
+    valueInput.value = rate.rate;
+    valueInput.inputMode = "decimal";
+    valueInput.style.cssText = "max-width:100px;";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.className = "cat-save-btn";
+    saveBtn.title = "Save";
+    saveBtn.textContent = "✓";
+    saveBtn.setAttribute("aria-label", "Save changes");
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "cat-cancel-btn";
+    cancelBtn.title = "Cancel";
+    cancelBtn.textContent = "✕";
+    cancelBtn.setAttribute("aria-label", "Cancel edit");
+
+    codeSpan.replaceWith(codeInput);
+    nameSpan.replaceWith(nameInput);
+    valueSpan.replaceWith(valueInput);
+    editBtn.style.display = "none";
+    deleteBtn.style.display = "none";
+    item.appendChild(saveBtn);
+    item.appendChild(cancelBtn);
+
+    nameInput.focus();
+    nameInput.select();
+
+    let resolved = false;
+
+    const revert = () => {
+      if (resolved) return;
+      resolved = true;
+      renderCurrencyRatesList();
+    };
+
+    const doSave = async () => {
+      if (resolved) return;
+      resolved = true;
+      const newCode = codeInput.value.trim().toUpperCase();
+      const newName = nameInput.value.trim();
+      const newRate = parseFloat(valueInput.value.trim());
+      const msg = document.getElementById("rate-message");
+
+      if (!newCode || !newName || isNaN(newRate) || newRate <= 0) {
+        msg.textContent = "All fields are required with a valid rate.";
+        msg.className = "form-msg error";
+        setTimeout(() => { msg.textContent = ""; msg.className = "form-msg"; }, 3000);
+        revert();
+        return;
+      }
+
+      try {
+        // If code changed, delete old and create new
+        if (newCode !== rate.code) {
+          await safeFetch(`/api/currency-rates/${rate.code}`, { method: "DELETE" });
+        }
+        const res = await safeFetch("/api/currency-rates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: newCode, name: newName, rate: newRate })
+        });
+        if (res.ok) {
+          msg.textContent = `Updated ${newCode}.`;
+          msg.className = "form-msg success";
+          await loadCurrencyRates();
+          updateAbroadModeInfo();
+        } else {
+          const err = await res.json();
+          msg.textContent = err.error || "Failed to update.";
+          msg.className = "form-msg error";
+          renderCurrencyRatesList();
+        }
+      } catch { renderCurrencyRatesList(); }
+      setTimeout(() => { const msg2 = document.getElementById("rate-message"); msg2.textContent = ""; msg2.className = "form-msg"; }, 3000);
+    };
+
+    saveBtn.addEventListener("click", e2 => { e2.stopPropagation(); doSave(); });
+    cancelBtn.addEventListener("click", e2 => { e2.stopPropagation(); revert(); });
+    nameInput.addEventListener("keydown", e2 => { if (e2.key === "Enter") { e2.preventDefault(); doSave(); } if (e2.key === "Escape") revert(); });
+    valueInput.addEventListener("keydown", e2 => { if (e2.key === "Enter") { e2.preventDefault(); doSave(); } if (e2.key === "Escape") revert(); });
+    codeInput.addEventListener("keydown", e2 => { if (e2.key === "Enter") { e2.preventDefault(); doSave(); } if (e2.key === "Escape") revert(); });
+    return;
+  }
+
+  // Delete
   const btn = e.target.closest(".rate-delete-btn");
   if (!btn) return;
   const code = btn.dataset.code;

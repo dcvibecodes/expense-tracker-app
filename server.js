@@ -67,6 +67,30 @@ db.serialize(() => {
     }
   });
 
+  // Seed default base_currency setting
+  db.get("SELECT value FROM settings WHERE key = 'base_currency'", (err, row) => {
+    if (!err && !row) {
+      db.run("INSERT INTO settings (key, value) VALUES ('base_currency', 'INR')");
+    }
+  });
+
+  // Seed default abroad_mode setting (JSON: { active: false, currency: "" })
+  db.get("SELECT value FROM settings WHERE key = 'abroad_mode'", (err, row) => {
+    if (!err && !row) {
+      db.run("INSERT INTO settings (key, value) VALUES ('abroad_mode', ?)", [JSON.stringify({ active: false, currency: "" })]);
+    }
+  });
+
+  // Currency rates table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS currency_rates (
+      code TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      rate REAL NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
   // Check if expenses table has the old CHECK constraint by trying to create the new schema
   // If the table already exists, we need to migrate it to remove the CHECK constraint
   db.get("SELECT sql FROM sqlite_master WHERE type='table' AND name='expenses'", (err, row) => {
@@ -99,6 +123,21 @@ db.serialize(() => {
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
       `);
+    }
+  });
+
+  // Migrate: add multi-currency columns to expenses if missing
+  db.all("PRAGMA table_info(expenses)", (err, cols) => {
+    if (err) return;
+    const colNames = cols.map(c => c.name);
+    if (!colNames.includes("original_amount")) {
+      db.run("ALTER TABLE expenses ADD COLUMN original_amount REAL");
+    }
+    if (!colNames.includes("original_currency")) {
+      db.run("ALTER TABLE expenses ADD COLUMN original_currency TEXT");
+    }
+    if (!colNames.includes("exchange_rate")) {
+      db.run("ALTER TABLE expenses ADD COLUMN exchange_rate REAL");
     }
   });
 
@@ -467,7 +506,7 @@ app.get("/api/suggestions", (req, res) => {
 });
 
 app.post("/api/expenses", (req, res) => {
-  const { date, details, category, amount } = req.body;
+  const { date, details, category, amount, original_amount, original_currency, exchange_rate } = req.body;
   if (!isValidDate(date)) {
     return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
   }
@@ -482,10 +521,15 @@ app.post("/api/expenses", (req, res) => {
     return res.status(400).json({ error: "Amount must be a valid number." });
   }
 
+  // Validate optional currency fields
+  const origAmt = original_amount != null ? Number(original_amount) : null;
+  const origCurr = original_currency || null;
+  const exRate = exchange_rate != null ? Number(exchange_rate) : null;
+
   isValidCategory(category, (valid) => {
     if (!valid) return res.status(400).json({ error: "Invalid category." });
-    const sql = "INSERT INTO expenses (date, details, category, amount) VALUES (?, ?, ?, ?)";
-    db.run(sql, [date, details.trim(), category, amt], function onInsert(err) {
+    const sql = "INSERT INTO expenses (date, details, category, amount, original_amount, original_currency, exchange_rate) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    db.run(sql, [date, details.trim(), category, amt, origAmt, origCurr, exRate], function onInsert(err) {
       if (err) return res.status(500).json({ error: "Failed to save expense." });
       return res.json({ id: this.lastID });
     });
@@ -530,7 +574,7 @@ app.get("/api/expenses", (req, res) => {
   }
 
   const sql = `
-    SELECT id, date, details, category, amount
+    SELECT id, date, details, category, amount, original_amount, original_currency, exchange_rate
     FROM expenses
     ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
     ORDER BY date DESC, id DESC
@@ -566,7 +610,7 @@ app.get("/api/details", (req, res) => {
 
 app.put("/api/expenses/:id", (req, res) => {
   const { id } = req.params;
-  const { date, details, category, amount } = req.body;
+  const { date, details, category, amount, original_amount, original_currency, exchange_rate } = req.body;
   if (!isValidDate(date)) {
     return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
   }
@@ -581,10 +625,14 @@ app.put("/api/expenses/:id", (req, res) => {
     return res.status(400).json({ error: "Amount must be a valid number." });
   }
 
+  const origAmt = original_amount != null ? Number(original_amount) : null;
+  const origCurr = original_currency || null;
+  const exRate = exchange_rate != null ? Number(exchange_rate) : null;
+
   isValidCategory(category, (valid) => {
     if (!valid) return res.status(400).json({ error: "Invalid category." });
-    const sql = "UPDATE expenses SET date = ?, details = ?, category = ?, amount = ? WHERE id = ?";
-    db.run(sql, [date, details.trim(), category, amt, id], function onUpdate(err) {
+    const sql = "UPDATE expenses SET date = ?, details = ?, category = ?, amount = ?, original_amount = ?, original_currency = ?, exchange_rate = ? WHERE id = ?";
+    db.run(sql, [date, details.trim(), category, amt, origAmt, origCurr, exRate, id], function onUpdate(err) {
       if (err) return res.status(500).json({ error: "Failed to update expense." });
       if (this.changes === 0) return res.status(404).json({ error: "Expense not found." });
       return res.json({ success: true });
@@ -645,7 +693,7 @@ app.post("/api/expenses/repeat-last-month", (req, res) => {
 
 app.get("/api/expenses/:id", (req, res) => {
   const { id } = req.params;
-  db.get("SELECT id, date, details, category, amount FROM expenses WHERE id = ?", [id], (err, row) => {
+  db.get("SELECT id, date, details, category, amount, original_amount, original_currency, exchange_rate FROM expenses WHERE id = ?", [id], (err, row) => {
     if (err) return res.status(500).json({ error: "Failed to fetch expense." });
     if (!row) return res.status(404).json({ error: "Expense not found." });
     return res.json(row);
@@ -1068,28 +1116,113 @@ app.post("/api/lock/recovery", (req, res) => {
 // --- Settings APIs ---
 
 app.get("/api/settings", (req, res) => {
-  db.get("SELECT value FROM settings WHERE key = 'date_format'", (err, row) => {
+  db.all("SELECT key, value FROM settings", (err, rows) => {
     if (err) return res.status(500).json({ error: "DB error" });
-    res.json({
-      date_format: (row && row.value) || "MM/DD/YYYY"
-    });
+    const result = {};
+    for (const row of rows) {
+      result[row.key] = row.value;
+    }
+    // Defaults
+    if (!result.date_format) result.date_format = "MM/DD/YYYY";
+    if (!result.base_currency) result.base_currency = "INR";
+    if (!result.abroad_mode) result.abroad_mode = JSON.stringify({ active: false, currency: "" });
+    res.json(result);
   });
 });
 
 app.put("/api/settings", (req, res) => {
-  const { date_format } = req.body;
+  const { date_format, base_currency, abroad_mode } = req.body;
+  const updates = [];
+
   if (date_format !== undefined) {
     const allowed = ["MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"];
     if (!allowed.includes(date_format)) {
       return res.status(400).json({ error: "Invalid date format." });
     }
-    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('date_format', ?)", [date_format], (err) => {
-      if (err) return res.status(500).json({ error: "Failed to save setting." });
-      res.json({ success: true, date_format });
-    });
-  } else {
-    res.status(400).json({ error: "No settings provided." });
+    updates.push(["date_format", date_format]);
   }
+
+  if (base_currency !== undefined) {
+    if (typeof base_currency !== "string" || !base_currency.trim()) {
+      return res.status(400).json({ error: "Invalid base currency." });
+    }
+    const ALLOWED_CURRENCIES = [
+      "INR","USD","EUR","GBP","JPY","CNY","AUD","CAD","CHF","SGD","HKD","NZD",
+      "KRW","THB","VND","MYR","PHP","IDR","TWD","AED","SAR","BDT","LKR","NPR",
+      "PKR","BRL","MXN","ZAR","RUB","TRY","PLN","SEK","NOK","DKK","HUF","CZK"
+    ];
+    const code = base_currency.trim().toUpperCase();
+    if (!ALLOWED_CURRENCIES.includes(code)) {
+      return res.status(400).json({ error: "Unsupported currency." });
+    }
+    updates.push(["base_currency", code]);
+  }
+
+  if (abroad_mode !== undefined) {
+    // Validate it's a proper object with active and currency
+    if (typeof abroad_mode !== "object" || abroad_mode === null) {
+      return res.status(400).json({ error: "Invalid abroad_mode." });
+    }
+    updates.push(["abroad_mode", JSON.stringify(abroad_mode)]);
+  }
+
+  if (updates.length === 0) {
+    return res.status(400).json({ error: "No settings provided." });
+  }
+
+  const stmt = db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)");
+  for (const [key, value] of updates) {
+    stmt.run(key, value);
+  }
+  stmt.finalize((err) => {
+    if (err) return res.status(500).json({ error: "Failed to save settings." });
+    res.json({ success: true });
+  });
+});
+
+// --- Currency Rates API ---
+
+app.get("/api/currency-rates", (req, res) => {
+  db.all("SELECT code, name, rate, updated_at FROM currency_rates ORDER BY code ASC", (err, rows) => {
+    if (err) return res.status(500).json({ error: "Failed to fetch currency rates." });
+    return res.json(rows);
+  });
+});
+
+app.post("/api/currency-rates", (req, res) => {
+  const { code, name, rate } = req.body;
+  if (!code || typeof code !== "string" || !code.trim()) {
+    return res.status(400).json({ error: "Currency code is required." });
+  }
+  if (!name || typeof name !== "string" || !name.trim()) {
+    return res.status(400).json({ error: "Currency name is required." });
+  }
+  const rateNum = Number(rate);
+  if (!Number.isFinite(rateNum) || rateNum <= 0) {
+    return res.status(400).json({ error: "Rate must be a positive number." });
+  }
+  const cleanCode = code.trim().toUpperCase();
+  if (cleanCode.length > 5) {
+    return res.status(400).json({ error: "Currency code too long (max 5 chars)." });
+  }
+
+  db.run(
+    "INSERT OR REPLACE INTO currency_rates (code, name, rate, updated_at) VALUES (?, ?, ?, datetime('now'))",
+    [cleanCode, name.trim(), rateNum],
+    function(err) {
+      if (err) return res.status(500).json({ error: "Failed to save currency rate." });
+      return res.json({ success: true, code: cleanCode, name: name.trim(), rate: rateNum });
+    }
+  );
+});
+
+app.delete("/api/currency-rates/:code", (req, res) => {
+  const { code } = req.params;
+  db.run("DELETE FROM currency_rates WHERE code = ?", [code.toUpperCase()], function(err) {
+    if (err) return res.status(500).json({ error: "Failed to delete currency rate." });
+    if (this.changes === 0) return res.status(404).json({ error: "Currency not found." });
+    return res.json({ success: true });
+  });
 });
 
 // --- Notifications API ---

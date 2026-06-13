@@ -105,7 +105,7 @@
               <select id="category" required></select>
             </label>
 
-            <label>Amount
+            <label><span id="amount-label-text">Amount</span>
               <input type="text" id="amount" inputmode="decimal" placeholder="0.00" autocomplete="off" required />
             </label>
 
@@ -116,6 +116,7 @@
           </form>
 
           <p id="add-expense-msg" class="form-msg"></p>
+          <p id="abroad-mode-info" class="abroad-mode-info" style="display:none;"></p>
         </section> 
 
         <section class="card"> 
@@ -211,6 +212,54 @@
 
       <!-- ===== SETTINGS TAB ===== --> 
       <div id="tab-settings" class="tab-content"> 
+
+        <section class="card">
+          <h2>Base Currency</h2>
+          <p class="settings-desc">Set your home currency. All expenses are stored and displayed in this currency.</p>
+          <div class="date-format-row">
+            <label>Currency
+              <select id="settings-base-currency"></select>
+            </label>
+            <button id="settings-base-currency-save" type="button" class="add-btn">Save</button>
+          </div>
+          <p id="base-currency-message" class="form-msg"></p>
+        </section>
+
+        <section class="card">
+          <h2>Currency Rates</h2>
+          <p class="settings-desc">Define exchange rates to your base currency. These rates are used when adding expenses abroad.</p>
+          <div id="currency-rates-list" class="categories-list"></div>
+          <button id="show-add-rate-btn" type="button" class="btn-secondary" style="margin-bottom:12px;">+ Add Currency Rate</button>
+          <div id="rate-add-row" class="category-add-row" style="display:none;">
+            <input type="text" id="new-rate-code" placeholder="VND" maxlength="5" style="text-transform:uppercase; max-width:100px;" />
+            <input type="text" id="new-rate-name" placeholder="Dong" style="flex:2;" />
+            <input type="text" id="new-rate-value" placeholder="Rate" inputmode="decimal" style="max-width:120px;" />
+            <div class="category-add-actions">
+              <button id="add-rate-btn" type="button">Add</button>
+              <button id="cancel-add-rate-btn" type="button" class="btn-secondary">Cancel</button>
+            </div>
+          </div>
+          <p id="rate-message" class="form-msg"></p>
+        </section>
+
+        <section class="card">
+          <h2>Expenses Abroad</h2>
+          <p class="settings-desc">Toggle this on when traveling. Expenses will be entered in the foreign currency and auto-converted to your base currency.</p>
+          <div class="abroad-toggle-row">
+            <label class="toggle-switch-label">
+              <span class="toggle-switch">
+                <input type="checkbox" id="abroad-toggle" />
+                <span class="toggle-slider"></span>
+              </span>
+              <span>Abroad mode</span>
+            </label>
+            <label id="abroad-currency-label" style="display:none;">Foreign Currency
+              <select id="abroad-currency-select"></select>
+            </label>
+            <button id="abroad-save-btn" type="button" class="add-btn">Save</button>
+          </div>
+          <p id="abroad-message" class="form-msg"></p>
+        </section>
 
         <section class="card"> 
           <h2>Categories</h2> 

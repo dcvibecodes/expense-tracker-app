@@ -3,6 +3,62 @@ const MONTH_NAMES = ["January","February","March","April","May","June","July","A
 
 let categories = []; // loaded from server
 let dateFormat = "MM/DD/YYYY"; // configurable date display format
+let baseCurrency = "INR"; // configurable base currency
+let currencyRates = []; // loaded from server
+let abroadMode = { active: false, currency: "" }; // loaded from server
+
+// Currency symbol map (common currencies)
+const CURRENCY_SYMBOLS = {
+  INR: "₹", USD: "$", EUR: "€", GBP: "£", JPY: "¥", CNY: "¥",
+  VND: "₫", THB: "฿", KRW: "₩", AUD: "A$", CAD: "C$", SGD: "S$",
+  MYR: "RM", PHP: "₱", IDR: "Rp", AED: "د.إ", SAR: "﷼", BDT: "৳",
+  LKR: "Rs", NPR: "Rs", PKR: "Rs", CHF: "CHF", SEK: "kr", NOK: "kr",
+  DKK: "kr", NZD: "NZ$", ZAR: "R", BRL: "R$", MXN: "Mex$", RUB: "₽",
+  TRY: "₺", PLN: "zł", HUF: "Ft", CZK: "Kč", TWD: "NT$", HKD: "HK$"
+};
+
+const SUPPORTED_CURRENCIES = [
+  { code: "INR", name: "Indian Rupee" },
+  { code: "USD", name: "US Dollar" },
+  { code: "EUR", name: "Euro" },
+  { code: "GBP", name: "British Pound" },
+  { code: "JPY", name: "Japanese Yen" },
+  { code: "CNY", name: "Chinese Yuan" },
+  { code: "AUD", name: "Australian Dollar" },
+  { code: "CAD", name: "Canadian Dollar" },
+  { code: "CHF", name: "Swiss Franc" },
+  { code: "SGD", name: "Singapore Dollar" },
+  { code: "HKD", name: "Hong Kong Dollar" },
+  { code: "NZD", name: "New Zealand Dollar" },
+  { code: "KRW", name: "South Korean Won" },
+  { code: "THB", name: "Thai Baht" },
+  { code: "VND", name: "Vietnamese Dong" },
+  { code: "MYR", name: "Malaysian Ringgit" },
+  { code: "PHP", name: "Philippine Peso" },
+  { code: "IDR", name: "Indonesian Rupiah" },
+  { code: "TWD", name: "Taiwan Dollar" },
+  { code: "AED", name: "UAE Dirham" },
+  { code: "SAR", name: "Saudi Riyal" },
+  { code: "BDT", name: "Bangladeshi Taka" },
+  { code: "LKR", name: "Sri Lankan Rupee" },
+  { code: "NPR", name: "Nepalese Rupee" },
+  { code: "PKR", name: "Pakistani Rupee" },
+  { code: "BRL", name: "Brazilian Real" },
+  { code: "MXN", name: "Mexican Peso" },
+  { code: "ZAR", name: "South African Rand" },
+  { code: "RUB", name: "Russian Ruble" },
+  { code: "TRY", name: "Turkish Lira" },
+  { code: "PLN", name: "Polish Zloty" },
+  { code: "SEK", name: "Swedish Krona" },
+  { code: "NOK", name: "Norwegian Krone" },
+  { code: "DKK", name: "Danish Krone" },
+  { code: "HUF", name: "Hungarian Forint" },
+  { code: "CZK", name: "Czech Koruna" }
+];
+
+function getCurrencySymbol(code) {
+  return CURRENCY_SYMBOLS[code] || code;
+}
 
 // ===== HTML ESCAPE (XSS prevention) =====
 function escapeHtml(str) {
@@ -120,8 +176,12 @@ function formatDate(isoStr) {
 }
 function formatAmount(value) {
   const num = Number(value);
-  if (!Number.isFinite(num)) return "0";
-  return new Intl.NumberFormat("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(num);
+  if (!Number.isFinite(num)) return getCurrencySymbol(baseCurrency) + " 0";
+  return getCurrencySymbol(baseCurrency) + " " + new Intl.NumberFormat("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(num);
+}
+function formatAmountRounded(value) {
+  const num = Math.round(Number(value) || 0);
+  return getCurrencySymbol(baseCurrency) + " " + new Intl.NumberFormat("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
 }
 function formatCategory(value) {
   if (!value) return "";
@@ -397,11 +457,15 @@ function renderRows(rows) {
   const fragment = document.createDocumentFragment();
   for (const row of rows) {
     const tr = document.createElement("tr");
+    let amountDisplay = formatAmount(row.amount);
+    if (row.original_currency && row.original_amount) {
+      amountDisplay += `<br><span class="original-amt">${getCurrencySymbol(row.original_currency)} ${new Intl.NumberFormat("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(row.original_amount)}</span>`;
+    }
     tr.innerHTML = `
       <td data-label="Date">${escapeHtml(formatDate(row.date))}</td>
       <td data-label="Details">${escapeHtml(row.details)}</td>
       <td data-label="Category"><span class="cat-badge" style="background:${getCategoryColor(row.category)}20;color:${getCategoryColor(row.category)}">${escapeHtml(formatCategory(row.category))}</span></td>
-      <td data-label="Amount">${formatAmount(row.amount)}</td>
+      <td data-label="Amount">${amountDisplay}</td>
       <td class="actions-cell" data-label="">
         <button class="action-btn btn-copy" data-id="${row.id}" title="Copy to date" aria-label="Copy expense to another date">📋</button>
         <button class="action-btn btn-edit" data-id="${row.id}" title="Edit" aria-label="Edit expense">✏️</button>
@@ -418,14 +482,14 @@ function renderSummary(pieData) {
   // Total item
   const totalDiv = document.createElement("div");
   totalDiv.className = "summary-item total-item";
-  totalDiv.innerHTML = `<span class="summary-dot" style="background:#3b82f6"></span><div class="summary-info"><span class="summary-label">Total</span><span class="summary-amount">${formatAmount(total)}</span></div>`;
+  totalDiv.innerHTML = `<span class="summary-dot" style="background:#3b82f6"></span><div class="summary-info"><span class="summary-label">Total</span><span class="summary-amount">${formatAmountRounded(total)}</span></div>`;
   summaryGrid.appendChild(totalDiv);
   // Category items
   for (const cat of categories) {
     const val = pieData[cat.name] || 0;
     const div = document.createElement("div");
     div.className = "summary-item";
-    div.innerHTML = `<span class="summary-dot" style="background:${cat.color}"></span><div class="summary-info"><span class="summary-label">${escapeHtml(formatCategory(cat.name))}</span><span class="summary-amount">${formatAmount(val)}</span></div>`;
+    div.innerHTML = `<span class="summary-dot" style="background:${cat.color}"></span><div class="summary-info"><span class="summary-label">${escapeHtml(formatCategory(cat.name))}</span><span class="summary-amount">${formatAmountRounded(val)}</span></div>`;
     summaryGrid.appendChild(div);
   }
 }
@@ -817,10 +881,16 @@ expenseForm.addEventListener("submit", async e => {
 
   // Duplicate check
   try {
+    // Use the final base-currency amount for duplicate check
+    let dupAmount = amountNum;
+    if (abroadMode.active && abroadMode.currency) {
+      const rate = currencyRates.find(r => r.code === abroadMode.currency);
+      if (rate) dupAmount = Math.round(amountNum * rate.rate * 100) / 100;
+    }
     const dupRes = await fetch("/api/expenses/check-duplicate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, details, amount })
+      body: JSON.stringify({ date, details, amount: dupAmount })
     });
     if (dupRes.ok) {
       const { duplicate } = await dupRes.json();
@@ -836,7 +906,19 @@ expenseForm.addEventListener("submit", async e => {
   } catch {}
 
   try {
-    const res = await safeFetch("/api/expenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date, details, category, amount: amountNum }) });
+    // Build request body — handle abroad mode conversion
+    const body = { date, details, category, amount: amountNum };
+    if (abroadMode.active && abroadMode.currency) {
+      const rate = currencyRates.find(r => r.code === abroadMode.currency);
+      if (rate) {
+        body.original_amount = amountNum;
+        body.original_currency = abroadMode.currency;
+        body.exchange_rate = rate.rate;
+        body.amount = Math.round(amountNum * rate.rate * 100) / 100; // Convert to base currency
+      }
+    }
+
+    const res = await safeFetch("/api/expenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (res.ok) {
       addExpenseMsg.textContent = "Expense added successfully.";
       addExpenseMsg.className = "form-msg success";
@@ -1679,6 +1761,7 @@ categoriesList.addEventListener("click", async e => {
 
 // ===== DATE FORMAT SETTINGS =====
 async function loadDateFormatSetting() {
+  populateBaseCurrencySelect(); // Ensure dropdown is populated even before API responds
   try {
     const res = await fetch("/api/settings");
     if (res.ok) {
@@ -1687,6 +1770,14 @@ async function loadDateFormatSetting() {
         dateFormat = data.date_format;
         const sel = document.getElementById("settings-date-format");
         if (sel) sel.value = data.date_format;
+      }
+      if (data.base_currency) {
+        baseCurrency = data.base_currency;
+        populateBaseCurrencySelect();
+      }
+      if (data.abroad_mode) {
+        try { abroadMode = JSON.parse(data.abroad_mode); } catch { abroadMode = { active: false, currency: "" }; }
+        updateAbroadUI();
       }
     }
   } catch {}
@@ -1711,6 +1802,265 @@ document.getElementById("settings-date-format-save").addEventListener("click", a
       msg.className = "form-msg success";
       renderRows(currentRows);
       await loadReports();
+    } else {
+      const err = await res.json();
+      msg.textContent = err.error || "Failed to save.";
+      msg.className = "form-msg error";
+    }
+  } catch {
+    msg.textContent = "Failed to save.";
+    msg.className = "form-msg error";
+  }
+  btn.disabled = false;
+  btn.textContent = "Save";
+  setTimeout(() => { msg.textContent = ""; msg.className = "form-msg"; }, 3000);
+});
+
+// ===== BASE CURRENCY SETTINGS =====
+function populateBaseCurrencySelect() {
+  const sel = document.getElementById("settings-base-currency");
+  if (!sel) return;
+  sel.innerHTML = "";
+  for (const curr of SUPPORTED_CURRENCIES) {
+    const o = document.createElement("option");
+    o.value = curr.code;
+    o.textContent = `${getCurrencySymbol(curr.code)} ${curr.code} — ${curr.name}`;
+    sel.appendChild(o);
+  }
+  sel.value = baseCurrency;
+}
+
+document.getElementById("settings-base-currency-save").addEventListener("click", async function() {
+  const btn = this;
+  const sel = document.getElementById("settings-base-currency");
+  const msg = document.getElementById("base-currency-message");
+  const val = sel.value;
+  if (!val) { msg.textContent = "Select a currency."; msg.className = "form-msg error"; return; }
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+  try {
+    const res = await safeFetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ base_currency: val })
+    });
+    if (res.ok) {
+      baseCurrency = val;
+      msg.textContent = "Base currency saved.";
+      msg.className = "form-msg success";
+      renderRows(currentRows);
+      await refreshAll();
+      await loadReports();
+      updateAbroadModeInfo();
+    } else {
+      const err = await res.json();
+      msg.textContent = err.error || "Failed to save.";
+      msg.className = "form-msg error";
+    }
+  } catch {
+    msg.textContent = "Failed to save.";
+    msg.className = "form-msg error";
+  }
+  btn.disabled = false;
+  btn.textContent = "Save";
+  setTimeout(() => { msg.textContent = ""; msg.className = "form-msg"; }, 3000);
+});
+
+// ===== CURRENCY RATES SETTINGS =====
+async function loadCurrencyRates() {
+  try {
+    const res = await fetch("/api/currency-rates");
+    if (res.ok) currencyRates = await res.json();
+  } catch {}
+  renderCurrencyRatesList();
+  populateAbroadCurrencySelect();
+}
+
+function renderCurrencyRatesList() {
+  const list = document.getElementById("currency-rates-list");
+  list.innerHTML = "";
+  if (currencyRates.length === 0) {
+    list.innerHTML = '<p style="font-size:0.8rem;color:var(--text-secondary);">No currency rates defined yet.</p>';
+    return;
+  }
+  for (const rate of currencyRates) {
+    const div = document.createElement("div");
+    div.className = "currency-rate-item";
+    div.innerHTML = `
+      <span class="rate-code">${escapeHtml(rate.code)}</span>
+      <span class="rate-name">${escapeHtml(rate.name)}</span>
+      <span class="rate-value">${rate.rate}</span>
+      <button class="rate-delete-btn" data-code="${escapeHtml(rate.code)}" title="Delete rate" aria-label="Delete ${escapeHtml(rate.code)} rate">🗑️</button>
+    `;
+    list.appendChild(div);
+  }
+}
+
+function populateAbroadCurrencySelect() {
+  const sel = document.getElementById("abroad-currency-select");
+  if (!sel) return;
+  sel.innerHTML = "";
+  if (currencyRates.length === 0) {
+    const o = document.createElement("option");
+    o.value = "";
+    o.textContent = "No currencies defined";
+    sel.appendChild(o);
+  } else {
+    for (const rate of currencyRates) {
+      const o = document.createElement("option");
+      o.value = rate.code;
+      o.textContent = `${rate.code} — ${rate.name}`;
+      sel.appendChild(o);
+    }
+  }
+  // Set current abroad currency if active
+  if (abroadMode.currency && [...sel.options].some(o => o.value === abroadMode.currency)) {
+    sel.value = abroadMode.currency;
+  }
+}
+
+document.getElementById("show-add-rate-btn").addEventListener("click", () => {
+  document.getElementById("rate-add-row").style.display = "flex";
+  document.getElementById("show-add-rate-btn").style.display = "none";
+  document.getElementById("new-rate-code").focus();
+});
+
+document.getElementById("cancel-add-rate-btn").addEventListener("click", () => {
+  document.getElementById("rate-add-row").style.display = "none";
+  document.getElementById("show-add-rate-btn").style.display = "";
+  document.getElementById("new-rate-code").value = "";
+  document.getElementById("new-rate-name").value = "";
+  document.getElementById("new-rate-value").value = "";
+});
+
+document.getElementById("add-rate-btn").addEventListener("click", async () => {
+  const code = document.getElementById("new-rate-code").value.trim().toUpperCase();
+  const name = document.getElementById("new-rate-name").value.trim();
+  const rate = document.getElementById("new-rate-value").value.trim();
+  const msg = document.getElementById("rate-message");
+
+  if (!code) { msg.textContent = "Enter a currency code."; msg.className = "form-msg error"; return; }
+  if (!name) { msg.textContent = "Enter a currency name."; msg.className = "form-msg error"; return; }
+  if (!rate || isNaN(parseFloat(rate)) || parseFloat(rate) <= 0) { msg.textContent = "Enter a valid rate."; msg.className = "form-msg error"; return; }
+
+  try {
+    const res = await safeFetch("/api/currency-rates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, name, rate: parseFloat(rate) })
+    });
+    if (res.ok) {
+      msg.textContent = `Added ${code}.`;
+      msg.className = "form-msg success";
+      document.getElementById("new-rate-code").value = "";
+      document.getElementById("new-rate-name").value = "";
+      document.getElementById("new-rate-value").value = "";
+      document.getElementById("rate-add-row").style.display = "none";
+      document.getElementById("show-add-rate-btn").style.display = "";
+      await loadCurrencyRates();
+      updateAbroadModeInfo();
+    } else {
+      const err = await res.json();
+      msg.textContent = err.error || "Failed to add.";
+      msg.className = "form-msg error";
+    }
+  } catch {}
+  setTimeout(() => { msg.textContent = ""; msg.className = "form-msg"; }, 3000);
+});
+
+document.getElementById("currency-rates-list").addEventListener("click", async e => {
+  const btn = e.target.closest(".rate-delete-btn");
+  if (!btn) return;
+  const code = btn.dataset.code;
+  if (!await showConfirm("Delete Currency Rate", `Remove exchange rate for ${code}?`)) return;
+  try {
+    const res = await safeFetch(`/api/currency-rates/${code}`, { method: "DELETE" });
+    if (res.ok) {
+      await loadCurrencyRates();
+      // If abroad mode was using this currency, deactivate abroad mode
+      if (abroadMode.active && abroadMode.currency === code) {
+        abroadMode = { active: false, currency: "" };
+        await safeFetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ abroad_mode: abroadMode })
+        });
+        updateAbroadUI();
+        updateAbroadModeInfo();
+      }
+    }
+  } catch {}
+});
+
+// ===== ABROAD MODE SETTINGS =====
+function updateAbroadUI() {
+  const toggle = document.getElementById("abroad-toggle");
+  const currLabel = document.getElementById("abroad-currency-label");
+  const currSel = document.getElementById("abroad-currency-select");
+  if (toggle) toggle.checked = abroadMode.active;
+  if (currLabel) currLabel.style.display = abroadMode.active ? "" : "none";
+  if (currSel && abroadMode.currency) currSel.value = abroadMode.currency;
+  updateAbroadModeInfo();
+}
+
+function updateAbroadModeInfo() {
+  const infoEl = document.getElementById("abroad-mode-info");
+  const amountLabel = document.getElementById("amount-label-text");
+  if (!infoEl) return;
+  if (abroadMode.active && abroadMode.currency) {
+    const rate = currencyRates.find(r => r.code === abroadMode.currency);
+    if (rate) {
+      infoEl.textContent = `Abroad mode is on. Amounts entered in ${abroadMode.currency} will be converted to ${baseCurrency} at the rate of ${rate.rate} set in your currency settings.`;
+      infoEl.style.display = "block";
+      if (amountLabel) amountLabel.textContent = `Amount (${getCurrencySymbol(abroadMode.currency)})`;
+    } else {
+      infoEl.textContent = `Abroad mode is on but no rate found for ${abroadMode.currency}. Please set a rate in Settings.`;
+      infoEl.style.display = "block";
+      if (amountLabel) amountLabel.textContent = "Amount";
+    }
+  } else {
+    infoEl.style.display = "none";
+    if (amountLabel) amountLabel.textContent = `Amount (${getCurrencySymbol(baseCurrency)})`;
+  }
+}
+
+document.getElementById("abroad-toggle").addEventListener("change", function() {
+  const currLabel = document.getElementById("abroad-currency-label");
+  currLabel.style.display = this.checked ? "" : "none";
+});
+
+document.getElementById("abroad-save-btn").addEventListener("click", async function() {
+  const btn = this;
+  const toggle = document.getElementById("abroad-toggle");
+  const currSel = document.getElementById("abroad-currency-select");
+  const msg = document.getElementById("abroad-message");
+  const active = toggle.checked;
+  const currency = active ? currSel.value : "";
+
+  if (active && !currency) {
+    msg.textContent = "Please select a foreign currency.";
+    msg.className = "form-msg error";
+    return;
+  }
+  if (active && !currencyRates.find(r => r.code === currency)) {
+    msg.textContent = "Selected currency has no rate defined.";
+    msg.className = "form-msg error";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+  try {
+    const res = await safeFetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ abroad_mode: { active, currency } })
+    });
+    if (res.ok) {
+      abroadMode = { active, currency };
+      msg.textContent = active ? `Abroad mode ON (${currency}).` : "Abroad mode OFF.";
+      msg.className = "form-msg success";
+      updateAbroadUI();
     } else {
       const err = await res.json();
       msg.textContent = err.error || "Failed to save.";
@@ -1798,11 +2148,13 @@ async function initApp() {
 
   await loadCategories();
   await loadDateFormatSetting();
+  await loadCurrencyRates();
   await populateDetailsList();
   await refreshAll();
   await loadReports();
 
   loadLockSettings();
+  updateAbroadModeInfo();
 
   window.scrollTo(0, 0);
 }

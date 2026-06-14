@@ -746,6 +746,54 @@ app.patch("/api/expenses/batch-category", (req, res) => {
   });
 });
 
+// --- Batch update selected report rows ---
+app.patch("/api/expenses/batch-selected", (req, res) => {
+  const { ids, category, details } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: "Select at least one expense." });
+  }
+
+  const cleanIds = [...new Set(ids.map(id => Number(id)).filter(Number.isInteger))];
+  if (cleanIds.length === 0 || cleanIds.length > 500) {
+    return res.status(400).json({ error: "Invalid selection." });
+  }
+
+  const updates = [];
+  const params = [];
+
+  if (typeof category === "string" && category.trim()) {
+    updates.push("category = ?");
+    params.push(category.trim());
+  }
+
+  if (typeof details === "string" && details.trim()) {
+    updates.push("details = ?");
+    params.push(details.trim());
+  }
+
+  if (updates.length === 0) {
+    return res.status(400).json({ error: "Choose a batch action." });
+  }
+
+  const runUpdate = () => {
+    const placeholders = cleanIds.map(() => "?").join(",");
+    const sql = `UPDATE expenses SET ${updates.join(", ")} WHERE id IN (${placeholders})`;
+    db.run(sql, [...params, ...cleanIds], function(err) {
+      if (err) return res.status(500).json({ error: "Failed to update selected expenses." });
+      return res.json({ updated: this.changes });
+    });
+  };
+
+  if (updates.includes("category = ?")) {
+    isValidCategory(category.trim(), (valid) => {
+      if (!valid) return res.status(400).json({ error: "Target category does not exist." });
+      runUpdate();
+    });
+  } else {
+    runUpdate();
+  }
+});
+
 // --- Copy Expense to Date(s) ---
 app.post("/api/expenses/copy", (req, res) => {
   const { id, dates } = req.body;
@@ -890,44 +938,12 @@ app.get("/api/reports", (req, res) => {
     params.push(category);
   }
 
-  const sql = `SELECT id, date, details, category, amount FROM expenses
-${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY date ASC, id ASC`;
+  const sql = `SELECT id, date, details, category, amount, original_amount, original_currency, exchange_rate FROM expenses
+${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY date DESC, id DESC`;
 
   db.all(sql, params, (err, rows) => {
     if (err) return res.status(500).json({ error: "Failed to fetch report data." });
-
-    const yearMap = {};
-    for (const row of rows) {
-      const [y, m, d] = row.date.split("-");
-      if (!yearMap[y]) yearMap[y] = {};
-      if (!yearMap[y][m]) yearMap[y][m] = {};
-      if (!yearMap[y][m][d]) yearMap[y][m][d] = [];
-      yearMap[y][m][d].push(row);
-    }
-
-    const result = [];
-    const sortedYears = Object.keys(yearMap).sort();
-    for (const yr of sortedYears) {
-      const months = yearMap[yr];
-      const yearObj = { year: yr, total: 0, months: [] };
-      const sortedMonths = Object.keys(months).sort();
-      for (const mo of sortedMonths) {
-        const days = months[mo];
-        const monthObj = { month: mo, total: 0, days: [] };
-        const sortedDays = Object.keys(days).sort();
-        for (const dy of sortedDays) {
-          const expenses = days[dy];
-          const dayTotal = expenses.reduce((s, e) => s + e.amount, 0);
-          monthObj.days.push({ day: dy, total: dayTotal, expenses });
-          monthObj.total += dayTotal;
-        }
-        yearObj.months.push(monthObj);
-        yearObj.total += monthObj.total;
-      }
-      result.push(yearObj);
-    }
-
-    return res.json(result);
+    return res.json(rows);
   });
 });
 

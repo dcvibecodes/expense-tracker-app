@@ -729,122 +729,6 @@ editForm.addEventListener("submit", async e => {
 editCancel.addEventListener("click", closeEditModal);
 editModal.addEventListener("click", e => { if (e.target === editModal) closeEditModal(); });
 
-// ===== BATCH RENAME MODAL =====
-const batchModal = document.getElementById("batch-modal");
-const batchForm = document.getElementById("batch-form");
-const batchOld = document.getElementById("batch-old");
-const batchNew = document.getElementById("batch-new");
-const batchList = document.getElementById("batch-list");
-
-let batchDebounce = null;
-function filterBatchList() {
-  const q = batchOld.value.trim().toLowerCase();
-  batchList.innerHTML = "";
-  if (!q || q.length < 2) return;
-  const fragment = document.createDocumentFragment();
-  let count = 0;
-  for (const d of allDetails) {
-    if (d.toLowerCase().includes(q)) {
-      const o = document.createElement("option");
-      o.value = d;
-      fragment.appendChild(o);
-      if (++count >= 8) break;
-    }
-  }
-  batchList.appendChild(fragment);
-}
-batchOld.addEventListener("input", () => {
-  clearTimeout(batchDebounce);
-  batchDebounce = setTimeout(filterBatchList, 250);
-});
-
-document.getElementById("batch-edit-btn").addEventListener("click", () => {
-  batchList.innerHTML = "";
-  batchOld.value = ""; batchNew.value = "";
-  batchModal.classList.add("open");
-  if (activeModalTrap) activeModalTrap();
-  activeModalTrap = trapFocus(batchModal.querySelector(".modal-content"));
-});
-document.getElementById("batch-cancel").addEventListener("click", () => {
-  batchModal.classList.remove("open");
-  if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
-});
-batchModal.addEventListener("click", e => {
-  if (e.target === batchModal) {
-    batchModal.classList.remove("open");
-    if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
-  }
-});
-
-batchForm.addEventListener("submit", async e => {
-  e.preventDefault();
-  const oldVal = batchOld.value.trim(), newVal = batchNew.value.trim();
-  if (!oldVal || !newVal) return;
-  if (!await showConfirm("Batch Rename", `Rename all "${oldVal}" entries to "${newVal}"?`)) return;
-  const batchSaveBtn = batchForm.querySelector(".save-btn");
-  batchSaveBtn.disabled = true;
-  batchSaveBtn.textContent = "Renaming...";
-  try {
-    const res = await safeFetch("/api/expenses/batch", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oldDetails: oldVal, newDetails: newVal }) });
-    batchSaveBtn.disabled = false;
-    batchSaveBtn.textContent = "Rename All";
-    if (res.ok) { const r = await res.json(); batchModal.classList.remove("open"); if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; } await refreshAll(); await loadReports(); populateDetailsList(); alert(`Renamed ${r.updated} entr${r.updated===1?"y":"ies"}.`); }
-    else { alert("Failed to batch rename"); }
-  } catch { batchSaveBtn.disabled = false; batchSaveBtn.textContent = "Rename All"; }
-});
-
-// ===== BATCH CATEGORY REASSIGNMENT MODAL =====
-const batchCatModal = document.getElementById("batch-cat-modal");
-const batchCatForm = document.getElementById("batch-cat-form");
-const batchCatOld = document.getElementById("batch-cat-old");
-const batchCatNew = document.getElementById("batch-cat-new");
-const batchCatCancel = document.getElementById("batch-cat-cancel");
-
-document.getElementById("batch-cat-btn").addEventListener("click", () => {
-  populateCategorySelect(batchCatOld, false);
-  populateCategorySelect(batchCatNew, false);
-  batchCatModal.classList.add("open");
-  if (activeModalTrap) activeModalTrap();
-  activeModalTrap = trapFocus(batchCatModal.querySelector(".modal-content"));
-});
-batchCatCancel.addEventListener("click", () => {
-  batchCatModal.classList.remove("open");
-  if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
-});
-batchCatModal.addEventListener("click", e => {
-  if (e.target === batchCatModal) {
-    batchCatModal.classList.remove("open");
-    if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
-  }
-});
-
-batchCatForm.addEventListener("submit", async e => {
-  e.preventDefault();
-  const oldCat = batchCatOld.value, newCat = batchCatNew.value;
-  if (!oldCat || !newCat) return;
-  if (oldCat === newCat) { alert("Source and target categories must be different."); return; }
-  if (!await showConfirm("Batch Reassign", `Reassign all "${formatCategory(oldCat)}" expenses to "${formatCategory(newCat)}"?`)) return;
-  const batchCatSaveBtn = batchCatForm.querySelector(".save-btn");
-  batchCatSaveBtn.disabled = true;
-  batchCatSaveBtn.textContent = "Reassigning...";
-  try {
-    const res = await safeFetch("/api/expenses/batch-category", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oldCategory: oldCat, newCategory: newCat }) });
-    batchCatSaveBtn.disabled = false;
-    batchCatSaveBtn.textContent = "Reassign All";
-    if (res.ok) {
-      const r = await res.json();
-      batchCatModal.classList.remove("open");
-      if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
-      await refreshAll();
-      await loadReports();
-      alert(`Reassigned ${r.updated} expense${r.updated===1?"":"s"}.`);
-    } else {
-      const err = await res.json();
-      alert(err.error || "Failed to reassign.");
-    }
-  } catch { batchCatSaveBtn.disabled = false; batchCatSaveBtn.textContent = "Reassign All"; }
-});
-
 // ===== ADD EXPENSE =====
 const addExpenseMsg = document.getElementById("add-expense-msg");
 const addBtn = document.getElementById("add-btn");
@@ -965,8 +849,6 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     closeEditModal();
     closeCopyModal();
-    batchModal.classList.remove("open");
-    batchCatModal.classList.remove("open");
     if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
   }
 });
@@ -978,6 +860,15 @@ const reportCategory = document.getElementById("report-category");
 const reportSearch = document.getElementById("report-search");
 const reportWrap = document.getElementById("report-table-wrap");
 const chartsContent = document.getElementById("charts-content");
+const reportBatchBar = document.getElementById("report-batch-bar");
+const reportSelectedCount = document.getElementById("report-selected-count");
+const reportBatchCategory = document.getElementById("report-batch-category");
+const reportBatchDetails = document.getElementById("report-batch-details");
+const reportApplyCategory = document.getElementById("report-apply-category");
+const reportApplyDetails = document.getElementById("report-apply-details");
+const reportClearSelection = document.getElementById("report-clear-selection");
+let reportRows = [];
+let selectedReportIds = new Set();
 
 // Report filters toggle
 const reportFiltersToggle = document.getElementById("report-filters-toggle");
@@ -1217,90 +1108,159 @@ async function loadReports() {
   }
 }
 
-let reportUid = 0;
+function renderReportTotals(data) {
+  const totalsBar = document.getElementById("report-totals-bar");
+  if (!totalsBar) return;
 
-function renderReportTable(data) {
   if (!data.length) {
-    const search = reportSearch.value.trim();
-    const msg = search ? "No results found." : "No data for selected period.";
-    reportWrap.innerHTML = `<p class="report-empty">${msg}</p>`;
+    totalsBar.innerHTML = "";
     return;
   }
 
-  reportUid = 0;
+  const categoryTotals = {};
+  let grandTotal = 0;
+
+  for (const row of data) {
+    const amount = Number(row.amount) || 0;
+
+    categoryTotals[row.category] =
+      (categoryTotals[row.category] || 0) + amount;
+
+    grandTotal += amount;
+  }
+
+  const sortedCategories = Object.entries(categoryTotals)
+    .sort((a, b) => b[1] - a[1]);
+
+  let html = `${data.length} entr${data.length === 1 ? "y" : "ies"}`;
+
+  for (const [category, amount] of sortedCategories) {
+    html += ` | ${formatCategory(category)}: ${formatAmountRounded(amount)}`;
+  }
+
+  html += ` | Total: ${formatAmountRounded(grandTotal)}`;
+
+  totalsBar.innerHTML = html;
+}
+
+function renderReportTable(data) {
+  reportRows = data;
+  selectedReportIds = new Set([...selectedReportIds].filter(id => data.some(row => row.id === id)));
+  updateReportSelectionUI();
+
+  if (!data.length) {
+  const search = reportSearch.value.trim();
+  const msg = search ? "No results found." : "No data for selected period.";
+  reportWrap.innerHTML = `<p class="report-empty">${msg}</p>`;
+
+  renderReportTotals([]);
+
+  return;
+}
+
   let html = `<div class="rpt">`;
-  html += `<div class="rpt-row rpt-header"><span></span><span class="rpt-label">Description</span><span class="rpt-cat">Category</span><span class="rpt-amt">Amount</span><span class="rpt-actions">Actions</span></div>`;
+  html += `<div class="rpt-row rpt-header rpt-flat-row">
+    <span class="rpt-select"><input type="checkbox" id="report-select-all" aria-label="Select all visible expenses"></span>
+    <span class="rpt-date">Date</span>
+    <span class="rpt-label">Description</span>
+    <span class="rpt-cat">Category</span>
+    <span class="rpt-amt">Amount</span>
+    <span class="rpt-actions">Actions</span>
+  </div>`;
 
-  for (const yr of data) {
-    const yId = `rg-${reportUid++}`;
-    html += `<div class="rpt-row rpt-year" data-toggle="${yId}" tabindex="0" role="button" aria-expanded="true">`;
-    html += `  <span class="rpt-chevron expanded"></span>`;
-    html += `  <span class="rpt-label">${escapeHtml(yr.year)}</span>`;
-    html += `  <span class="rpt-cat"></span>`;
-    html += `  <span class="rpt-amt">${formatAmount(yr.total)}</span>`;
-    html += `  <span class="rpt-actions"></span>`;
-    html += `</div>`;
-    html += `<div class="rpt-children" id="${yId}">`;
-
-    for (const mo of yr.months) {
-      const monthName = MONTH_NAMES[parseInt(mo.month, 10) - 1];
-      const mId = `rg-${reportUid++}`;
-      html += `<div class="rpt-row rpt-month" data-toggle="${mId}" tabindex="0" role="button" aria-expanded="true">`;
-      html += `  <span class="rpt-chevron expanded"></span>`;
-      html += `  <span class="rpt-label">${escapeHtml(monthName)} ${escapeHtml(yr.year)}</span>`;
-      html += `  <span class="rpt-cat"></span>`;
-      html += `  <span class="rpt-amt">${formatAmount(mo.total)}</span>`;
-      html += `  <span class="rpt-actions"></span>`;
-      html += `</div>`;
-      html += `<div class="rpt-children" id="${mId}">`;
-
-      for (const day of mo.days) {
-        const dayLabel = `${day.day} ${monthName.slice(0,3)}`;
-
-        const detailsList = day.expenses.map(e => e.details);
-
-        const preview =
-        detailsList.length <= 4
-          ? detailsList.join(", ")
-          : `${detailsList.slice(0, 4).join(", ")} +${detailsList.length - 4} more`;
-
-        const dId = `rg-${reportUid++}`;
-
-        html += `<div class="rpt-row rpt-day" data-toggle="${dId}">`;
-        html += `  <span class="rpt-chevron"></span>`;
-       html += `
-          <span class="rpt-label">
-            <span class="rpt-day-text">${dayLabel}</span>
-            <span class="rpt-preview">${escapeHtml(preview)}</span>
-          </span>
-        `;
-        html += `  <span class="rpt-cat"></span>`;
-        html += `  <span class="rpt-amt">${formatAmount(day.total)}</span>`;
-        html += `  <span class="rpt-actions"></span>`;
-        html += `</div>`;
-        html += `<div class="rpt-children collapsed" id="${dId}">`;
-
-        for (const exp of day.expenses) {
-          html += `<div class="rpt-row rpt-expense">`;
-          html += `  <span class="rpt-chevron-placeholder"></span>`;
-          html += `  <span class="rpt-label">${escapeHtml(exp.details)}</span>`;
-          html += `  <span class="rpt-cat"><span class="cat-badge" style="background:${getCategoryColor(exp.category)}20;color:${getCategoryColor(exp.category)}">${escapeHtml(formatCategory(exp.category))}</span></span>`;
-          html += `  <span class="rpt-amt">${formatAmount(exp.amount)}</span>`;
-          html += `  <span class="rpt-actions"><button class="action-btn rpt-copy-btn" data-id="${exp.id}" title="Copy to date" aria-label="Copy expense">📋</button><button class="action-btn rpt-edit-btn" data-id="${exp.id}" title="Edit" aria-label="Edit expense">✏️</button><button class="action-btn delete rpt-delete-btn" data-id="${exp.id}" title="Delete" aria-label="Delete expense">🗑️</button></span>`;
-          html += `</div>`;
-        }
-        html += `</div>`; // day children
-      }
-      html += `</div>`; // month children
+  for (const exp of data) {
+    let amountDisplay = formatAmount(exp.amount);
+    if (exp.original_currency && exp.original_amount) {
+      amountDisplay += `<br><span class="original-amt">${getCurrencySymbol(exp.original_currency)} ${new Intl.NumberFormat("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(exp.original_amount)}</span>`;
     }
-    html += `</div>`; // year children
+    html += `<div class="rpt-row rpt-expense rpt-flat-row" data-id="${exp.id}">`;
+    html += `  <span class="rpt-select"><input type="checkbox" class="report-row-check" data-id="${exp.id}" aria-label="Select expense" ${selectedReportIds.has(exp.id) ? "checked" : ""}></span>`;
+    html += `  <span class="rpt-date">${escapeHtml(formatDate(exp.date))}</span>`;
+    html += `  <span class="rpt-label">${escapeHtml(exp.details)}</span>`;
+    html += `  <span class="rpt-cat"><span class="cat-badge" style="background:${getCategoryColor(exp.category)}20;color:${getCategoryColor(exp.category)}">${escapeHtml(formatCategory(exp.category))}</span></span>`;
+    html += `  <span class="rpt-amt">${amountDisplay}</span>`;
+    html += `  <span class="rpt-actions"><button class="action-btn rpt-copy-btn" data-id="${exp.id}" title="Copy to date" aria-label="Copy expense">📋</button><button class="action-btn rpt-edit-btn" data-id="${exp.id}" title="Edit" aria-label="Edit expense">✏️</button><button class="action-btn delete rpt-delete-btn" data-id="${exp.id}" title="Delete" aria-label="Delete expense">🗑️</button></span>`;
+    html += `</div>`;
   }
   html += `</div>`;
   reportWrap.innerHTML = html;
+
+  renderReportTotals(data);
+
+  updateReportSelectionUI();
+  }
+
+function updateReportSelectionUI() {
+  const visibleIds = reportRows.map(row => row.id);
+  const selectedVisibleCount = visibleIds.filter(id => selectedReportIds.has(id)).length;
+  const hasSelection = selectedReportIds.size > 0;
+
+  if (reportBatchBar) reportBatchBar.hidden = !hasSelection;
+  if (reportSelectedCount) reportSelectedCount.textContent = `${selectedReportIds.size} selected`;
+
+  const selectAll = document.getElementById("report-select-all");
+  if (selectAll) {
+    selectAll.checked = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
+    selectAll.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < visibleIds.length;
+  }
+
+  reportWrap.querySelectorAll(".report-row-check").forEach(input => {
+    input.checked = selectedReportIds.has(parseInt(input.dataset.id, 10));
+  });
 }
 
-// Report table click handlers (expand/collapse + edit/delete/copy)
+function clearReportSelection() {
+  selectedReportIds.clear();
+  updateReportSelectionUI();
+}
+
+async function batchUpdateSelected(payload, confirmMessage) {
+  const ids = [...selectedReportIds];
+  if (!ids.length) return;
+  if (!await showConfirm("Update Selected", confirmMessage)) return;
+
+  const res = await safeFetch("/api/expenses/batch-selected", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids, ...payload })
+  });
+
+  if (res.ok) {
+    const result = await res.json();
+    clearReportSelection();
+    if (reportBatchDetails) reportBatchDetails.value = "";
+    await loadReports();
+    await refreshAll();
+    populateDetailsList();
+    showToast(`Updated ${result.updated} expense${result.updated === 1 ? "" : "s"}.`, "success");
+  } else {
+    const err = await res.json();
+    showErrorToast(err.error || "Failed to update selected expenses.");
+  }
+}
+
+// Report table click handlers (select + edit/delete/copy)
 reportWrap.addEventListener("click", async e => {
+  const selectAll = e.target.closest("#report-select-all");
+  if (selectAll) {
+    const checked = selectAll.checked;
+    reportRows.forEach(row => {
+      if (checked) selectedReportIds.add(row.id);
+      else selectedReportIds.delete(row.id);
+    });
+    updateReportSelectionUI();
+    return;
+  }
+
+  const check = e.target.closest(".report-row-check");
+  if (check) {
+    const id = parseInt(check.dataset.id, 10);
+    if (check.checked) selectedReportIds.add(id);
+    else selectedReportIds.delete(id);
+    updateReportSelectionUI();
+    return;
+  }
+
   const copyBtn = e.target.closest(".rpt-copy-btn");
   if (copyBtn) {
     const id = parseInt(copyBtn.dataset.id, 10);
@@ -1338,76 +1298,31 @@ reportWrap.addEventListener("click", async e => {
     } catch { siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); delBtn.textContent = "🗑️"; delBtn.style.opacity = ""; }
     return;
   }
+});
 
-  // Expand/collapse
-  const row = e.target.closest(".rpt-row[data-toggle]");
-  if (!row) return;
-  const targetId = row.dataset.toggle;
-  const children = document.getElementById(targetId);
-  if (!children) return;
-  const chevron = row.querySelector(".rpt-chevron");
-  const isExpanded = chevron.classList.toggle("expanded");
-  children.classList.toggle("collapsed", !isExpanded);
+reportApplyCategory.addEventListener("click", () => {
+  const category = reportBatchCategory.value;
+  if (!category) return;
+  batchUpdateSelected({ category }, `Change ${selectedReportIds.size} selected expense${selectedReportIds.size === 1 ? "" : "s"} to "${formatCategory(category)}"?`);
+});
 
-  const preview = row.querySelector(".rpt-preview");
-  if (preview) {
-    preview.style.display = isExpanded ? "none" : "inline";
+reportApplyDetails.addEventListener("click", () => {
+  const details = reportBatchDetails.value.trim();
+  if (!details) {
+    showErrorToast("Enter new details first.");
+    return;
   }
-  row.setAttribute("aria-expanded", String(isExpanded));
-  });
+  batchUpdateSelected({ details }, `Rename ${selectedReportIds.size} selected expense${selectedReportIds.size === 1 ? "" : "s"} to "${details}"?`);
+});
 
-// Also allow keyboard activation for report rows
-reportWrap.addEventListener("keydown", e => {
-  if (e.key === "Enter" || e.key === " ") {
-    const row = e.target.closest(".rpt-row[data-toggle]");
-    if (row) { e.preventDefault(); row.click(); }
+reportClearSelection.addEventListener("click", clearReportSelection);
+
+reportBatchDetails.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    reportApplyDetails.click();
   }
-});
-
-// Expand All / Collapse All / Default View
-document.getElementById("report-expand-all").addEventListener("click", () => {
-  reportWrap.querySelectorAll(".rpt-children").forEach(el => el.classList.remove("collapsed"));
-  reportWrap.querySelectorAll(".rpt-chevron").forEach(el => el.classList.add("expanded"));
-  reportWrap.querySelectorAll(".rpt-preview").forEach(el => el.style.display = "none");
-  reportWrap.querySelectorAll("[aria-expanded]").forEach(el => el.setAttribute("aria-expanded", "true"));
-});
-
-document.getElementById("report-collapse-all").addEventListener("click", () => {
-  reportWrap.querySelectorAll(".rpt-children").forEach(el => el.classList.add("collapsed"));
-  reportWrap.querySelectorAll(".rpt-chevron").forEach(el => el.classList.remove("expanded"));
-  reportWrap.querySelectorAll(".rpt-preview").forEach(el => el.style.display = "inline");
-  reportWrap.querySelectorAll("[aria-expanded]").forEach(el => el.setAttribute("aria-expanded", "false"));
-});
-
-document.getElementById("report-default-view").addEventListener("click", () => {
-  reportWrap.querySelectorAll(".rpt-children").forEach(el => el.classList.add("collapsed"));
-  reportWrap.querySelectorAll(".rpt-chevron").forEach(el => el.classList.remove("expanded"));
-  reportWrap.querySelectorAll(".rpt-preview").forEach(el => el.style.display = "inline");
-  reportWrap.querySelectorAll("[aria-expanded]").forEach(el => el.setAttribute("aria-expanded", "false"));
-
-  reportWrap.querySelectorAll(".rpt-year[data-toggle]").forEach(yearRow => {
-    const targetId = yearRow.dataset.toggle;
-    const children = document.getElementById(targetId);
-    if (children) {
-      children.classList.remove("collapsed");
-      const chevron = yearRow.querySelector(".rpt-chevron");
-      if (chevron) chevron.classList.add("expanded");
-      yearRow.setAttribute("aria-expanded", "true");
-    }
   });
-  reportWrap.querySelectorAll(".rpt-month[data-toggle]").forEach(monthRow => {
-    const targetId = monthRow.dataset.toggle;
-    const children = document.getElementById(targetId);
-    if (children) {
-      children.classList.remove("collapsed");
-      const chevron = monthRow.querySelector(".rpt-chevron");
-      if (chevron) chevron.classList.add("expanded");
-      monthRow.setAttribute("aria-expanded", "true");
-      const preview = monthRow.querySelector(".rpt-preview");
-      if (preview) preview.style.display = "none";
-    }
-  });
-});
 
 // Dynamic filter listeners (no Apply button — filters trigger immediately)
 let reportFilterDebounce = null;
@@ -1490,53 +1405,11 @@ document.getElementById("report-csv-btn").addEventListener("click", async () => 
 // ===== SETTINGS TAB =====
 
 // Categories management
-const PRESET_COLORS = [
-  "#10b981", "#f59e0b", "#8b5cf6", "#3b82f6", "#ef4444",
-  "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16",
-  "#06b6d4", "#a855f7", "#e11d48", "#0ea5e9", "#d97706"
-];
-
 const categoriesList = document.getElementById("categories-list");
 const newCategoryName = document.getElementById("new-category-name");
-const newCategorySwatches = document.getElementById("new-category-swatches");
+const newCategoryColor = document.getElementById("new-category-color");
 const addCategoryBtn = document.getElementById("add-category-btn");
 const categoryMessage = document.getElementById("category-message");
-
-let selectedNewColor = PRESET_COLORS[0];
-
-function getAvailableColors() {
-  const usedColors = new Set(categories.map(c => c.color));
-  return PRESET_COLORS.filter(c => !usedColors.has(c));
-}
-
-function renderColorSwatches(container, selectedColor, onSelect) {
-  container.innerHTML = "";
-  const available = getAvailableColors();
-  if (!available.includes(selectedColor) && available.length > 0) {
-    selectedColor = available[0];
-    onSelect(selectedColor);
-  }
-  for (const color of available) {
-    const swatch = document.createElement("span");
-    swatch.className = `color-swatch${color === selectedColor ? " selected" : ""}`;
-    swatch.style.background = color;
-    swatch.title = color;
-    swatch.setAttribute("role", "button");
-    swatch.setAttribute("tabindex", "0");
-    swatch.setAttribute("aria-label", `Select color ${color}`);
-    swatch.addEventListener("click", () => {
-      container.querySelectorAll(".color-swatch").forEach(s => s.classList.remove("selected"));
-      swatch.classList.add("selected");
-      onSelect(color);
-    });
-    swatch.addEventListener("keydown", e => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); swatch.click(); }
-    });
-    container.appendChild(swatch);
-  }
-}
-
-renderColorSwatches(newCategorySwatches, selectedNewColor, c => { selectedNewColor = c; });
 
 // Show/hide the add category form
 const showAddCategoryBtn = document.getElementById("show-add-category-btn");
@@ -1565,24 +1438,29 @@ async function loadCategories() {
   renderCategoriesList();
   populateCategorySelect(categoryInput, false);
   populateCategorySelect(reportCategory, true);
+  populateCategorySelect(reportBatchCategory, false);
   if (reportCategory.options[0]) reportCategory.options[0].textContent = "All Categories";
-  renderColorSwatches(newCategorySwatches, selectedNewColor, c => { selectedNewColor = c; });
+  if (newCategoryColor && categories[0]) newCategoryColor.value = categories[0].color;
 }
 
 function renderCategoriesList() {
   categoriesList.innerHTML = "";
-  for (const cat of categories) {
+  categories.forEach((cat, index) => {
     const div = document.createElement("div");
     div.className = "category-item";
     div.dataset.id = cat.id;
     div.innerHTML = `
+      <div class="category-reorder-controls" aria-label="Reorder ${escapeHtml(formatCategory(cat.name))}">
+        <button class="cat-move-btn cat-move-up" data-id="${cat.id}" ${index === 0 ? "disabled" : ""} title="Move up" aria-label="Move ${escapeHtml(formatCategory(cat.name))} up">↑</button>
+        <button class="cat-move-btn cat-move-down" data-id="${cat.id}" ${index === categories.length - 1 ? "disabled" : ""} title="Move down" aria-label="Move ${escapeHtml(formatCategory(cat.name))} down">↓</button>
+      </div>
       <span class="category-color-dot" style="background:${cat.color}" data-id="${cat.id}" title="Change color" role="button" tabindex="0" aria-label="Change color for ${escapeHtml(formatCategory(cat.name))}"></span>
       <span class="category-name">${escapeHtml(formatCategory(cat.name))}</span>
       <button class="cat-rename-btn" data-id="${cat.id}" title="Rename category" aria-label="Rename ${escapeHtml(formatCategory(cat.name))}">✏️</button>
       <button class="cat-delete-btn" data-id="${cat.id}" title="Delete category" aria-label="Delete ${escapeHtml(formatCategory(cat.name))}">🗑️</button>
     `;
     categoriesList.appendChild(div);
-  }
+  });
 }
 
 addCategoryBtn.addEventListener("click", async () => {
@@ -1590,7 +1468,7 @@ addCategoryBtn.addEventListener("click", async () => {
   if (!name) { categoryMessage.textContent = "Enter a name."; categoryMessage.className = "form-msg error"; return; }
 
   try {
-    const res = await safeFetch("/api/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, color: selectedNewColor }) });
+    const res = await safeFetch("/api/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, color: newCategoryColor.value }) });
     const data = await res.json();
     if (res.ok) {
       categoryMessage.textContent = `Added "${formatCategory(data.name)}".`;
@@ -1606,55 +1484,85 @@ addCategoryBtn.addEventListener("click", async () => {
   } catch {}
 });
 
+async function saveCategoryOrder() {
+  const order = categories.map(cat => cat.id);
+  const res = await safeFetch("/api/categories/reorder", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ order })
+  });
+
+  if (res.ok) {
+    await loadCategories();
+    await refreshAll();
+    await loadReports();
+    categoryMessage.textContent = "Category order saved.";
+    categoryMessage.className = "form-msg success";
+    setTimeout(() => { categoryMessage.textContent = ""; categoryMessage.className = "form-msg"; }, 2000);
+  } else {
+    categoryMessage.textContent = "Failed to save category order.";
+    categoryMessage.className = "form-msg error";
+  }
+}
+
+async function moveCategory(id, direction) {
+  const index = categories.findIndex(cat => cat.id === id);
+  const nextIndex = index + direction;
+  if (index < 0 || nextIndex < 0 || nextIndex >= categories.length) return;
+  [categories[index], categories[nextIndex]] = [categories[nextIndex], categories[index]];
+  renderCategoriesList();
+  await saveCategoryOrder();
+}
+
 categoriesList.addEventListener("click", async e => {
+  const moveUpBtn = e.target.closest(".cat-move-up");
+  if (moveUpBtn) {
+    await moveCategory(parseInt(moveUpBtn.dataset.id, 10), -1);
+    return;
+  }
+
+  const moveDownBtn = e.target.closest(".cat-move-down");
+  if (moveDownBtn) {
+    await moveCategory(parseInt(moveDownBtn.dataset.id, 10), 1);
+    return;
+  }
+
   // Color change
   const colorDot = e.target.closest(".category-color-dot");
   if (colorDot) {
     const id = parseInt(colorDot.dataset.id, 10);
     const cat = categories.find(c => c.id === id);
-    const item = colorDot.closest(".category-item");
+    if (!cat) return;
 
-    if (item.querySelector(".color-picker-inline")) return;
-
-    const picker = document.createElement("div");
-    picker.className = "color-picker-inline";
-
-    const otherUsed = new Set(categories.filter(c => c.id !== id).map(c => c.color));
-    const available = PRESET_COLORS.filter(c => !otherUsed.has(c));
-
-    for (const color of available) {
-      const swatch = document.createElement("span");
-      swatch.className = `color-swatch${color === cat.color ? " selected" : ""}`;
-      swatch.style.background = color;
-      swatch.setAttribute("role", "button");
-      swatch.setAttribute("tabindex", "0");
-      swatch.addEventListener("click", async (ev) => {
-        ev.stopPropagation();
-        if (color === cat.color) { picker.remove(); return; }
-        try {
-          const res = await safeFetch(`/api/categories/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: cat.name, color }) });
-          if (res.ok) {
-            categoryMessage.textContent = `Color updated for "${formatCategory(cat.name)}".`;
-            categoryMessage.className = "form-msg success";
-            await loadCategories();
-            await refreshAll();
-          } else {
-            const data = await res.json();
-            categoryMessage.textContent = data.error || "Failed to update color.";
-            categoryMessage.className = "form-msg error";
-          }
-        } catch {}
-        picker.remove();
-      });
-      picker.appendChild(swatch);
-    }
-
-    item.appendChild(picker);
-
-    const closeHandler = (ev) => {
-      if (!item.contains(ev.target)) { picker.remove(); document.removeEventListener("click", closeHandler); }
-    };
-    setTimeout(() => document.addEventListener("click", closeHandler), 0);
+    const picker = document.createElement("input");
+    picker.type = "color";
+    picker.value = cat.color;
+    picker.className = "category-color-input";
+    picker.setAttribute("aria-label", `Choose color for ${formatCategory(cat.name)}`);
+    colorDot.insertAdjacentElement("afterend", picker);
+    picker.addEventListener("input", () => {
+      colorDot.style.background = picker.value;
+    });
+    picker.addEventListener("change", async () => {
+      const color = picker.value;
+      picker.remove();
+      if (color === cat.color) return;
+      try {
+        const res = await safeFetch(`/api/categories/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: cat.name, color }) });
+        if (res.ok) {
+          categoryMessage.textContent = `Color updated for "${formatCategory(cat.name)}".`;
+          categoryMessage.className = "form-msg success";
+          await loadCategories();
+          await refreshAll();
+          await loadReports();
+        } else {
+          const data = await res.json();
+          categoryMessage.textContent = data.error || "Failed to update color.";
+          categoryMessage.className = "form-msg error";
+        }
+      } catch {}
+    });
+    picker.click();
     return;
   }
 

@@ -177,9 +177,7 @@
           <div class="report-toolbar"> 
             <button id="report-filters-toggle" type="button" class="filters-toggle-btn" aria-expanded="false">🔍 Filters</button>
             <div class="report-toolbar-actions">
-              <button id="report-expand-all" type="button" class="report-toolbar-btn">Expand All</button> 
-              <button id="report-collapse-all" type="button" class="report-toolbar-btn">Collapse All</button> 
-              <button id="report-default-view" type="button" class="report-toolbar-btn">Default View</button> 
+              <button id="report-csv-btn" type="button" class="report-toolbar-btn">⬇ CSV</button> 
             </div>
           </div> 
           <div id="report-filters-content" class="report-filters-content" style="display:none;">
@@ -202,11 +200,19 @@
               </label> 
               <div class="report-range-btns"> 
                 <button id="report-reset" type="button" class="btn-secondary">Reset</button> 
-                <button id="report-csv-btn" type="button" class="btn-secondary">⬇ CSV</button> 
               </div> 
             </div> 
           </div>
-          <div class="report-table-wrap" id="report-table-wrap"></div> 
+          <div class="report-batch-bar" id="report-batch-bar" hidden>
+            <span id="report-selected-count" class="report-selected-count">0 selected</span>
+            <select id="report-batch-category" aria-label="Batch category"></select>
+            <button id="report-apply-category" type="button" class="btn-secondary">Change Category</button>
+            <input type="text" id="report-batch-details" placeholder="New details" aria-label="Batch details" />
+            <button id="report-apply-details" type="button" class="btn-secondary">Rename Selected</button>
+            <button id="report-clear-selection" type="button" class="btn-secondary">Clear</button>
+          </div>
+          <div class="report-table-wrap" id="report-table-wrap"></div>
+          <div id="report-totals-bar" class="report-totals-bar"></div>
         </section> 
       </div> 
 
@@ -268,22 +274,15 @@
           <button id="show-add-category-btn" type="button" class="btn-secondary" style="margin-bottom:12px;">+ Add Category</button> 
           <div class="category-add-row" id="category-add-row" style="display:none;"> 
             <input type="text" id="new-category-name" placeholder="New category name" maxlength="30" /> 
-            <div class="color-swatches" id="new-category-swatches"></div> 
+            <label class="category-color-field">Color
+              <input type="color" id="new-category-color" value="#10b981" aria-label="Category color" />
+            </label>
             <div class="category-add-actions">
               <button id="add-category-btn" type="button">Add</button> 
               <button id="cancel-add-category-btn" type="button" class="btn-secondary">Cancel</button> 
             </div>
           </div> 
           <p id="category-message" class="form-msg"></p> 
-        </section> 
-
-        <section class="card"> 
-          <h2>Batch Operations</h2> 
-          <p class="settings-desc">Rename or reassign expenses in bulk.</p> 
-          <div class="batch-operations-row"> 
-            <button id="batch-edit-btn" type="button" class="btn-secondary">Batch Rename</button> 
-            <button id="batch-cat-btn" type="button" class="btn-secondary">Batch Category</button> 
-          </div> 
         </section> 
 
         <section class="card"> 
@@ -343,45 +342,6 @@
           <div class="modal-buttons"> 
             <button type="submit" class="save-btn">Save</button> 
             <button type="button" id="edit-cancel" class="cancel-btn">Cancel</button> 
-          </div> 
-        </form> 
-      </div> 
-    </div> 
-
-    <!-- Batch Rename Modal --> 
-    <div id="batch-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="batch-modal-title"> 
-      <div class="modal-content"> 
-        <h2 id="batch-modal-title">Batch Rename</h2> 
-        <p class="batch-desc">Rename all entries matching a detail string.</p> 
-        <form id="batch-form" class="grid batch-grid"> 
-          <label>Old Name 
-            <input type="text" id="batch-old" placeholder="e.g. Unsohsun Electricity" list="batch-list" autocomplete="off" required /> 
-            <datalist id="batch-list"></datalist> 
-          </label> 
-          <label>New Name <input type="text" id="batch-new" placeholder="e.g. Umsosun Electricity" required /></label> 
-          <div class="modal-buttons"> 
-            <button type="submit" class="save-btn">Rename All</button> 
-            <button type="button" id="batch-cancel" class="cancel-btn">Cancel</button> 
-          </div> 
-        </form> 
-      </div> 
-    </div> 
-
-    <!-- Batch Category Reassignment Modal --> 
-    <div id="batch-cat-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="batch-cat-modal-title"> 
-      <div class="modal-content"> 
-        <h2 id="batch-cat-modal-title">Batch Category Reassignment</h2> 
-        <p class="batch-desc">Move all expenses from one category to another. Useful before deleting a category.</p> 
-        <form id="batch-cat-form" class="grid batch-grid"> 
-          <label>From Category 
-            <select id="batch-cat-old" required></select> 
-          </label> 
-          <label>To Category 
-            <select id="batch-cat-new" required></select> 
-          </label> 
-          <div class="modal-buttons"> 
-            <button type="submit" class="save-btn">Reassign All</button> 
-            <button type="button" id="batch-cat-cancel" class="cancel-btn">Cancel</button> 
           </div> 
         </form> 
       </div> 

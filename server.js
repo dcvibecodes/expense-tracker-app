@@ -332,7 +332,14 @@ function getLockPage() {
 }
 
 app.use(authMiddleware);
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public"), {
+  etag: false,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith(".html") || filePath.endsWith(".js") || filePath.endsWith(".css")) {
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    }
+  }
+}));
 
 function isValidDate(v) {
   return /^\d{4}-\d{2}-\d{2}$/.test(v);

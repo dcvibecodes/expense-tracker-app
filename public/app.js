@@ -870,16 +870,6 @@ const reportClearSelection = document.getElementById("report-clear-selection");
 let reportRows = [];
 let selectedReportIds = new Set();
 
-// Report filters toggle
-const reportFiltersToggle = document.getElementById("report-filters-toggle");
-const reportFiltersContent = document.getElementById("report-filters-content");
-reportFiltersToggle.addEventListener("click", () => {
-  const isExpanded = reportFiltersContent.style.display !== "none";
-  reportFiltersContent.style.display = isExpanded ? "none" : "block";
-  reportFiltersToggle.setAttribute("aria-expanded", String(!isExpanded));
-  reportFiltersToggle.textContent = isExpanded ? "🔍 Filters" : "🔍 Hide Filters";
-});
-
 populateGenericYearPicker(reportYear, true);
 setReportDefaults();
 
@@ -910,16 +900,14 @@ document.addEventListener("click", e => {
 });
 
 async function fetchCharts() {
+  try {
   let month, year;
 
   if (reportMonth.value) {
     month = parseInt(reportMonth.value, 10);
     year = (reportYear.value && reportYear.value !== "all") ? parseInt(reportYear.value, 10) : new Date().getFullYear();
   } else {
-    month = reportMonth.value
-      ? parseInt(reportMonth.value, 10)
-      : (new Date().getMonth() + 1);
-
+    month = (new Date().getMonth() + 1);
     year = (reportYear.value && reportYear.value !== "all") ? parseInt(reportYear.value, 10) : new Date().getFullYear();
   }
 
@@ -941,6 +929,7 @@ async function fetchCharts() {
   months.map(({ month, year }) =>
     fetch(`/api/charts?month=${month}&year=${year}`)
       .then(r => r.ok ? r.json() : null)
+      .catch(() => null)
   )
 );
 
@@ -948,9 +937,18 @@ return {
   months,
   data: responses.map(r => r ? r.pie : {})
 };
+  } catch (err) {
+    console.error("fetchCharts error:", err);
+    return null;
+  }
 }
 
 function renderCharts(chartData) {
+  if (typeof Chart === "undefined") {
+    console.warn("Chart.js not loaded yet");
+    return;
+  }
+  if (!chartData || !chartData.months || !chartData.data) return;
 
   const { months, data } = chartData;
 
@@ -1100,8 +1098,12 @@ async function loadReports() {
 
     // Don't update chart when searching — chart shows broad trends
     if (!search) {
-      const charts = await fetchCharts();
-      renderCharts(charts);
+      try {
+        const charts = await fetchCharts();
+        if (charts) renderCharts(charts);
+      } catch (chartErr) {
+        console.error("Chart loading failed:", chartErr);
+      }
     }
   } catch {
     reportWrap.innerHTML = `<p class="report-empty">Failed to load reports.</p>`;

@@ -1,6 +1,31 @@
-# Expenses+ v3.4.0
+# Expenses+ v3.5.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.5.0
+
+### Reports Tab Cleanup
+- **Filters always visible** — removed the toggle button; filters are permanently shown for immediate access
+- **CSV button moved** — download button now sits next to Reset, eliminating the separate toolbar row
+- **Summary line above table** — entry count and category totals ("12 entries | Needs: ₹ 23,551 | Total: ₹ 24,694") moved above the table in a smaller, subtler style
+- **Removed hierarchical report view** — cleaned out unused year/month/day collapsible tree CSS and logic; only the flat table view remains
+- **Consistent table borders** — report table header border now matches the Tracker tab's 1px style
+
+### Reliability
+- **Chart.js bundled locally** — no longer depends on CDN (`cdn.jsdelivr.net`); charts load regardless of VPN, firewall, or network conditions
+- **Error isolation** — chart loading failures no longer overwrite the data table with "Failed to load reports"; table and charts have independent error handling
+- **Service worker cache bumped** (v9) — forces stale caches to purge after update
+- **No-cache headers** — server sets `Cache-Control: no-cache` on HTML/JS/CSS to prevent stale file issues during development
+
+### Mobile Fixes
+- **Foreign currency alignment** — original amount (e.g. ₫ 30,000) now aligns under the base currency amount on mobile card layout
+- **Report table actions column** — widened and removed overflow clipping so delete button is fully visible on scroll
+- **Reset + CSV buttons side-by-side** — on mobile, both buttons share a row at half-width instead of stacking
+
+### Code Cleanup
+- Removed dead CSS: `.filters-toggle-btn`, `.report-toolbar`, `.report-toolbar-btn`, `.rpt-year`, `.rpt-month`, `.rpt-day`, `.rpt-chevron`, `.rpt-children`, `.rpt-preview`, `.rpt-day-text`
+- Removed duplicate `.chart-toggle-btn.active` rule
+- Removed unused `reportFiltersContent` JS variable
 
 ## What's New in v3.4.0
 
@@ -115,7 +140,7 @@ Runs at http://localhost:3000
 | Backend | Node.js, Express |
 | Database | SQLite3 |
 | Frontend | Vanilla JS (no framework, no build step) |
-| Charts | Chart.js 4.4.7 (CDN) |
+| Charts | Chart.js 4.4.7 (bundled locally) |
 | Security | PBKDF2 PIN hashing, express-session, rate limiting |
 | PWA | Service worker, Web App Manifest |
 

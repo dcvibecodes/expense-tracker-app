@@ -411,7 +411,7 @@ tbody tr:hover td { background: rgba(59, 130, 246, 0.03); }
   min-width: 0;
 }
 .rpt-cat { text-align: left; }
-.rpt-amt { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; padding-right: 10px; }
+.rpt-amt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-right: 10px; }
 .rpt-flat-row > .rpt-amt { display: block; line-height: 1.4; align-self: center; }
 .rpt-actions {
   display: flex;
@@ -434,6 +434,9 @@ tbody tr:hover td { background: rgba(59, 130, 246, 0.03); }
   text-transform: uppercase;
   letter-spacing: 0.3px;
   color: var(--text-secondary);
+}
+.rpt-flat-row.rpt-header > .rpt-amt {
+  justify-content: flex-end;
 }
 
 .rpt-row,

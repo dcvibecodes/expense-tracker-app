@@ -620,7 +620,6 @@ function closeCopyModal() {
 }
 
 copyCancel.addEventListener("click", closeCopyModal);
-copyModal.addEventListener("click", e => { if (e.target === copyModal) closeCopyModal(); });
 
 copyForm.addEventListener("submit", async e => {
   e.preventDefault();
@@ -727,7 +726,6 @@ editForm.addEventListener("submit", async e => {
   saveBtn.textContent = "Save";
 });
 editCancel.addEventListener("click", closeEditModal);
-editModal.addEventListener("click", e => { if (e.target === editModal) closeEditModal(); });
 
 // ===== ADD EXPENSE =====
 const addExpenseMsg = document.getElementById("add-expense-msg");

@@ -914,10 +914,13 @@ app.get("/api/charts", (req, res) => {
 // --- Reports API ---
 
 app.get("/api/reports", (req, res) => {
-  const { year, month, category, search } = req.query;
+  const { year, month, day, startDay, endDay, category, search } = req.query;
   const where = [];
   const params = [];
   const trimmedSearch = typeof search === "string" ? search.trim() : "";
+  const dayNumber = Number.parseInt(day, 10);
+  const startDayNumber = Number.parseInt(startDay, 10);
+  const endDayNumber = Number.parseInt(endDay, 10);
 
   if (trimmedSearch) {
     // Search overrides year/month — searches across all data
@@ -929,6 +932,15 @@ app.get("/api/reports", (req, res) => {
     if (month) {
       where.push("substr(date, 6, 2) = ?");
       params.push(String(month).padStart(2, "0"));
+      if (dayNumber >= 1 && dayNumber <= 31) {
+        where.push("substr(date, 9, 2) = ?");
+        params.push(String(dayNumber).padStart(2, "0"));
+      } else if (startDayNumber >= 1 && startDayNumber <= 31 && endDayNumber >= 1 && endDayNumber <= 31) {
+        const rangeStart = Math.min(startDayNumber, endDayNumber);
+        const rangeEnd = Math.max(startDayNumber, endDayNumber);
+        where.push("substr(date, 9, 2) BETWEEN ? AND ?");
+        params.push(String(rangeStart).padStart(2, "0"), String(rangeEnd).padStart(2, "0"));
+      }
     }
   } else if (!year) {
     // No year specified at all — default to current month
@@ -957,10 +969,13 @@ ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY date DESC, id DES
 // --- CSV Export API ---
 
 app.get("/api/export/csv", (req, res) => {
-  const { year, month, all, search } = req.query;
+  const { year, month, day, startDay, endDay, category, all, search } = req.query;
   const where = [];
   const params = [];
   const trimmedSearch = typeof search === "string" ? search.trim() : "";
+  const dayNumber = Number.parseInt(day, 10);
+  const startDayNumber = Number.parseInt(startDay, 10);
+  const endDayNumber = Number.parseInt(endDay, 10);
 
   if (trimmedSearch) {
     where.push("lower(details) LIKE ?");
@@ -973,6 +988,15 @@ app.get("/api/export/csv", (req, res) => {
     if (month) {
       where.push("substr(date, 6, 2) = ?");
       params.push(String(month).padStart(2, "0"));
+      if (dayNumber >= 1 && dayNumber <= 31) {
+        where.push("substr(date, 9, 2) = ?");
+        params.push(String(dayNumber).padStart(2, "0"));
+      } else if (startDayNumber >= 1 && startDayNumber <= 31 && endDayNumber >= 1 && endDayNumber <= 31) {
+        const rangeStart = Math.min(startDayNumber, endDayNumber);
+        const rangeEnd = Math.max(startDayNumber, endDayNumber);
+        where.push("substr(date, 9, 2) BETWEEN ? AND ?");
+        params.push(String(rangeStart).padStart(2, "0"), String(rangeEnd).padStart(2, "0"));
+      }
     }
   } else {
     const now = new Date();
@@ -980,6 +1004,11 @@ app.get("/api/export/csv", (req, res) => {
     const m = String(now.getMonth() + 1).padStart(2, "0");
     where.push("substr(date, 1, 7) = ?");
     params.push(`${y}-${m}`);
+  }
+
+  if (category && category !== "all") {
+    where.push("category = ?");
+    params.push(category);
   }
 
   const sql = `SELECT date, details, category, amount FROM expenses ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY date ASC, id ASC`;

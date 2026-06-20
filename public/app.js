@@ -865,11 +865,15 @@ const reportBatchDetails = document.getElementById("report-batch-details");
 const reportApplyCategory = document.getElementById("report-apply-category");
 const reportApplyDetails = document.getElementById("report-apply-details");
 const reportClearSelection = document.getElementById("report-clear-selection");
+const reportDayLinks = document.getElementById("report-day-links");
 let reportRows = [];
 let selectedReportIds = new Set();
+let selectedReportStartDay = "";
+let selectedReportEndDay = "";
 
 populateGenericYearPicker(reportYear, true);
 setReportDefaults();
+renderReportDayLinks();
 
 document.addEventListener("click", e => {
   if (e.target.id === "chart-view-amounts") {
@@ -1083,6 +1087,9 @@ async function loadReports() {
   } else if (reportYear.value) {
     params.set("year", reportYear.value);
     if (reportMonth.value) params.set("month", reportMonth.value);
+  }
+  if (!search && reportYear.value !== "all" && reportYear.value && reportMonth.value) {
+    applyReportDayParams(params);
   }
   if (reportCategory.value && reportCategory.value !== "all") {
     params.set("category", reportCategory.value);
@@ -1331,12 +1338,100 @@ function debouncedLoadReports() {
   reportFilterDebounce = setTimeout(loadReports, 300);
 }
 
+function clearReportDaySelection() {
+  selectedReportStartDay = "";
+  selectedReportEndDay = "";
+}
+
+function getReportDayRange() {
+  const start = parseInt(selectedReportStartDay, 10);
+  const end = parseInt(selectedReportEndDay || selectedReportStartDay, 10);
+  if (!start || !end) return null;
+
+  return {
+    start: Math.min(start, end),
+    end: Math.max(start, end)
+  };
+}
+
+function applyReportDayParams(params) {
+  const range = getReportDayRange();
+  if (!range) return;
+
+  if (range.start === range.end) {
+    params.set("day", range.start);
+  } else {
+    params.set("startDay", range.start);
+    params.set("endDay", range.end);
+  }
+}
+
+function renderReportDayLinks() {
+  if (!reportDayLinks) return;
+
+  const search = reportSearch.value.trim();
+  const year = parseInt(reportYear.value, 10);
+  const month = parseInt(reportMonth.value, 10);
+
+  if (search || reportYear.value === "all" || !year || !month) {
+    reportDayLinks.innerHTML = "";
+    return;
+  }
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  if (Number(selectedReportStartDay) > daysInMonth || Number(selectedReportEndDay) > daysInMonth) {
+    clearReportDaySelection();
+  }
+  const selectedRange = getReportDayRange();
+
+  const links = [];
+  for (let day = 1; day <= daysInMonth; day++) {
+    const isInRange = selectedRange && day >= selectedRange.start && day <= selectedRange.end;
+    const isEndpoint = selectedRange && (day === selectedRange.start || day === selectedRange.end);
+    const classes = [
+      "report-day-link",
+      isInRange ? "in-range" : "",
+      isEndpoint ? "active" : ""
+    ].filter(Boolean).join(" ");
+    links.push(`<button type="button" class="${classes}" data-day="${day}" aria-pressed="${isInRange ? "true" : "false"}">${day}</button>`);
+  }
+
+  reportDayLinks.innerHTML = links.join("");
+}
+
+function selectReportDay(day, extendRange) {
+  if (!selectedReportStartDay) {
+    selectedReportStartDay = day;
+    selectedReportEndDay = "";
+    return;
+  }
+
+  const isSingleDay = !selectedReportEndDay || selectedReportStartDay === selectedReportEndDay;
+
+  if (isSingleDay && selectedReportStartDay === day && !extendRange) {
+    clearReportDaySelection();
+    return;
+  }
+
+  if (isSingleDay && (extendRange || selectedReportStartDay !== day)) {
+    selectedReportEndDay = day;
+    return;
+  }
+
+  selectedReportStartDay = day;
+  selectedReportEndDay = "";
+}
+
 // When user changes year/month/category, clear search (they want filtered browsing)
-function onReportFilterChange() {
+function onReportFilterChange(e) {
   if (reportSearch.value.trim()) {
     reportSearch.value = "";
     updateReportFilterState();
   }
+  if (e && (e.currentTarget === reportYear || e.currentTarget === reportMonth)) {
+    clearReportDaySelection();
+  }
+  renderReportDayLinks();
   debouncedLoadReports();
 }
 
@@ -1344,9 +1439,22 @@ reportYear.addEventListener("change", onReportFilterChange);
 reportMonth.addEventListener("change", onReportFilterChange);
 reportCategory.addEventListener("change", onReportFilterChange);
 
+reportDayLinks.addEventListener("click", e => {
+  const btn = e.target.closest(".report-day-link");
+  if (!btn) return;
+
+  reportSearch.value = "";
+  selectReportDay(btn.dataset.day, e.shiftKey);
+  updateReportFilterState();
+  renderReportDayLinks();
+  loadReports();
+});
+
 // Report search — as-you-type, overrides date filters, min 2 chars
 reportSearch.addEventListener("input", () => {
+  clearReportDaySelection();
   updateReportFilterState();
+  renderReportDayLinks();
   clearTimeout(reportFilterDebounce);
   const q = reportSearch.value.trim();
   if (q.length === 1) return; // wait for at least 2 chars
@@ -1365,8 +1473,10 @@ function updateReportFilterState() {
 document.getElementById("report-reset").addEventListener("click", () => {
   reportSearch.value = "";
   reportCategory.value = "all";
+  clearReportDaySelection();
   setReportDefaults();
   updateReportFilterState();
+  renderReportDayLinks();
   loadReports();
 });
 
@@ -1375,6 +1485,7 @@ function setReportDefaults() {
   reportYear.value = now.getFullYear();
   reportMonth.value = String(now.getMonth() + 1);
   reportSearch.value = "";
+  clearReportDaySelection();
 }
 
 // ===== CSV DOWNLOAD (uses report filters) =====
@@ -1389,6 +1500,12 @@ document.getElementById("report-csv-btn").addEventListener("click", async () => 
   } else if (reportYear.value) {
     params.set("year", reportYear.value);
     if (reportMonth.value) params.set("month", reportMonth.value);
+  }
+  if (!search && reportYear.value !== "all" && reportYear.value && reportMonth.value) {
+    applyReportDayParams(params);
+  }
+  if (reportCategory.value && reportCategory.value !== "all") {
+    params.set("category", reportCategory.value);
   }
 
   try {

@@ -2840,14 +2840,30 @@ function renderStartingBalanceRow(grid, months) {
   });
   grid.appendChild(firstCell);
 
-  // Remaining months: empty
-  for (let i = 1; i < months.length; i++) {
-    const cell = document.createElement("div");
-    cell.className = "extrap-cell";
-    grid.appendChild(cell);
-  }
-}
+  // Remaining months: show previous month's closing balance
+let runningBalance = Number(extrapSettings.starting_balance || 0);
 
+for (let i = 1; i < months.length; i++) {
+  const prevMonth = months[i - 1];
+
+  const incomeTotal = extrapIncome
+    .filter(x => x.month === prevMonth)
+    .reduce((sum, x) => sum + Number(x.amount || 0), 0);
+
+  const expenseTotal = extrapOneoff
+    .filter(x => x.month === prevMonth)
+    .reduce((sum, x) => sum + Number(x.amount || 0), 0);
+
+  runningBalance += incomeTotal - expenseTotal;
+
+  const cell = document.createElement("div");
+  cell.className = "extrap-cell extrap-cell-amount";
+  cell.style.fontWeight = "600";
+  cell.textContent = formatExtrapAmount(runningBalance);
+
+  grid.appendChild(cell);
+}
+}
 function renderSectionHeader(grid, title, numMonths) {
   const header = document.createElement("div");
   header.className = "extrap-cell extrap-section-header";
@@ -3154,13 +3170,25 @@ function exportForecastCSV() {
     ...months.map(formatMonthLabel)
   ]);
 
-  rows.push([
-    "Starting Balance",
-    "",
-    ...months.map((m, idx) =>
-      idx === 0 ? (extrapSettings.starting_balance || 0) : ""
-    )
-  ]);
+  const startingBalanceRow = ["Starting Balance", ""];
+
+let openingBalance = Number(extrapSettings.starting_balance || 0);
+
+months.forEach((month, idx) => {
+  startingBalanceRow.push(openingBalance);
+
+  const incomeTotal = extrapIncome
+    .filter(x => x.month === month)
+    .reduce((sum, x) => sum + Number(x.amount || 0), 0);
+
+  const expenseTotal = extrapOneoff
+    .filter(x => x.month === month)
+    .reduce((sum, x) => sum + Number(x.amount || 0), 0);
+
+  openingBalance += incomeTotal - expenseTotal;
+});
+
+rows.push(startingBalanceRow);
 
   const incomeLabels = getOrderedLabels(extrapIncome);
 
@@ -3192,7 +3220,7 @@ function exportForecastCSV() {
     rows.push(row);
   });
 
-  const balanceRow = ["Balance", ""];
+ const closingBalanceRow = ["Closing Balance", ""];
 
 let runningBalance = Number(extrapSettings.starting_balance || 0);
 
@@ -3207,10 +3235,10 @@ months.forEach(month => {
 
   runningBalance += incomeTotal - expenseTotal;
 
-  balanceRow.push(runningBalance);
+  closingBalanceRow.push(runningBalance);
 });
 
-rows.push(balanceRow);
+rows.push(closingBalanceRow);
 
   const csv = rows
     .map(row =>

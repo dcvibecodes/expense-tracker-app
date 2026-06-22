@@ -3142,6 +3142,98 @@ document.querySelectorAll(".bottom-nav-btn").forEach(btn => {
   });
 });
 
+function exportForecastCSV() {
+  const months = getExtrapMonths();
+  if (!months.length) return;
+
+  const rows = [];
+
+  rows.push([
+    "Type",
+    "Label",
+    ...months.map(formatMonthLabel)
+  ]);
+
+  rows.push([
+    "Starting Balance",
+    "",
+    ...months.map((m, idx) =>
+      idx === 0 ? (extrapSettings.starting_balance || 0) : ""
+    )
+  ]);
+
+  const incomeLabels = getOrderedLabels(extrapIncome);
+
+  incomeLabels.forEach(label => {
+    const row = ["Income", label];
+
+    months.forEach(month => {
+      const item = extrapIncome.find(
+        x => x.label === label && x.month === month
+      );
+      row.push(item ? item.amount : 0);
+    });
+
+    rows.push(row);
+  });
+
+  const expenseLabels = getOrderedLabels(extrapOneoff);
+
+  expenseLabels.forEach(label => {
+    const row = ["Expense", label];
+
+    months.forEach(month => {
+      const item = extrapOneoff.find(
+        x => x.label === label && x.month === month
+      );
+      row.push(item ? -Math.abs(Number(item.amount || 0)) : 0);
+    });
+
+    rows.push(row);
+  });
+
+  const balanceRow = ["Balance", ""];
+
+let runningBalance = Number(extrapSettings.starting_balance || 0);
+
+months.forEach(month => {
+  const incomeTotal = extrapIncome
+    .filter(x => x.month === month)
+    .reduce((sum, x) => sum + Number(x.amount || 0), 0);
+
+  const expenseTotal = extrapOneoff
+    .filter(x => x.month === month)
+    .reduce((sum, x) => sum + Number(x.amount || 0), 0);
+
+  runningBalance += incomeTotal - expenseTotal;
+
+  balanceRow.push(runningBalance);
+});
+
+rows.push(balanceRow);
+
+  const csv = rows
+    .map(row =>
+      row.map(value => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",")
+    )
+    .join("\n");
+
+  const blob = new Blob([csv], {
+    type: "text/csv;charset=utf-8;"
+  });
+
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `forecast-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+document.getElementById("extrap-export-btn")?.addEventListener("click", () => {
+  exportForecastCSV();
+});
+
 // Reset forecast
 document.getElementById("extrap-reset-btn")?.addEventListener("click", async () => {
   if (!await showConfirm("Reset Forecast", "This will delete all income and expense rows, reset the starting balance, and clear the forecast completely. This cannot be undone. Continue?")) return;

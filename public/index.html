@@ -224,15 +224,25 @@
           <h2>Cash Flow Forecast</h2>
           <p class="settings-desc">Project your monthly balance. Click any cell to edit. Use + to add rows, × to remove.</p>
           <div class="extrap-config-row">
-            <label>Start Month
-              <select id="extrap-start-month"></select>
-            </label>
-            <label>Months
-              <input type="number" id="extrap-num-months" min="1" max="24" value="6" />
-            </label>
-            <button id="extrap-apply-btn" type="button" class="add-btn">Apply</button>
-            <button id="extrap-reset-btn" type="button" class="cancel-btn">Reset</button>
-          </div>
+          <label>Start Month
+            <select id="extrap-start-month"></select>
+          </label>
+          <label>Months
+            <input type="number" id="extrap-num-months" min="1" max="24" value="6" />
+          </label>
+
+          <button id="extrap-apply-btn" type="button" class="add-btn">
+            Apply
+          </button>
+
+          <button id="extrap-reset-btn" type="button" class="btn-secondary">
+            Reset
+          </button>
+
+          <button id="extrap-export-btn" type="button" class="btn-secondary">
+            ⬇ CSV
+          </button>
+        </div>
         </section>
 
         <section class="card extrap-grid-card">

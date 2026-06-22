@@ -60,6 +60,58 @@ function getCurrencySymbol(code) {
   return CURRENCY_SYMBOLS[code] || code;
 }
 
+function getCurrencyLocale(currency) {
+  const locales = {
+    INR: "en-IN",
+
+    USD: "en-US",
+    CAD: "en-CA",
+    AUD: "en-AU",
+    NZD: "en-NZ",
+    SGD: "en-SG",
+    HKD: "zh-HK",
+
+    GBP: "en-GB",
+    EUR: "de-DE",
+    CHF: "de-CH",
+
+    JPY: "ja-JP",
+    CNY: "zh-CN",
+    KRW: "ko-KR",
+    TWD: "zh-TW",
+
+    THB: "th-TH",
+    VND: "vi-VN",
+    MYR: "ms-MY",
+    PHP: "en-PH",
+    IDR: "id-ID",
+
+    AED: "ar-AE",
+    SAR: "ar-SA",
+
+    BDT: "bn-BD",
+    LKR: "en-LK",
+    NPR: "ne-NP",
+    PKR: "en-PK",
+
+    BRL: "pt-BR",
+    MXN: "es-MX",
+    ZAR: "en-ZA",
+
+    RUB: "ru-RU",
+    TRY: "tr-TR",
+
+    PLN: "pl-PL",
+    SEK: "sv-SE",
+    NOK: "nb-NO",
+    DKK: "da-DK",
+    HUF: "hu-HU",
+    CZK: "cs-CZ"
+  };
+
+  return locales[currency] || "en-US";
+}
+
 // ===== HTML ESCAPE (XSS prevention) =====
 function escapeHtml(str) {
   if (!str) return "";
@@ -177,11 +229,21 @@ function formatDate(isoStr) {
 function formatAmount(value) {
   const num = Number(value);
   if (!Number.isFinite(num)) return getCurrencySymbol(baseCurrency) + " 0";
-  return getCurrencySymbol(baseCurrency) + " " + new Intl.NumberFormat("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(num);
+
+  return getCurrencySymbol(baseCurrency) + " " +
+    new Intl.NumberFormat(getCurrencyLocale(baseCurrency), {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(num);
 }
 function formatAmountRounded(value) {
   const num = Math.round(Number(value) || 0);
-  return getCurrencySymbol(baseCurrency) + " " + new Intl.NumberFormat("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
+
+  return getCurrencySymbol(baseCurrency) + " " +
+    new Intl.NumberFormat(getCurrencyLocale(baseCurrency), {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(num);
 }
 function formatCategory(value) {
   if (!value) return "";
@@ -2599,8 +2661,17 @@ function populateStartMonthDropdown() {
 function formatExtrapAmount(value) {
   const num = Number(value);
   if (!Number.isFinite(num)) return "0";
+
   const sym = getCurrencySymbol(baseCurrency);
-  const formatted = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(num));
+
+  const formatted = new Intl.NumberFormat(
+    getCurrencyLocale(baseCurrency),
+    {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }
+  ).format(Math.abs(num));
+
   if (num < 0) return `-${sym} ${formatted}`;
   return `${sym} ${formatted}`;
 }

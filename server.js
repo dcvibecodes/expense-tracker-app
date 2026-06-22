@@ -1464,6 +1464,7 @@ db.serialize(() => {
       month TEXT NOT NULL,
       label TEXT NOT NULL,
       amount REAL NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
       UNIQUE(month, label)
     )
   `);
@@ -1473,6 +1474,7 @@ db.serialize(() => {
       month TEXT NOT NULL,
       label TEXT NOT NULL,
       amount REAL NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
       UNIQUE(month, label)
     )
   `);
@@ -1480,9 +1482,35 @@ db.serialize(() => {
     CREATE TABLE IF NOT EXISTS extrap_settings (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       start_month TEXT NOT NULL,
-      num_months INTEGER NOT NULL DEFAULT 6
+      num_months INTEGER NOT NULL DEFAULT 6,
+      starting_balance REAL NOT NULL DEFAULT 0
     )
   `);
+
+  // Migrate: add starting_balance if missing
+  db.all("PRAGMA table_info(extrap_settings)", (err, cols) => {
+    if (err || !cols) return;
+    const colNames = cols.map(c => c.name);
+    if (!colNames.includes("starting_balance")) {
+      db.run("ALTER TABLE extrap_settings ADD COLUMN starting_balance REAL NOT NULL DEFAULT 0");
+    }
+  });
+
+  // Migrate: add sort_order if missing
+  db.all("PRAGMA table_info(extrap_income)", (err, cols) => {
+    if (err || !cols) return;
+    const colNames = cols.map(c => c.name);
+    if (!colNames.includes("sort_order")) {
+      db.run("ALTER TABLE extrap_income ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
+    }
+  });
+  db.all("PRAGMA table_info(extrap_oneoff)", (err, cols) => {
+    if (err || !cols) return;
+    const colNames = cols.map(c => c.name);
+    if (!colNames.includes("sort_order")) {
+      db.run("ALTER TABLE extrap_oneoff ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
+    }
+  });
 
   // Migrate existing tables to add UNIQUE constraint if missing
   db.get("SELECT sql FROM sqlite_master WHERE type='table' AND name='extrap_income'", (err, row) => {
@@ -1495,9 +1523,10 @@ db.serialize(() => {
           month TEXT NOT NULL,
           label TEXT NOT NULL,
           amount REAL NOT NULL,
+          sort_order INTEGER NOT NULL DEFAULT 0,
           UNIQUE(month, label)
         )`);
-        db.run("INSERT OR IGNORE INTO extrap_income (id, month, label, amount) SELECT id, month, label, amount FROM extrap_income_old");
+        db.run("INSERT OR IGNORE INTO extrap_income (id, month, label, amount, sort_order) SELECT id, month, label, amount, COALESCE(sort_order, 0) FROM extrap_income_old");
         db.run("DROP TABLE extrap_income_old");
       });
     }
@@ -1512,9 +1541,10 @@ db.serialize(() => {
           month TEXT NOT NULL,
           label TEXT NOT NULL,
           amount REAL NOT NULL,
+          sort_order INTEGER NOT NULL DEFAULT 0,
           UNIQUE(month, label)
         )`);
-        db.run("INSERT OR IGNORE INTO extrap_oneoff (id, month, label, amount) SELECT id, month, label, amount FROM extrap_oneoff_old");
+        db.run("INSERT OR IGNORE INTO extrap_oneoff (id, month, label, amount, sort_order) SELECT id, month, label, amount, COALESCE(sort_order, 0) FROM extrap_oneoff_old");
         db.run("DROP TABLE extrap_oneoff_old");
       });
     }
@@ -1525,12 +1555,12 @@ db.serialize(() => {
 
 // Get extrapolation settings
 app.get("/api/extrapolate/settings", (req, res) => {
-  db.get("SELECT start_month, num_months FROM extrap_settings WHERE id = 1", (err, row) => {
+  db.get("SELECT start_month, num_months, starting_balance FROM extrap_settings WHERE id = 1", (err, row) => {
     if (err) return res.status(500).json({ error: "DB error" });
     if (!row) {
-      // Default: current month, 6 months
+      // Default: current month, 6 months, 0 starting balance
       const now = new Date();
-      const def = { start_month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`, num_months: 6 };
+      const def = { start_month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`, num_months: 6, starting_balance: 0 };
       return res.json(def);
     }
     return res.json(row);
@@ -1539,7 +1569,7 @@ app.get("/api/extrapolate/settings", (req, res) => {
 
 // Save extrapolation settings
 app.put("/api/extrapolate/settings", (req, res) => {
-  const { start_month, num_months } = req.body;
+  const { start_month, num_months, starting_balance } = req.body;
   if (!start_month || !/^\d{4}-\d{2}$/.test(start_month)) {
     return res.status(400).json({ error: "Invalid start_month (use YYYY-MM)." });
   }
@@ -1547,15 +1577,31 @@ app.put("/api/extrapolate/settings", (req, res) => {
   if (!Number.isInteger(n) || n < 1 || n > 24) {
     return res.status(400).json({ error: "num_months must be 1-24." });
   }
-  db.run("INSERT OR REPLACE INTO extrap_settings (id, start_month, num_months) VALUES (1, ?, ?)", [start_month, n], (err) => {
+  const bal = Number.isFinite(Number(starting_balance)) ? Number(starting_balance) : 0;
+  db.run("INSERT OR REPLACE INTO extrap_settings (id, start_month, num_months, starting_balance) VALUES (1, ?, ?, ?)", [start_month, n, bal], (err) => {
     if (err) return res.status(500).json({ error: "Failed to save settings." });
     return res.json({ success: true });
   });
 });
 
+// Purge forecast data for months before a given month
+app.post("/api/extrapolate/purge", (req, res) => {
+  const { before_month } = req.body;
+  if (!before_month || !/^\d{4}-\d{2}$/.test(before_month)) {
+    return res.status(400).json({ error: "Invalid before_month." });
+  }
+  db.serialize(() => {
+    db.run("DELETE FROM extrap_income WHERE month < ?", [before_month]);
+    db.run("DELETE FROM extrap_oneoff WHERE month < ?", [before_month], function(err) {
+      if (err) return res.status(500).json({ error: "Failed to purge." });
+      return res.json({ success: true });
+    });
+  });
+});
+
 // Get all income entries
 app.get("/api/extrapolate/income", (req, res) => {
-  db.all("SELECT id, month, label, amount FROM extrap_income ORDER BY month ASC, id ASC", (err, rows) => {
+  db.all("SELECT id, month, label, amount, sort_order FROM extrap_income ORDER BY sort_order ASC, id ASC", (err, rows) => {
     if (err) return res.status(500).json({ error: "DB error" });
     return res.json(rows);
   });
@@ -1568,9 +1614,22 @@ app.post("/api/extrapolate/income", (req, res) => {
   if (!label || typeof label !== "string" || !label.trim()) return res.status(400).json({ error: "Label required." });
   const amt = Number(amount);
   if (!Number.isFinite(amt)) return res.status(400).json({ error: "Valid amount required." });
-  db.run("INSERT OR REPLACE INTO extrap_income (month, label, amount) VALUES (?, ?, ?)", [month, label.trim(), amt], function(err) {
-    if (err) return res.status(500).json({ error: "Failed to add income." });
-    return res.json({ id: this.lastID });
+  // Get sort_order: use existing row's order if updating, otherwise next available
+  db.get("SELECT sort_order FROM extrap_income WHERE month = ? AND label = ?", [month, label.trim()], (err, existing) => {
+    if (existing) {
+      db.run("INSERT OR REPLACE INTO extrap_income (month, label, amount, sort_order) VALUES (?, ?, ?, ?)", [month, label.trim(), amt, existing.sort_order], function(err2) {
+        if (err2) return res.status(500).json({ error: "Failed to add income." });
+        return res.json({ id: this.lastID });
+      });
+    } else {
+      db.get("SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM extrap_income", (err2, row) => {
+        const order = row ? row.next_order : 1;
+        db.run("INSERT OR REPLACE INTO extrap_income (month, label, amount, sort_order) VALUES (?, ?, ?, ?)", [month, label.trim(), amt, order], function(err3) {
+          if (err3) return res.status(500).json({ error: "Failed to add income." });
+          return res.json({ id: this.lastID });
+        });
+      });
+    }
   });
 });
 
@@ -1601,7 +1660,7 @@ app.delete("/api/extrapolate/income/:id", (req, res) => {
 
 // Get all one-off entries
 app.get("/api/extrapolate/oneoff", (req, res) => {
-  db.all("SELECT id, month, label, amount FROM extrap_oneoff ORDER BY month ASC, id ASC", (err, rows) => {
+  db.all("SELECT id, month, label, amount, sort_order FROM extrap_oneoff ORDER BY sort_order ASC, id ASC", (err, rows) => {
     if (err) return res.status(500).json({ error: "DB error" });
     return res.json(rows);
   });
@@ -1614,9 +1673,21 @@ app.post("/api/extrapolate/oneoff", (req, res) => {
   if (!label || typeof label !== "string" || !label.trim()) return res.status(400).json({ error: "Label required." });
   const amt = Number(amount);
   if (!Number.isFinite(amt)) return res.status(400).json({ error: "Valid amount required." });
-  db.run("INSERT OR REPLACE INTO extrap_oneoff (month, label, amount) VALUES (?, ?, ?)", [month, label.trim(), amt], function(err) {
-    if (err) return res.status(500).json({ error: "Failed to add one-off." });
-    return res.json({ id: this.lastID });
+  db.get("SELECT sort_order FROM extrap_oneoff WHERE month = ? AND label = ?", [month, label.trim()], (err, existing) => {
+    if (existing) {
+      db.run("INSERT OR REPLACE INTO extrap_oneoff (month, label, amount, sort_order) VALUES (?, ?, ?, ?)", [month, label.trim(), amt, existing.sort_order], function(err2) {
+        if (err2) return res.status(500).json({ error: "Failed to add one-off." });
+        return res.json({ id: this.lastID });
+      });
+    } else {
+      db.get("SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM extrap_oneoff", (err2, row) => {
+        const order = row ? row.next_order : 1;
+        db.run("INSERT OR REPLACE INTO extrap_oneoff (month, label, amount, sort_order) VALUES (?, ?, ?, ?)", [month, label.trim(), amt, order], function(err3) {
+          if (err3) return res.status(500).json({ error: "Failed to add one-off." });
+          return res.json({ id: this.lastID });
+        });
+      });
+    }
   });
 });
 
@@ -1657,6 +1728,24 @@ app.post("/api/extrapolate/reset", (req, res) => {
     db.run("DELETE FROM extrap_oneoff");
     db.run("DELETE FROM extrap_settings WHERE id = 1", (err) => {
       if (err) return res.status(500).json({ error: "Failed to reset." });
+      return res.json({ success: true });
+    });
+  });
+});
+
+// Reorder rows
+app.patch("/api/extrapolate/reorder", (req, res) => {
+  const { type, labels } = req.body;
+  if (!type || !["income", "oneoff"].includes(type)) return res.status(400).json({ error: "Invalid type." });
+  if (!Array.isArray(labels) || labels.length === 0) return res.status(400).json({ error: "labels required." });
+  const table = type === "income" ? "extrap_income" : "extrap_oneoff";
+  db.serialize(() => {
+    const stmt = db.prepare(`UPDATE ${table} SET sort_order = ? WHERE label = ?`);
+    for (let i = 0; i < labels.length; i++) {
+      stmt.run(i + 1, labels[i]);
+    }
+    stmt.finalize((err) => {
+      if (err) return res.status(500).json({ error: "Failed to reorder." });
       return res.json({ success: true });
     });
   });

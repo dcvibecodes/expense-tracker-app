@@ -2548,7 +2548,7 @@ function showUpdateBanner() {
 }
 
 // ===== FORECAST TAB =====
-let extrapSettings = { start_month: "", num_months: 6 };
+let extrapSettings = { start_month: "", num_months: 6, starting_balance: 0 };
 let extrapIncome = [];
 let extrapOneoff = [];
 
@@ -2687,7 +2687,8 @@ function renderExtrapGrid() {
     return;
   }
 
-  grid.style.gridTemplateColumns = `30px 150px repeat(${months.length}, 100px)`;
+  grid.style.gridTemplateColumns = `40px 150px repeat(${months.length}, minmax(100px, 1fr))`;
+  grid.style.minWidth = "";
   grid.innerHTML = "";
 
   // Header row
@@ -2704,24 +2705,72 @@ function renderExtrapGrid() {
     grid.appendChild(h);
   }
 
+  // Starting Balance row
+  renderStartingBalanceRow(grid, months);
+
   // Income section
   renderSectionHeader(grid, "Income", months.length);
-  const incomeLabels = [...new Set(extrapIncome.map(i => i.label))];
-  for (const label of incomeLabels) {
-    renderDataRow(grid, "income", label, months);
+  const incomeLabels = getOrderedLabels(extrapIncome);
+  for (let i = 0; i < incomeLabels.length; i++) {
+    renderDataRow(grid, "income", incomeLabels[i], months, i, incomeLabels.length);
   }
   renderAddRowButton(grid, "income", months.length);
 
   // Expenses section
   renderSectionHeader(grid, "Expenses", months.length);
-  const oneoffLabels = [...new Set(extrapOneoff.map(i => i.label))];
-  for (const label of oneoffLabels) {
-    renderDataRow(grid, "oneoff", label, months);
+  const oneoffLabels = getOrderedLabels(extrapOneoff);
+  for (let i = 0; i < oneoffLabels.length; i++) {
+    renderDataRow(grid, "oneoff", oneoffLabels[i], months, i, oneoffLabels.length);
   }
   renderAddRowButton(grid, "oneoff", months.length);
 
   // Balance row
   renderBalanceRow(grid, months);
+}
+
+function renderStartingBalanceRow(grid, months) {
+  // Empty del col
+  const delCell = document.createElement("div");
+  delCell.className = "extrap-cell";
+  grid.appendChild(delCell);
+
+  // Label
+  const labelCell = document.createElement("div");
+  labelCell.className = "extrap-cell extrap-cell-label";
+  labelCell.style.fontWeight = "600";
+  labelCell.textContent = "Starting Balance";
+  grid.appendChild(labelCell);
+
+  // First month: editable starting balance
+  const firstCell = document.createElement("div");
+  firstCell.className = "extrap-cell extrap-cell-amount";
+  firstCell.style.fontWeight = "600";
+  firstCell.style.cursor = "pointer";
+  firstCell.title = "Click to set starting balance";
+  const bal = extrapSettings.starting_balance;
+  firstCell.textContent = bal !== 0 ? formatExtrapAmount(bal) : "Click to set";
+  if (bal === 0) firstCell.style.color = "var(--text-secondary)";
+  firstCell.addEventListener("click", () => {
+    startInlineEdit(firstCell, String(extrapSettings.starting_balance || ""), async (val) => {
+      const num = parseFloat(val);
+      const newBal = Number.isFinite(num) ? num : 0;
+      extrapSettings.starting_balance = newBal;
+      await safeFetch("/api/extrapolate/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(extrapSettings)
+      });
+      await loadExtrapolateData();
+    });
+  });
+  grid.appendChild(firstCell);
+
+  // Remaining months: empty
+  for (let i = 1; i < months.length; i++) {
+    const cell = document.createElement("div");
+    cell.className = "extrap-cell";
+    grid.appendChild(cell);
+  }
 }
 
 function renderSectionHeader(grid, title, numMonths) {
@@ -2732,13 +2781,60 @@ function renderSectionHeader(grid, title, numMonths) {
   grid.appendChild(header);
 }
 
-function renderDataRow(grid, type, label, months) {
+// Get labels ordered by sort_order (use min sort_order per label)
+function getOrderedLabels(list) {
+  const labelMap = new Map();
+  for (const item of list) {
+    if (!labelMap.has(item.label) || item.sort_order < labelMap.get(item.label)) {
+      labelMap.set(item.label, item.sort_order);
+    }
+  }
+  return [...labelMap.entries()].sort((a, b) => a[1] - b[1]).map(e => e[0]);
+}
+
+async function reorderRows(type, labels) {
+  await safeFetch("/api/extrapolate/reorder", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type, labels })
+  });
+}
+
+function renderDataRow(grid, type, label, months, index, total) {
   const list = type === "income" ? extrapIncome : extrapOneoff;
   const entries = list.filter(e => e.label === label);
 
-  // Delete row button (first column)
+  // Delete row button (first column) + reorder
   const delCell = document.createElement("div");
   delCell.className = "extrap-cell extrap-cell-del";
+  
+  if (index > 0) {
+    const upBtn = document.createElement("button");
+    upBtn.className = "extrap-move-btn";
+    upBtn.textContent = "▲";
+    upBtn.title = "Move up";
+    upBtn.addEventListener("click", async () => {
+      const labels = getOrderedLabels(type === "income" ? extrapIncome : extrapOneoff);
+      [labels[index - 1], labels[index]] = [labels[index], labels[index - 1]];
+      await reorderRows(type, labels);
+      await loadExtrapolateData();
+    });
+    delCell.appendChild(upBtn);
+  }
+  if (index < total - 1) {
+    const downBtn = document.createElement("button");
+    downBtn.className = "extrap-move-btn";
+    downBtn.textContent = "▼";
+    downBtn.title = "Move down";
+    downBtn.addEventListener("click", async () => {
+      const labels = getOrderedLabels(type === "income" ? extrapIncome : extrapOneoff);
+      [labels[index], labels[index + 1]] = [labels[index + 1], labels[index]];
+      await reorderRows(type, labels);
+      await loadExtrapolateData();
+    });
+    delCell.appendChild(downBtn);
+  }
+
   const delBtn = document.createElement("button");
   delBtn.className = "extrap-row-delete-btn";
   delBtn.textContent = "✕";
@@ -2876,8 +2972,8 @@ function renderBalanceRow(grid, months) {
   labelCell.textContent = "Balance";
   grid.appendChild(labelCell);
 
-  // Running balance
-  let runningBalance = 0;
+  // Running balance (starts from starting_balance)
+  let runningBalance = extrapSettings.starting_balance || 0;
   for (const ym of months) {
     const incomeTotal = extrapIncome.filter(i => i.month === ym).reduce((s, i) => s + i.amount, 0);
     const oneoffTotal = extrapOneoff.filter(o => o.month === ym).reduce((s, o) => s + o.amount, 0);
@@ -2885,7 +2981,6 @@ function renderBalanceRow(grid, months) {
 
     const cell = document.createElement("div");
     cell.className = "extrap-cell extrap-cell-amount extrap-cell-balance";
-    cell.classList.add(runningBalance >= 0 ? "extrap-cell-income" : "extrap-cell-expense");
     cell.textContent = formatExtrapAmount(runningBalance);
     grid.appendChild(cell);
   }
@@ -2928,15 +3023,36 @@ document.getElementById("extrap-apply-btn")?.addEventListener("click", async () 
     return;
   }
 
+  const oldStartMonth = extrapSettings.start_month;
+
+  // If sliding forward, warn about purge
+  if (oldStartMonth && startMonth > oldStartMonth) {
+    // Check if there's data in months that would be purged
+    const hasPurgeData = extrapIncome.some(i => i.month < startMonth) || extrapOneoff.some(o => o.month < startMonth);
+    if (hasPurgeData) {
+      const confirmed = await showConfirm(
+        "Slide Forecast Window",
+        `Moving the start to ${formatMonthLabel(startMonth)} will delete all income and expense data before that month. You will need to manually set the Starting Balance for the new first month. Continue?`
+      );
+      if (!confirmed) return;
+      // Purge old data
+      await safeFetch("/api/extrapolate/purge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ before_month: startMonth })
+      });
+    }
+  }
+
   try {
     const res = await safeFetch("/api/extrapolate/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ start_month: startMonth, num_months: numMonths })
+      body: JSON.stringify({ start_month: startMonth, num_months: numMonths, starting_balance: extrapSettings.starting_balance || 0 })
     });
     if (res.ok) {
-      extrapSettings = { start_month: startMonth, num_months: numMonths };
-      renderExtrapGrid();
+      extrapSettings = { start_month: startMonth, num_months: numMonths, starting_balance: extrapSettings.starting_balance || 0 };
+      await loadExtrapolateData();
       showToast("Forecast updated.", "success");
     }
   } catch {}
@@ -2953,13 +3069,13 @@ document.querySelectorAll(".bottom-nav-btn").forEach(btn => {
 
 // Reset forecast
 document.getElementById("extrap-reset-btn")?.addEventListener("click", async () => {
-  if (!await showConfirm("Reset Forecast", "This will delete all income and expense rows and reset the forecast to a blank state. This cannot be undone. Continue?")) return;
+  if (!await showConfirm("Reset Forecast", "This will delete all income and expense rows, reset the starting balance, and clear the forecast completely. This cannot be undone. Continue?")) return;
   try {
     const res = await safeFetch("/api/extrapolate/reset", { method: "POST" });
     if (res.ok) {
       extrapIncome = [];
       extrapOneoff = [];
-      extrapSettings = { start_month: "", num_months: 6 };
+      extrapSettings = { start_month: "", num_months: 6, starting_balance: 0 };
       await loadExtrapolateData();
       showToast("Forecast reset.", "success");
     }

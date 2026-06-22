@@ -973,7 +973,7 @@ html, body { max-width: 100vw; overflow-x: hidden; }
 }
 .extrap-grid {
   display: grid;
-  min-width: max-content;
+  width: 100%;
   font-size: 0.8rem;
 }
 
@@ -987,6 +987,7 @@ html, body { max-width: 100vw; overflow-x: hidden; }
   white-space: nowrap;
   min-width: 0;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .extrap-grid .extrap-cell-label {
@@ -1027,9 +1028,9 @@ html, body { max-width: 100vw; overflow-x: hidden; }
 
 .extrap-cell-balance {
   font-weight: 700;
-  color: var(--accent);
-  background: rgba(59, 130, 246, 0.04);
-  border-top: 2px solid var(--accent);
+  color: var(--text);
+  background: var(--bg);
+  border-top: 2px solid var(--border);
 }
 
 .extrap-section-header {
@@ -1075,8 +1076,30 @@ html, body { max-width: 100vw; overflow-x: hidden; }
 
 .extrap-cell-del {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0;
+  overflow: visible;
+  padding: 4px 2px;
+}
+
+.extrap-move-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  padding: 0 3px;
+  border-radius: 3px;
+  line-height: 1.2;
+  opacity: 0.6;
+  display: block;
+}
+.extrap-move-btn:hover {
+  opacity: 1;
+  color: var(--accent);
+  background: rgba(59, 130, 246, 0.08);
 }
 
 .extrap-inline-input {
@@ -1084,15 +1107,15 @@ html, body { max-width: 100vw; overflow-x: hidden; }
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
-  padding: 4px 6px;
+  padding: 4px 4px;
   border: 1.5px solid var(--accent);
   border-radius: 4px;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-family: inherit;
   background: var(--bg);
   color: var(--text);
   outline: none;
-  min-height: 28px;
+  min-height: 26px;
 }
 .extrap-inline-input:focus {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);

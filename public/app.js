@@ -271,7 +271,7 @@ let activeModalTrap = null;
 // ===== TAB NAVIGATION =====
 const tabBtns = document.querySelectorAll(".bottom-nav-btn");
 const tabContents = document.querySelectorAll(".tab-content");
-const TAB_ORDER = ["tracker", "reports", "settings"];
+const TAB_ORDER = ["tracker", "reports", "forecast", "settings"];
 
 function switchToTab(tabId) {
   const btn = document.querySelector(`.bottom-nav-btn[data-tab="${tabId}"]`);
@@ -282,6 +282,7 @@ function switchToTab(tabId) {
   const tabEl = document.getElementById(`tab-${tabId}`);
   tabEl.classList.add("active");
   if (tabId === "reports") loadReports();
+  if (tabId === "forecast") loadExtrapolateData();
 }
 
 tabBtns.forEach(btn => {
@@ -2545,3 +2546,422 @@ function showUpdateBanner() {
   }
   banner.classList.add("visible");
 }
+
+// ===== FORECAST TAB =====
+let extrapSettings = { start_month: "", num_months: 6 };
+let extrapIncome = [];
+let extrapOneoff = [];
+
+function getExtrapMonths() {
+  const [y, m] = extrapSettings.start_month.split("-").map(Number);
+  const months = [];
+  for (let i = 0; i < extrapSettings.num_months; i++) {
+    let month = m + i;
+    let year = y;
+    while (month > 12) { month -= 12; year++; }
+    months.push(`${year}-${String(month).padStart(2, "0")}`);
+  }
+  return months;
+}
+
+function formatMonthLabel(ym) {
+  const [y, m] = ym.split("-").map(Number);
+  return `${MONTH_NAMES[m - 1].slice(0, 3)} ${y}`;
+}
+
+function populateStartMonthDropdown() {
+  const sel = document.getElementById("extrap-start-month");
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = "";
+  const now = new Date();
+  const startYear = now.getFullYear();
+  // From Jan of current year to Dec of next year (24 months)
+  for (let i = 0; i < 24; i++) {
+    let month = 1 + i;
+    let year = startYear;
+    while (month > 12) { month -= 12; year++; }
+    const ym = `${year}-${String(month).padStart(2, "0")}`;
+    const o = document.createElement("option");
+    o.value = ym;
+    o.textContent = formatMonthLabel(ym);
+    sel.appendChild(o);
+  }
+  if (current && [...sel.options].some(o => o.value === current)) {
+    sel.value = current;
+  } else {
+    // Default to current month
+    const def = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    if ([...sel.options].some(o => o.value === def)) sel.value = def;
+  }
+}
+
+function formatExtrapAmount(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "0";
+  const sym = getCurrencySymbol(baseCurrency);
+  const formatted = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(num));
+  if (num < 0) return `-${sym} ${formatted}`;
+  return `${sym} ${formatted}`;
+}
+
+async function saveExtrapCell(type, month, label, amount) {
+  const res = await safeFetch(`/api/extrapolate/${type}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ month, label, amount })
+  });
+  return res.ok;
+}
+
+async function deleteExtrapEntry(type, id) {
+  const res = await safeFetch(`/api/extrapolate/${type}/${id}`, { method: "DELETE" });
+  return res.ok;
+}
+
+async function deleteExtrapRow(type, label) {
+  const list = type === "income" ? extrapIncome : extrapOneoff;
+  const entries = list.filter(e => e.label === label);
+  for (const entry of entries) {
+    await safeFetch(`/api/extrapolate/${type}/${entry.id}`, { method: "DELETE" });
+  }
+}
+
+function startInlineEdit(cell, currentValue, onSave) {
+  if (cell.querySelector("input")) return;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.inputMode = "decimal";
+  input.className = "extrap-inline-input";
+  input.value = currentValue || "";
+  cell.textContent = "";
+  cell.appendChild(input);
+  input.focus();
+  input.select();
+
+  const finish = async () => {
+    const val = input.value.trim();
+    input.remove();
+    await onSave(val);
+  };
+
+  input.addEventListener("blur", finish);
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+    if (e.key === "Escape") { input.value = currentValue || ""; input.blur(); }
+  });
+}
+
+function startLabelEdit(cell, currentLabel, type, onSave) {
+  if (cell.querySelector("input")) return;
+  const deleteBtn = cell.querySelector(".extrap-row-delete-btn");
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "extrap-inline-input extrap-inline-label";
+  input.value = currentLabel;
+  cell.textContent = "";
+  cell.appendChild(input);
+  input.focus();
+  input.select();
+
+  const finish = async () => {
+    const val = input.value.trim();
+    input.remove();
+    await onSave(val);
+  };
+
+  input.addEventListener("blur", finish);
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+    if (e.key === "Escape") { input.value = currentLabel; input.blur(); }
+  });
+}
+
+function renderExtrapGrid() {
+  const grid = document.getElementById("extrap-grid");
+  if (!grid) return;
+
+  const months = getExtrapMonths();
+  if (months.length === 0) {
+    grid.innerHTML = '<div class="extrap-empty">Configure start month and apply to see forecast.</div>';
+    return;
+  }
+
+  grid.style.gridTemplateColumns = `30px 150px repeat(${months.length}, 100px)`;
+  grid.innerHTML = "";
+
+  // Header row
+  const headerDel = document.createElement("div");
+  headerDel.className = "extrap-cell extrap-cell-header";
+  grid.appendChild(headerDel);
+  const headerLabel = document.createElement("div");
+  headerLabel.className = "extrap-cell extrap-cell-label extrap-cell-header";
+  grid.appendChild(headerLabel);
+  for (const ym of months) {
+    const h = document.createElement("div");
+    h.className = "extrap-cell extrap-cell-header extrap-cell-amount";
+    h.textContent = formatMonthLabel(ym);
+    grid.appendChild(h);
+  }
+
+  // Income section
+  renderSectionHeader(grid, "Income", months.length);
+  const incomeLabels = [...new Set(extrapIncome.map(i => i.label))];
+  for (const label of incomeLabels) {
+    renderDataRow(grid, "income", label, months);
+  }
+  renderAddRowButton(grid, "income", months.length);
+
+  // Expenses section
+  renderSectionHeader(grid, "Expenses", months.length);
+  const oneoffLabels = [...new Set(extrapOneoff.map(i => i.label))];
+  for (const label of oneoffLabels) {
+    renderDataRow(grid, "oneoff", label, months);
+  }
+  renderAddRowButton(grid, "oneoff", months.length);
+
+  // Balance row
+  renderBalanceRow(grid, months);
+}
+
+function renderSectionHeader(grid, title, numMonths) {
+  const header = document.createElement("div");
+  header.className = "extrap-cell extrap-section-header";
+  header.style.gridColumn = "1 / -1";
+  header.textContent = title;
+  grid.appendChild(header);
+}
+
+function renderDataRow(grid, type, label, months) {
+  const list = type === "income" ? extrapIncome : extrapOneoff;
+  const entries = list.filter(e => e.label === label);
+
+  // Delete row button (first column)
+  const delCell = document.createElement("div");
+  delCell.className = "extrap-cell extrap-cell-del";
+  const delBtn = document.createElement("button");
+  delBtn.className = "extrap-row-delete-btn";
+  delBtn.textContent = "✕";
+  delBtn.title = "Remove row";
+  delBtn.addEventListener("click", async () => {
+    if (!await showConfirm("Remove Row", `Remove "${label}" from all months?`)) return;
+    await deleteExtrapRow(type, label);
+    await loadExtrapolateData();
+  });
+  delCell.appendChild(delBtn);
+  grid.appendChild(delCell);
+
+  // Label cell
+  const labelCell = document.createElement("div");
+  labelCell.className = "extrap-cell extrap-cell-label";
+  labelCell.textContent = label;
+  labelCell.style.cursor = "pointer";
+  labelCell.title = "Click to rename";
+  labelCell.addEventListener("click", () => {
+    startLabelEdit(labelCell, label, type, async (newLabel) => {
+      if (!newLabel || newLabel === label) {
+        await loadExtrapolateData();
+        return;
+      }
+      for (const entry of entries) {
+        await safeFetch(`/api/extrapolate/${type}/${entry.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ month: entry.month, label: newLabel, amount: entry.amount })
+        });
+      }
+      await loadExtrapolateData();
+    });
+  });
+  grid.appendChild(labelCell);
+
+  // Amount cells
+  for (const ym of months) {
+    const entry = entries.find(e => e.month === ym);
+    const cell = document.createElement("div");
+    cell.className = "extrap-cell extrap-cell-amount";
+    cell.classList.add(type === "income" ? "extrap-cell-income" : "extrap-cell-expense");
+    cell.style.cursor = "pointer";
+    cell.title = "Click to edit";
+
+    if (entry && entry.amount !== 0) {
+      cell.textContent = type === "income" ? formatExtrapAmount(entry.amount) : `-${formatExtrapAmount(entry.amount)}`;
+    } else {
+      cell.textContent = "—";
+      cell.classList.remove("extrap-cell-income", "extrap-cell-expense");
+    }
+
+    cell.addEventListener("click", () => {
+      const currentVal = entry && entry.amount !== 0 ? String(entry.amount) : "";
+      startInlineEdit(cell, currentVal, async (newVal) => {
+        const num = parseFloat(newVal);
+        if (!newVal || newVal === "0") {
+          if (entry) await deleteExtrapEntry(type, entry.id);
+        } else if (Number.isFinite(num) && num !== 0) {
+          await saveExtrapCell(type, ym, label, Math.abs(num));
+        }
+        await loadExtrapolateData();
+      });
+    });
+
+    grid.appendChild(cell);
+  }
+}
+
+function renderAddRowButton(grid, type, numMonths) {
+  const addCell = document.createElement("div");
+  addCell.className = "extrap-cell";
+  addCell.style.gridColumn = "1 / 3";
+  addCell.style.borderBottom = "none";
+  const addBtn = document.createElement("button");
+  addBtn.className = "extrap-add-row-btn";
+  addBtn.textContent = `+ Add ${type === "income" ? "income" : "expense"}`;
+  addBtn.addEventListener("click", () => {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "extrap-inline-input extrap-inline-label";
+    input.placeholder = type === "income" ? "e.g. Salary" : "e.g. Rent";
+    addCell.textContent = "";
+    addCell.appendChild(input);
+    input.focus();
+
+    const finish = async () => {
+      const label = input.value.trim();
+      input.remove();
+      addCell.appendChild(addBtn);
+      if (!label) return;
+      const list = type === "income" ? extrapIncome : extrapOneoff;
+      if (list.some(e => e.label.toLowerCase() === label.toLowerCase())) {
+        showErrorToast(`"${label}" already exists.`);
+        return;
+      }
+      const months = getExtrapMonths();
+      if (months.length === 0) return;
+      await saveExtrapCell(type, months[0], label, 0);
+      await loadExtrapolateData();
+      showToast(`"${label}" added. Click cells to set amounts.`, "info");
+    };
+
+    input.addEventListener("blur", finish);
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+      if (e.key === "Escape") { input.value = ""; input.blur(); }
+    });
+  });
+  addCell.appendChild(addBtn);
+  grid.appendChild(addCell);
+
+  // Fill remaining columns with empty cells to maintain grid
+  const filler = document.createElement("div");
+  filler.className = "extrap-cell";
+  filler.style.gridColumn = `3 / -1`;
+  filler.style.borderBottom = "none";
+  grid.appendChild(filler);
+}
+
+function renderBalanceRow(grid, months) {
+  const sep = document.createElement("div");
+  sep.className = "extrap-cell extrap-section-header";
+  sep.style.gridColumn = "1 / -1";
+  grid.appendChild(sep);
+
+  // Empty delete col
+  const delCell = document.createElement("div");
+  delCell.className = "extrap-cell extrap-cell-balance";
+  grid.appendChild(delCell);
+
+  // Label
+  const labelCell = document.createElement("div");
+  labelCell.className = "extrap-cell extrap-cell-label extrap-cell-balance";
+  labelCell.textContent = "Balance";
+  grid.appendChild(labelCell);
+
+  // Running balance
+  let runningBalance = 0;
+  for (const ym of months) {
+    const incomeTotal = extrapIncome.filter(i => i.month === ym).reduce((s, i) => s + i.amount, 0);
+    const oneoffTotal = extrapOneoff.filter(o => o.month === ym).reduce((s, o) => s + o.amount, 0);
+    runningBalance += incomeTotal - oneoffTotal;
+
+    const cell = document.createElement("div");
+    cell.className = "extrap-cell extrap-cell-amount extrap-cell-balance";
+    cell.classList.add(runningBalance >= 0 ? "extrap-cell-income" : "extrap-cell-expense");
+    cell.textContent = formatExtrapAmount(runningBalance);
+    grid.appendChild(cell);
+  }
+}
+
+async function loadExtrapolateData() {
+  populateStartMonthDropdown();
+  try {
+    const [settingsRes, incomeRes, oneoffRes] = await Promise.all([
+      fetch("/api/extrapolate/settings"),
+      fetch("/api/extrapolate/income"),
+      fetch("/api/extrapolate/oneoff")
+    ]);
+
+    if (settingsRes.ok) {
+      extrapSettings = await settingsRes.json();
+      const startInput = document.getElementById("extrap-start-month");
+      const numInput = document.getElementById("extrap-num-months");
+      if (startInput) startInput.value = extrapSettings.start_month;
+      if (numInput) numInput.value = extrapSettings.num_months;
+    }
+    if (incomeRes.ok) extrapIncome = await incomeRes.json();
+    if (oneoffRes.ok) extrapOneoff = await oneoffRes.json();
+  } catch {}
+
+  renderExtrapGrid();
+}
+
+// Apply button
+document.getElementById("extrap-apply-btn")?.addEventListener("click", async () => {
+  const startMonth = document.getElementById("extrap-start-month").value;
+  const numMonths = parseInt(document.getElementById("extrap-num-months").value, 10);
+
+  if (!startMonth) {
+    showErrorToast("Please select a start month.");
+    return;
+  }
+  if (!numMonths || numMonths < 1 || numMonths > 24) {
+    showErrorToast("Months must be between 1 and 24.");
+    return;
+  }
+
+  try {
+    const res = await safeFetch("/api/extrapolate/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ start_month: startMonth, num_months: numMonths })
+    });
+    if (res.ok) {
+      extrapSettings = { start_month: startMonth, num_months: numMonths };
+      renderExtrapGrid();
+      showToast("Forecast updated.", "success");
+    }
+  } catch {}
+});
+
+// Load forecast tab when switching to it
+document.querySelectorAll(".bottom-nav-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (btn.dataset.tab === "forecast") {
+      loadExtrapolateData();
+    }
+  });
+});
+
+// Reset forecast
+document.getElementById("extrap-reset-btn")?.addEventListener("click", async () => {
+  if (!await showConfirm("Reset Forecast", "This will delete all income and expense rows and reset the forecast to a blank state. This cannot be undone. Continue?")) return;
+  try {
+    const res = await safeFetch("/api/extrapolate/reset", { method: "POST" });
+    if (res.ok) {
+      extrapIncome = [];
+      extrapOneoff = [];
+      extrapSettings = { start_month: "", num_months: 6 };
+      await loadExtrapolateData();
+      showToast("Forecast reset.", "success");
+    }
+  } catch {}
+});

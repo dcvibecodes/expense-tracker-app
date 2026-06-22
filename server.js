@@ -1456,6 +1456,212 @@ function generateDailyRecurringNotifications() {
 generateDailyRecurringNotifications();
 setInterval(generateDailyRecurringNotifications, 60 * 60 * 1000);
 
+// --- Extrapolate Tables ---
+db.serialize(() => {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS extrap_income (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      month TEXT NOT NULL,
+      label TEXT NOT NULL,
+      amount REAL NOT NULL,
+      UNIQUE(month, label)
+    )
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS extrap_oneoff (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      month TEXT NOT NULL,
+      label TEXT NOT NULL,
+      amount REAL NOT NULL,
+      UNIQUE(month, label)
+    )
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS extrap_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      start_month TEXT NOT NULL,
+      num_months INTEGER NOT NULL DEFAULT 6
+    )
+  `);
+
+  // Migrate existing tables to add UNIQUE constraint if missing
+  db.get("SELECT sql FROM sqlite_master WHERE type='table' AND name='extrap_income'", (err, row) => {
+    if (err) return;
+    if (row && row.sql && !row.sql.includes("UNIQUE")) {
+      db.serialize(() => {
+        db.run("ALTER TABLE extrap_income RENAME TO extrap_income_old");
+        db.run(`CREATE TABLE extrap_income (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          month TEXT NOT NULL,
+          label TEXT NOT NULL,
+          amount REAL NOT NULL,
+          UNIQUE(month, label)
+        )`);
+        db.run("INSERT OR IGNORE INTO extrap_income (id, month, label, amount) SELECT id, month, label, amount FROM extrap_income_old");
+        db.run("DROP TABLE extrap_income_old");
+      });
+    }
+  });
+  db.get("SELECT sql FROM sqlite_master WHERE type='table' AND name='extrap_oneoff'", (err, row) => {
+    if (err) return;
+    if (row && row.sql && !row.sql.includes("UNIQUE")) {
+      db.serialize(() => {
+        db.run("ALTER TABLE extrap_oneoff RENAME TO extrap_oneoff_old");
+        db.run(`CREATE TABLE extrap_oneoff (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          month TEXT NOT NULL,
+          label TEXT NOT NULL,
+          amount REAL NOT NULL,
+          UNIQUE(month, label)
+        )`);
+        db.run("INSERT OR IGNORE INTO extrap_oneoff (id, month, label, amount) SELECT id, month, label, amount FROM extrap_oneoff_old");
+        db.run("DROP TABLE extrap_oneoff_old");
+      });
+    }
+  });
+});
+
+// --- Extrapolate API ---
+
+// Get extrapolation settings
+app.get("/api/extrapolate/settings", (req, res) => {
+  db.get("SELECT start_month, num_months FROM extrap_settings WHERE id = 1", (err, row) => {
+    if (err) return res.status(500).json({ error: "DB error" });
+    if (!row) {
+      // Default: current month, 6 months
+      const now = new Date();
+      const def = { start_month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`, num_months: 6 };
+      return res.json(def);
+    }
+    return res.json(row);
+  });
+});
+
+// Save extrapolation settings
+app.put("/api/extrapolate/settings", (req, res) => {
+  const { start_month, num_months } = req.body;
+  if (!start_month || !/^\d{4}-\d{2}$/.test(start_month)) {
+    return res.status(400).json({ error: "Invalid start_month (use YYYY-MM)." });
+  }
+  const n = Number(num_months);
+  if (!Number.isInteger(n) || n < 1 || n > 24) {
+    return res.status(400).json({ error: "num_months must be 1-24." });
+  }
+  db.run("INSERT OR REPLACE INTO extrap_settings (id, start_month, num_months) VALUES (1, ?, ?)", [start_month, n], (err) => {
+    if (err) return res.status(500).json({ error: "Failed to save settings." });
+    return res.json({ success: true });
+  });
+});
+
+// Get all income entries
+app.get("/api/extrapolate/income", (req, res) => {
+  db.all("SELECT id, month, label, amount FROM extrap_income ORDER BY month ASC, id ASC", (err, rows) => {
+    if (err) return res.status(500).json({ error: "DB error" });
+    return res.json(rows);
+  });
+});
+
+// Add income entry (upsert: same label+month replaces)
+app.post("/api/extrapolate/income", (req, res) => {
+  const { month, label, amount } = req.body;
+  if (!month || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: "Invalid month." });
+  if (!label || typeof label !== "string" || !label.trim()) return res.status(400).json({ error: "Label required." });
+  const amt = Number(amount);
+  if (!Number.isFinite(amt)) return res.status(400).json({ error: "Valid amount required." });
+  db.run("INSERT OR REPLACE INTO extrap_income (month, label, amount) VALUES (?, ?, ?)", [month, label.trim(), amt], function(err) {
+    if (err) return res.status(500).json({ error: "Failed to add income." });
+    return res.json({ id: this.lastID });
+  });
+});
+
+// Update income entry
+app.put("/api/extrapolate/income/:id", (req, res) => {
+  const { id } = req.params;
+  const { month, label, amount } = req.body;
+  if (!month || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: "Invalid month." });
+  if (!label || typeof label !== "string" || !label.trim()) return res.status(400).json({ error: "Label required." });
+  const amt = Number(amount);
+  if (!Number.isFinite(amt) || amt === 0) return res.status(400).json({ error: "Valid amount required." });
+  db.run("UPDATE extrap_income SET month = ?, label = ?, amount = ? WHERE id = ?", [month, label.trim(), amt, id], function(err) {
+    if (err) return res.status(500).json({ error: "Failed to update." });
+    if (this.changes === 0) return res.status(404).json({ error: "Not found." });
+    return res.json({ success: true });
+  });
+});
+
+// Delete income entry
+app.delete("/api/extrapolate/income/:id", (req, res) => {
+  const { id } = req.params;
+  db.run("DELETE FROM extrap_income WHERE id = ?", [id], function(err) {
+    if (err) return res.status(500).json({ error: "Failed to delete." });
+    if (this.changes === 0) return res.status(404).json({ error: "Not found." });
+    return res.json({ success: true });
+  });
+});
+
+// Get all one-off entries
+app.get("/api/extrapolate/oneoff", (req, res) => {
+  db.all("SELECT id, month, label, amount FROM extrap_oneoff ORDER BY month ASC, id ASC", (err, rows) => {
+    if (err) return res.status(500).json({ error: "DB error" });
+    return res.json(rows);
+  });
+});
+
+// Add one-off entry (upsert: same label+month replaces)
+app.post("/api/extrapolate/oneoff", (req, res) => {
+  const { month, label, amount } = req.body;
+  if (!month || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: "Invalid month." });
+  if (!label || typeof label !== "string" || !label.trim()) return res.status(400).json({ error: "Label required." });
+  const amt = Number(amount);
+  if (!Number.isFinite(amt)) return res.status(400).json({ error: "Valid amount required." });
+  db.run("INSERT OR REPLACE INTO extrap_oneoff (month, label, amount) VALUES (?, ?, ?)", [month, label.trim(), amt], function(err) {
+    if (err) return res.status(500).json({ error: "Failed to add one-off." });
+    return res.json({ id: this.lastID });
+  });
+});
+
+// Update one-off entry
+app.put("/api/extrapolate/oneoff/:id", (req, res) => {
+  const { id } = req.params;
+  const { month, label, amount } = req.body;
+  if (!month || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: "Invalid month." });
+  if (!label || typeof label !== "string" || !label.trim()) return res.status(400).json({ error: "Label required." });
+  const amt = Number(amount);
+  if (!Number.isFinite(amt) || amt === 0) return res.status(400).json({ error: "Valid amount required." });
+  db.run("UPDATE extrap_oneoff SET month = ?, label = ?, amount = ? WHERE id = ?", [month, label.trim(), amt, id], function(err) {
+    if (err) return res.status(500).json({ error: "Failed to update." });
+    if (this.changes === 0) return res.status(404).json({ error: "Not found." });
+    return res.json({ success: true });
+  });
+});
+
+// Delete one-off entry
+app.delete("/api/extrapolate/oneoff/:id", (req, res) => {
+  const { id } = req.params;
+  db.run("DELETE FROM extrap_oneoff WHERE id = ?", [id], function(err) {
+    if (err) return res.status(500).json({ error: "Failed to delete." });
+    if (this.changes === 0) return res.status(404).json({ error: "Not found." });
+    return res.json({ success: true });
+  });
+});
+
+// Get recurring expenses — disabled, tab is fully self-contained
+app.get("/api/extrapolate/recurring", (req, res) => {
+  return res.json([]);
+});
+
+// Reset all forecast data
+app.post("/api/extrapolate/reset", (req, res) => {
+  db.serialize(() => {
+    db.run("DELETE FROM extrap_income");
+    db.run("DELETE FROM extrap_oneoff");
+    db.run("DELETE FROM extrap_settings WHERE id = 1", (err) => {
+      if (err) return res.status(500).json({ error: "Failed to reset." });
+      return res.json({ success: true });
+    });
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Expenses+ running at http://localhost:${PORT}`);
   console.log(`Database path: ${dbPath}`);

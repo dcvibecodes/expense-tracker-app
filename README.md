@@ -1,6 +1,22 @@
-# Expenses+ v3.5.0
+# Expenses+ v3.6.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.6.0
+
+### Forecast Tab
+- **Cash flow projection** — new "Forecast" tab lets you project your monthly balance forward, replacing the need for a separate spreadsheet
+- **Inline editable grid** — spreadsheet-style grid with months as columns; click any cell to edit amounts directly, no separate forms needed
+- **Income rows** — add multiple income sources (salary, freelance, etc.) with per-month amounts
+- **Expense rows** — add expenses with per-month amounts; different amounts per month supported (e.g. varying CC bills)
+- **Running balance** — bottom row shows cumulative balance (each month = previous balance + income − expenses)
+- **Add rows inline** — click "+ Add income" or "+ Add expense", type a label, then fill in amounts per month
+- **Remove rows** — × button on each row removes it from all months
+- **Rename inline** — click a label to rename it across all months
+- **Duplicate prevention** — same label can only exist once per month (upsert behavior)
+- **Configurable range** — set start month and number of months (1–24)
+- **Self-contained** — no dependency on other tabs; uses its own DB tables (`extrap_income`, `extrap_oneoff`, `extrap_settings`)
+- **Non-destructive** — existing expense data is never touched; forecast tables are created alongside existing ones
 
 ## What's New in v3.5.0
 
@@ -110,6 +126,7 @@ Recurring series set up before this update will not automatically generate notif
 ## Features
 
 - **Add expenses** — date, details (with smart autocomplete + auto-category), category, amount
+- **Forecast** — project monthly cash flow with income and expense rows in a spreadsheet-style inline-editable grid; running cumulative balance
 - **Multi-currency** — set base currency, define exchange rates, toggle abroad mode when traveling; amounts auto-convert and display with correct currency symbol
 - **Monthly summary** — color-coded category totals with rounded amounts at a glance
 - **Inline search** — search expenses as you type from the Tracker tab; searches across all data

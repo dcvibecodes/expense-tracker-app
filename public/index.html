@@ -70,6 +70,10 @@
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
         <span>Reports</span>
       </button> 
+      <button class="bottom-nav-btn" data-tab="forecast" role="tab" aria-selected="false" aria-controls="tab-forecast">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 5-5"/><path d="M17 7h4v4"/></svg>
+        <span>Forecast</span>
+      </button>
       <button class="bottom-nav-btn" data-tab="settings" role="tab" aria-selected="false" aria-controls="tab-settings">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         <span>Settings</span>
@@ -211,6 +215,32 @@
           <div class="report-table-wrap" id="report-table-wrap"></div>
         </section> 
       </div> 
+
+      <!-- ===== FORECAST TAB ===== -->
+      <div id="tab-forecast" class="tab-content">
+
+        <section class="card">
+          <h2>Cash Flow Forecast</h2>
+          <p class="settings-desc">Project your monthly balance. Click any cell to edit. Use + to add rows, × to remove.</p>
+          <div class="extrap-config-row">
+            <label>Start Month
+              <select id="extrap-start-month"></select>
+            </label>
+            <label>Months
+              <input type="number" id="extrap-num-months" min="1" max="24" value="6" />
+            </label>
+            <button id="extrap-apply-btn" type="button" class="add-btn">Apply</button>
+            <button id="extrap-reset-btn" type="button" class="cancel-btn">Reset</button>
+          </div>
+        </section>
+
+        <section class="card extrap-grid-card">
+          <div class="extrap-grid-wrap">
+            <div id="extrap-grid" class="extrap-grid"></div>
+          </div>
+        </section>
+
+      </div>
 
       <!-- ===== SETTINGS TAB ===== --> 
       <div id="tab-settings" class="tab-content"> 

@@ -947,3 +947,196 @@ html, body { max-width: 100vw; overflow-x: hidden; }
   /* Range selectors wrap */
   .range-selector, .range-selector-trend { flex-wrap: wrap; }
 }
+
+/* ---- Extrapolate Tab ---- */
+.extrap-config-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.extrap-config-row label {
+  min-width: 0;
+  flex: 0 0 auto;
+}
+.extrap-config-row input[type="number"] {
+  max-width: 80px;
+}
+
+.extrap-grid-card {
+  padding: 12px;
+  overflow: hidden;
+}
+.extrap-grid-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.extrap-grid {
+  display: grid;
+  min-width: max-content;
+  font-size: 0.8rem;
+}
+
+.extrap-grid .extrap-row {
+  display: contents;
+}
+
+.extrap-grid .extrap-cell {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.extrap-grid .extrap-cell-label {
+  min-width: 0;
+  font-weight: 500;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.extrap-grid .extrap-cell-header {
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-secondary);
+  background: var(--bg);
+}
+
+.extrap-grid .extrap-cell-header.extrap-cell-label {
+}
+
+.extrap-cell-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.extrap-cell-income {
+  color: var(--green);
+  font-weight: 500;
+}
+
+.extrap-cell-expense {
+  color: var(--red);
+  font-weight: 500;
+}
+
+.extrap-cell-balance {
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(59, 130, 246, 0.04);
+  border-top: 2px solid var(--accent);
+}
+
+.extrap-section-header {
+  font-weight: 700;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  background: var(--bg);
+  padding: 6px 12px !important;
+}
+
+.extrap-delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--red);
+  padding: 2px 4px;
+  border-radius: 3px;
+  opacity: 0.6;
+}
+.extrap-delete-btn:hover {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.extrap-row-delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--red);
+  padding: 2px 6px;
+  border-radius: 4px;
+  opacity: 0.5;
+  line-height: 1;
+}
+.extrap-row-delete-btn:hover {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.extrap-cell-del {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.extrap-inline-input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  border: 1.5px solid var(--accent);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  min-height: 28px;
+}
+.extrap-inline-input:focus {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+.extrap-inline-label {
+  max-width: 100%;
+}
+
+.extrap-add-row-btn {
+  background: none;
+  border: 1.5px dashed var(--border);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.extrap-add-row-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.extrap-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 600px) {
+  .extrap-config-row {
+    flex-wrap: wrap;
+    flex-direction: row;
+    align-items: flex-end;
+  }
+  .extrap-config-row label {
+    min-width: 0;
+    flex: 1;
+  }
+  .extrap-config-row button {
+    flex: 0 0 auto;
+  }
+}

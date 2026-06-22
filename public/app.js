@@ -522,7 +522,7 @@ function renderRows(rows) {
     const tr = document.createElement("tr");
     let amountDisplay = formatAmount(row.amount);
     if (row.original_currency && row.original_amount) {
-      amountDisplay += `<br><span class="original-amt">${getCurrencySymbol(row.original_currency)} ${new Intl.NumberFormat("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(row.original_amount)}</span>`;
+      amountDisplay += `<br><span class="original-amt">${getCurrencySymbol(row.original_currency)} ${new Intl.NumberFormat(getCurrencyLocale(row.original_currency), { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(row.original_amount)}</span>`;
     }
     tr.innerHTML = `
       <td data-label="Date">${escapeHtml(formatDate(row.date))}</td>
@@ -1241,7 +1241,7 @@ function renderReportTable(data) {
   for (const exp of data) {
     let amountDisplay = formatAmount(exp.amount);
     if (exp.original_currency && exp.original_amount) {
-      amountDisplay += `<br><span class="original-amt">${getCurrencySymbol(exp.original_currency)} ${new Intl.NumberFormat("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(exp.original_amount)}</span>`;
+      amountDisplay += `<br><span class="original-amt">${getCurrencySymbol(exp.original_currency)} ${new Intl.NumberFormat(getCurrencyLocale(exp.original_currency), { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(exp.original_amount)}</span>`;
     }
     html += `<div class="rpt-row rpt-expense rpt-flat-row" data-id="${exp.id}">`;
     html += `  <span class="rpt-select"><input type="checkbox" class="report-row-check" data-id="${exp.id}" aria-label="Select expense" ${selectedReportIds.has(exp.id) ? "checked" : ""}></span>`;
@@ -2354,12 +2354,16 @@ document.querySelectorAll('#settings-pin, #settings-pin-confirm, #settings-disab
 async function initApp() {
   dateInput.value = todayStr();
 
-  await loadCategories();
-  await loadDateFormatSetting();
-  await loadCurrencyRates();
-  await populateDetailsList();
+  // Load independent data in parallel
+  await Promise.all([
+    loadCategories(),
+    loadDateFormatSetting(),
+    loadCurrencyRates(),
+    populateDetailsList()
+  ]);
+
+  // These depend on categories/settings being loaded
   await refreshAll();
-  await loadReports();
 
   loadLockSettings();
   updateAbroadModeInfo();

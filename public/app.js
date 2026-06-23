@@ -153,48 +153,13 @@ function showConfirm(title, message) {
   });
 }
 
-// ===== THEME =====
-function applyTheme(theme) {
-  document.documentElement.setAttribute("data-theme", theme);
-  localStorage.setItem("theme", theme);
-
-  const btn = document.getElementById("theme-toggle");
-
-  if (btn) {
-    btn.innerHTML = theme === "dark"
-      ? `
-        <svg class="theme-icon" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="5"></circle>
-          <line x1="12" y1="1" x2="12" y2="3"></line>
-          <line x1="12" y1="21" x2="12" y2="23"></line>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-          <line x1="1" y1="12" x2="3" y2="12"></line>
-          <line x1="21" y1="12" x2="23" y2="12"></line>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-        </svg>
-      `
-      : `
-        <svg class="theme-icon" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 3a7 7 0 1 0 9 9a9 9 0 1 1-9-9z"></path>
-      </svg>
-      `;
-
-    btn.setAttribute(
-      "aria-label",
-      theme === "dark"
-        ? "Switch to light mode"
-        : "Switch to dark mode"
-    );
-  }
+// ===== THEME (auto-detect system preference) =====
+function applySystemTheme() {
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
 }
-// Apply saved theme immediately
-applyTheme(localStorage.getItem("theme") || "light");
+applySystemTheme();
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applySystemTheme);
 if ("scrollRestoration" in history) {
   history.scrollRestoration = "manual";
 }
@@ -351,11 +316,7 @@ tabBtns.forEach(btn => {
   btn.addEventListener("click", () => switchToTab(btn.dataset.tab));
 });
 
-// Theme toggle
-document.getElementById("theme-toggle").addEventListener("click", () => {
-  const current = document.documentElement.getAttribute("data-theme") || "light";
-  applyTheme(current === "dark" ? "light" : "dark");
-});
+
 
 // ===== TRACKER TAB =====
 const expenseForm = document.getElementById("expense-form");
@@ -2840,30 +2801,14 @@ function renderStartingBalanceRow(grid, months) {
   });
   grid.appendChild(firstCell);
 
-  // Remaining months: show previous month's closing balance
-let runningBalance = Number(extrapSettings.starting_balance || 0);
-
-for (let i = 1; i < months.length; i++) {
-  const prevMonth = months[i - 1];
-
-  const incomeTotal = extrapIncome
-    .filter(x => x.month === prevMonth)
-    .reduce((sum, x) => sum + Number(x.amount || 0), 0);
-
-  const expenseTotal = extrapOneoff
-    .filter(x => x.month === prevMonth)
-    .reduce((sum, x) => sum + Number(x.amount || 0), 0);
-
-  runningBalance += incomeTotal - expenseTotal;
-
-  const cell = document.createElement("div");
-  cell.className = "extrap-cell extrap-cell-amount";
-  cell.style.fontWeight = "600";
-  cell.textContent = formatExtrapAmount(runningBalance);
-
-  grid.appendChild(cell);
+  // Remaining months: empty
+  for (let i = 1; i < months.length; i++) {
+    const cell = document.createElement("div");
+    cell.className = "extrap-cell";
+    grid.appendChild(cell);
+  }
 }
-}
+
 function renderSectionHeader(grid, title, numMonths) {
   const header = document.createElement("div");
   header.className = "extrap-cell extrap-section-header";
@@ -3156,110 +3101,6 @@ document.querySelectorAll(".bottom-nav-btn").forEach(btn => {
       loadExtrapolateData();
     }
   });
-});
-
-function exportForecastCSV() {
-  const months = getExtrapMonths();
-  if (!months.length) return;
-
-  const rows = [];
-
-  rows.push([
-    "Type",
-    "Label",
-    ...months.map(formatMonthLabel)
-  ]);
-
-  const startingBalanceRow = ["Starting Balance", ""];
-
-let openingBalance = Number(extrapSettings.starting_balance || 0);
-
-months.forEach((month, idx) => {
-  startingBalanceRow.push(openingBalance);
-
-  const incomeTotal = extrapIncome
-    .filter(x => x.month === month)
-    .reduce((sum, x) => sum + Number(x.amount || 0), 0);
-
-  const expenseTotal = extrapOneoff
-    .filter(x => x.month === month)
-    .reduce((sum, x) => sum + Number(x.amount || 0), 0);
-
-  openingBalance += incomeTotal - expenseTotal;
-});
-
-rows.push(startingBalanceRow);
-
-  const incomeLabels = getOrderedLabels(extrapIncome);
-
-  incomeLabels.forEach(label => {
-    const row = ["Income", label];
-
-    months.forEach(month => {
-      const item = extrapIncome.find(
-        x => x.label === label && x.month === month
-      );
-      row.push(item ? item.amount : 0);
-    });
-
-    rows.push(row);
-  });
-
-  const expenseLabels = getOrderedLabels(extrapOneoff);
-
-  expenseLabels.forEach(label => {
-    const row = ["Expense", label];
-
-    months.forEach(month => {
-      const item = extrapOneoff.find(
-        x => x.label === label && x.month === month
-      );
-      row.push(item ? -Math.abs(Number(item.amount || 0)) : 0);
-    });
-
-    rows.push(row);
-  });
-
- const closingBalanceRow = ["Closing Balance", ""];
-
-let runningBalance = Number(extrapSettings.starting_balance || 0);
-
-months.forEach(month => {
-  const incomeTotal = extrapIncome
-    .filter(x => x.month === month)
-    .reduce((sum, x) => sum + Number(x.amount || 0), 0);
-
-  const expenseTotal = extrapOneoff
-    .filter(x => x.month === month)
-    .reduce((sum, x) => sum + Number(x.amount || 0), 0);
-
-  runningBalance += incomeTotal - expenseTotal;
-
-  closingBalanceRow.push(runningBalance);
-});
-
-rows.push(closingBalanceRow);
-
-  const csv = rows
-    .map(row =>
-      row.map(value => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",")
-    )
-    .join("\n");
-
-  const blob = new Blob([csv], {
-    type: "text/csv;charset=utf-8;"
-  });
-
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `forecast-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-document.getElementById("extrap-export-btn")?.addEventListener("click", () => {
-  exportForecastCSV();
 });
 
 // Reset forecast

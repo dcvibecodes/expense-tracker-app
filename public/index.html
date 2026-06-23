@@ -41,14 +41,6 @@
 
         <span id="notification-badge" class="notification-badge" aria-hidden="true" style="display:none;">0</span>
       </button> 
-        <button id="theme-toggle" class="theme-toggle-btn" title="Toggle dark mode" aria-label="Toggle dark mode">
-        <svg class="theme-icon" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3
-                  7 7 0 0 0 21 12.79z"/>
-        </svg>
-      </button>
       </div> 
     </header> 
 
@@ -224,25 +216,15 @@
           <h2>Cash Flow Forecast</h2>
           <p class="settings-desc">Project your monthly balance. Click any cell to edit. Use + to add rows, × to remove.</p>
           <div class="extrap-config-row">
-          <label>Start Month
-            <select id="extrap-start-month"></select>
-          </label>
-          <label>Months
-            <input type="number" id="extrap-num-months" min="1" max="24" value="6" />
-          </label>
-
-          <button id="extrap-apply-btn" type="button" class="add-btn">
-            Apply
-          </button>
-
-          <button id="extrap-reset-btn" type="button" class="btn-secondary">
-            Reset
-          </button>
-
-          <button id="extrap-export-btn" type="button" class="btn-secondary">
-            ⬇ CSV
-          </button>
-        </div>
+            <label>Start Month
+              <select id="extrap-start-month"></select>
+            </label>
+            <label>Months
+              <input type="number" id="extrap-num-months" min="1" max="24" value="6" />
+            </label>
+            <button id="extrap-apply-btn" type="button" class="add-btn">Apply</button>
+            <button id="extrap-reset-btn" type="button" class="cancel-btn">Reset</button>
+          </div>
         </section>
 
         <section class="card extrap-grid-card">

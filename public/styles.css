@@ -51,32 +51,13 @@ button, a, input, select, textarea, [tabindex] {
 .app-title { font-weight: 700; font-size: 1.1rem; }
 .header-actions { display: flex; gap: 8px; align-items: center; }
 
-.theme-toggle-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
-  color: var(--text-secondary);
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  width: 32px;
-  height: 32px;
-}
 .header-icon {
   width: 20px;
   height: 20px;
   display: block;
 }
-.theme-icon {
-  width: 28px;
-  height: 28px;
-  display: block;
-}
-.theme-toggle-btn:hover { background: var(--border); }
+
+
 
 .notification-bell {
   position: relative;

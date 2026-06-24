@@ -214,7 +214,7 @@
 
         <section class="card">
           <h2>Cash Flow Forecast</h2>
-          <p class="settings-desc">Project your monthly balance. Click any cell to edit. Use + to add rows, × to remove.</p>
+          <p class="settings-desc">Project your monthly balance. Click any cell to edit amounts. Drag ⠿ to reorder rows. Right-click or long-press a cell to add a note.</p>
           <div class="extrap-config-row">
             <label>Start Month
               <select id="extrap-start-month"></select>
@@ -229,6 +229,15 @@
         </section>
 
         <section class="card extrap-grid-card">
+          <div class="extrap-notes-toggle-row">
+            <label class="toggle-switch-label">
+              <span class="toggle-switch">
+                <input type="checkbox" id="extrap-show-notes" />
+                <span class="toggle-slider"></span>
+              </span>
+              <span>Show notes</span>
+            </label>
+          </div>
           <div class="extrap-grid-wrap">
             <div id="extrap-grid" class="extrap-grid"></div>
           </div>

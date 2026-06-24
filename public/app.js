@@ -2983,11 +2983,6 @@ function renderDataRow(grid, type, label, months, index, total) {
       const indicator = document.createElement("span");
       indicator.className = "extrap-note-indicator";
       cell.appendChild(indicator);
-
-      const noteText = document.createElement("span");
-      noteText.className = "extrap-note-text";
-      noteText.textContent = entry.note;
-      cell.appendChild(noteText);
     }
 
     cell.title = entry && entry.note ? entry.note : "Click to edit, right-click for note";
@@ -3349,26 +3344,7 @@ async function loadExtrapolateData() {
   } catch {}
 
   renderExtrapGrid();
-
-  // Apply show-notes class based on toggle state
-  const notesToggle = document.getElementById("extrap-show-notes");
-  const grid = document.getElementById("extrap-grid");
-  if (notesToggle && grid) {
-    if (notesToggle.checked) {
-      grid.classList.add("show-notes");
-    } else {
-      grid.classList.remove("show-notes");
-    }
-  }
 }
-
-// Show/hide notes toggle
-document.getElementById("extrap-show-notes")?.addEventListener("change", (e) => {
-  const grid = document.getElementById("extrap-grid");
-  if (grid) {
-    grid.classList.toggle("show-notes", e.target.checked);
-  }
-});
 
 // Apply button
 document.getElementById("extrap-apply-btn")?.addEventListener("click", async () => {

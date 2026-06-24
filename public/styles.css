@@ -1175,12 +1175,15 @@ html, body { max-width: 100vw; overflow-x: hidden; }
 .extrap-note-popover {
   position: absolute;
   z-index: 1000;
-  background: var(--card-bg, #fff);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
   width: 220px;
+  opacity: 0.92;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .extrap-note-textarea {
@@ -1208,42 +1211,9 @@ html, body { max-width: 100vw; overflow-x: hidden; }
   margin-top: 8px;
 }
 
-.extrap-notes-toggle-row {
-  padding: 6px 0 10px;
-  display: flex;
-  align-items: center;
-}
-.extrap-notes-toggle-row .toggle-switch-label {
-  font-size: 0.8rem;
-}
 
-.extrap-note-text {
-  display: none;
-  position: absolute;
-  bottom: calc(100% + 4px);
-  right: 0;
-  background: var(--card-bg, #fff);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 0.7rem;
-  color: var(--text);
-  font-style: italic;
-  line-height: 1.3;
-  white-space: nowrap;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  z-index: 10;
-  pointer-events: none;
-}
-.extrap-grid.show-notes .extrap-note-text {
-  display: block;
-}
-.extrap-grid.show-notes .extrap-cell-amount {
-  overflow: visible;
-}
+
+
 
 @media (max-width: 600px) {
   .extrap-config-row {

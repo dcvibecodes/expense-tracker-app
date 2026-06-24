@@ -1503,12 +1503,18 @@ db.serialize(() => {
     if (!colNames.includes("sort_order")) {
       db.run("ALTER TABLE extrap_income ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
     }
+    if (!colNames.includes("note")) {
+      db.run("ALTER TABLE extrap_income ADD COLUMN note TEXT DEFAULT ''");
+    }
   });
   db.all("PRAGMA table_info(extrap_oneoff)", (err, cols) => {
     if (err || !cols) return;
     const colNames = cols.map(c => c.name);
     if (!colNames.includes("sort_order")) {
       db.run("ALTER TABLE extrap_oneoff ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
+    }
+    if (!colNames.includes("note")) {
+      db.run("ALTER TABLE extrap_oneoff ADD COLUMN note TEXT DEFAULT ''");
     }
   });
 
@@ -1601,7 +1607,7 @@ app.post("/api/extrapolate/purge", (req, res) => {
 
 // Get all income entries
 app.get("/api/extrapolate/income", (req, res) => {
-  db.all("SELECT id, month, label, amount, sort_order FROM extrap_income ORDER BY sort_order ASC, id ASC", (err, rows) => {
+  db.all("SELECT id, month, label, amount, sort_order, COALESCE(note, '') as note FROM extrap_income ORDER BY sort_order ASC, id ASC", (err, rows) => {
     if (err) return res.status(500).json({ error: "DB error" });
     return res.json(rows);
   });
@@ -1614,17 +1620,17 @@ app.post("/api/extrapolate/income", (req, res) => {
   if (!label || typeof label !== "string" || !label.trim()) return res.status(400).json({ error: "Label required." });
   const amt = Number(amount);
   if (!Number.isFinite(amt)) return res.status(400).json({ error: "Valid amount required." });
-  // Get sort_order: use existing row's order if updating, otherwise next available
-  db.get("SELECT sort_order FROM extrap_income WHERE month = ? AND label = ?", [month, label.trim()], (err, existing) => {
+  // Get sort_order and note: use existing row's values if updating, otherwise next available
+  db.get("SELECT sort_order, COALESCE(note, '') as note FROM extrap_income WHERE month = ? AND label = ?", [month, label.trim()], (err, existing) => {
     if (existing) {
-      db.run("INSERT OR REPLACE INTO extrap_income (month, label, amount, sort_order) VALUES (?, ?, ?, ?)", [month, label.trim(), amt, existing.sort_order], function(err2) {
+      db.run("INSERT OR REPLACE INTO extrap_income (month, label, amount, sort_order, note) VALUES (?, ?, ?, ?, ?)", [month, label.trim(), amt, existing.sort_order, existing.note], function(err2) {
         if (err2) return res.status(500).json({ error: "Failed to add income." });
         return res.json({ id: this.lastID });
       });
     } else {
       db.get("SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM extrap_income", (err2, row) => {
         const order = row ? row.next_order : 1;
-        db.run("INSERT OR REPLACE INTO extrap_income (month, label, amount, sort_order) VALUES (?, ?, ?, ?)", [month, label.trim(), amt, order], function(err3) {
+        db.run("INSERT OR REPLACE INTO extrap_income (month, label, amount, sort_order, note) VALUES (?, ?, ?, ?, '')", [month, label.trim(), amt, order], function(err3) {
           if (err3) return res.status(500).json({ error: "Failed to add income." });
           return res.json({ id: this.lastID });
         });
@@ -1636,12 +1642,13 @@ app.post("/api/extrapolate/income", (req, res) => {
 // Update income entry
 app.put("/api/extrapolate/income/:id", (req, res) => {
   const { id } = req.params;
-  const { month, label, amount } = req.body;
+  const { month, label, amount, note } = req.body;
   if (!month || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: "Invalid month." });
   if (!label || typeof label !== "string" || !label.trim()) return res.status(400).json({ error: "Label required." });
   const amt = Number(amount);
   if (!Number.isFinite(amt) || amt === 0) return res.status(400).json({ error: "Valid amount required." });
-  db.run("UPDATE extrap_income SET month = ?, label = ?, amount = ? WHERE id = ?", [month, label.trim(), amt, id], function(err) {
+  const noteVal = typeof note === "string" ? note.trim() : "";
+  db.run("UPDATE extrap_income SET month = ?, label = ?, amount = ?, note = ? WHERE id = ?", [month, label.trim(), amt, noteVal, id], function(err) {
     if (err) return res.status(500).json({ error: "Failed to update." });
     if (this.changes === 0) return res.status(404).json({ error: "Not found." });
     return res.json({ success: true });
@@ -1658,9 +1665,23 @@ app.delete("/api/extrapolate/income/:id", (req, res) => {
   });
 });
 
+// Update note on an income or oneoff entry
+app.patch("/api/extrapolate/note/:type/:id", (req, res) => {
+  const { type, id } = req.params;
+  const { note } = req.body;
+  if (!["income", "oneoff"].includes(type)) return res.status(400).json({ error: "Invalid type." });
+  const table = type === "income" ? "extrap_income" : "extrap_oneoff";
+  const noteVal = typeof note === "string" ? note.trim() : "";
+  db.run(`UPDATE ${table} SET note = ? WHERE id = ?`, [noteVal, id], function(err) {
+    if (err) return res.status(500).json({ error: "Failed to update note." });
+    if (this.changes === 0) return res.status(404).json({ error: "Not found." });
+    return res.json({ success: true });
+  });
+});
+
 // Get all one-off entries
 app.get("/api/extrapolate/oneoff", (req, res) => {
-  db.all("SELECT id, month, label, amount, sort_order FROM extrap_oneoff ORDER BY sort_order ASC, id ASC", (err, rows) => {
+  db.all("SELECT id, month, label, amount, sort_order, COALESCE(note, '') as note FROM extrap_oneoff ORDER BY sort_order ASC, id ASC", (err, rows) => {
     if (err) return res.status(500).json({ error: "DB error" });
     return res.json(rows);
   });
@@ -1673,16 +1694,16 @@ app.post("/api/extrapolate/oneoff", (req, res) => {
   if (!label || typeof label !== "string" || !label.trim()) return res.status(400).json({ error: "Label required." });
   const amt = Number(amount);
   if (!Number.isFinite(amt)) return res.status(400).json({ error: "Valid amount required." });
-  db.get("SELECT sort_order FROM extrap_oneoff WHERE month = ? AND label = ?", [month, label.trim()], (err, existing) => {
+  db.get("SELECT sort_order, COALESCE(note, '') as note FROM extrap_oneoff WHERE month = ? AND label = ?", [month, label.trim()], (err, existing) => {
     if (existing) {
-      db.run("INSERT OR REPLACE INTO extrap_oneoff (month, label, amount, sort_order) VALUES (?, ?, ?, ?)", [month, label.trim(), amt, existing.sort_order], function(err2) {
+      db.run("INSERT OR REPLACE INTO extrap_oneoff (month, label, amount, sort_order, note) VALUES (?, ?, ?, ?, ?)", [month, label.trim(), amt, existing.sort_order, existing.note], function(err2) {
         if (err2) return res.status(500).json({ error: "Failed to add one-off." });
         return res.json({ id: this.lastID });
       });
     } else {
       db.get("SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM extrap_oneoff", (err2, row) => {
         const order = row ? row.next_order : 1;
-        db.run("INSERT OR REPLACE INTO extrap_oneoff (month, label, amount, sort_order) VALUES (?, ?, ?, ?)", [month, label.trim(), amt, order], function(err3) {
+        db.run("INSERT OR REPLACE INTO extrap_oneoff (month, label, amount, sort_order, note) VALUES (?, ?, ?, ?, '')", [month, label.trim(), amt, order], function(err3) {
           if (err3) return res.status(500).json({ error: "Failed to add one-off." });
           return res.json({ id: this.lastID });
         });
@@ -1694,12 +1715,13 @@ app.post("/api/extrapolate/oneoff", (req, res) => {
 // Update one-off entry
 app.put("/api/extrapolate/oneoff/:id", (req, res) => {
   const { id } = req.params;
-  const { month, label, amount } = req.body;
+  const { month, label, amount, note } = req.body;
   if (!month || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: "Invalid month." });
   if (!label || typeof label !== "string" || !label.trim()) return res.status(400).json({ error: "Label required." });
   const amt = Number(amount);
   if (!Number.isFinite(amt) || amt === 0) return res.status(400).json({ error: "Valid amount required." });
-  db.run("UPDATE extrap_oneoff SET month = ?, label = ?, amount = ? WHERE id = ?", [month, label.trim(), amt, id], function(err) {
+  const noteVal = typeof note === "string" ? note.trim() : "";
+  db.run("UPDATE extrap_oneoff SET month = ?, label = ?, amount = ?, note = ? WHERE id = ?", [month, label.trim(), amt, noteVal, id], function(err) {
     if (err) return res.status(500).json({ error: "Failed to update." });
     if (this.changes === 0) return res.status(404).json({ error: "Not found." });
     return res.json({ success: true });

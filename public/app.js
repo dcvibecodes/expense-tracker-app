@@ -2969,7 +2969,7 @@ function renderDataRow(grid, type, label, months, index, total) {
     cell.className = "extrap-cell extrap-cell-amount";
     cell.classList.add(type === "income" ? "extrap-cell-income" : "extrap-cell-expense");
     cell.style.cursor = "pointer";
-    cell.title = "Click to edit";
+    cell.style.position = "relative";
 
     if (entry && entry.amount !== 0) {
       cell.textContent = type === "income" ? formatExtrapAmount(entry.amount) : `-${formatExtrapAmount(entry.amount)}`;
@@ -2978,12 +2978,28 @@ function renderDataRow(grid, type, label, months, index, total) {
       cell.classList.remove("extrap-cell-income", "extrap-cell-expense");
     }
 
+    // Note indicator
+    if (entry && entry.note) {
+      const indicator = document.createElement("span");
+      indicator.className = "extrap-note-indicator";
+      cell.appendChild(indicator);
+
+      const noteText = document.createElement("span");
+      noteText.className = "extrap-note-text";
+      noteText.textContent = entry.note;
+      cell.appendChild(noteText);
+    }
+
+    cell.title = entry && entry.note ? entry.note : "Click to edit, right-click for note";
+
+    // Click to edit amount
     cell.addEventListener("click", () => {
       const currentVal = entry && entry.amount !== 0 ? String(entry.amount) : "";
       startInlineEdit(cell, currentVal, async (newVal) => {
         const num = parseFloat(newVal);
         if (!newVal || newVal === "0") {
-          if (entry) await deleteExtrapEntry(type, entry.id);
+          // Set amount to 0 but keep the entry (preserves note and row)
+          await saveExtrapCell(type, ym, label, 0);
         } else if (Number.isFinite(num) && num !== 0) {
           await saveExtrapCell(type, ym, label, Math.abs(num));
         }
@@ -2991,8 +3007,136 @@ function renderDataRow(grid, type, label, months, index, total) {
       });
     });
 
+    // Right-click / long-press to edit note
+    cell.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      if (!entry || !entry.id) {
+        showErrorToast("Set an amount first before adding a note.");
+        return;
+      }
+      openNotePopover(cell, entry, type);
+    });
+
+    // Long-press for mobile
+    let longPressTimer = null;
+    cell.addEventListener("touchstart", (e) => {
+      longPressTimer = setTimeout(() => {
+        e.preventDefault();
+        if (!entry || !entry.id) {
+          showErrorToast("Set an amount first before adding a note.");
+          return;
+        }
+        openNotePopover(cell, entry, type);
+      }, 600);
+    }, { passive: false });
+    cell.addEventListener("touchend", () => clearTimeout(longPressTimer));
+    cell.addEventListener("touchmove", () => clearTimeout(longPressTimer));
+
     grid.appendChild(cell);
   }
+}
+
+// ===== NOTE POPOVER =====
+function openNotePopover(anchorCell, entry, type) {
+  // Close any existing popover
+  closeNotePopover();
+
+  const popover = document.createElement("div");
+  popover.className = "extrap-note-popover";
+  popover.id = "extrap-note-popover";
+
+  const textarea = document.createElement("textarea");
+  textarea.className = "extrap-note-textarea";
+  textarea.placeholder = "Add a note...";
+  textarea.value = entry.note || "";
+  textarea.rows = 3;
+
+  const btnRow = document.createElement("div");
+  btnRow.className = "extrap-note-btn-row";
+
+  const saveBtn = document.createElement("button");
+  saveBtn.className = "add-btn";
+  saveBtn.textContent = "Save";
+  saveBtn.style.fontSize = "0.75rem";
+  saveBtn.style.padding = "5px 12px";
+  saveBtn.style.minHeight = "auto";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.className = "cancel-btn";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.style.fontSize = "0.75rem";
+  cancelBtn.style.padding = "5px 12px";
+  cancelBtn.style.minHeight = "auto";
+
+  const clearBtn = document.createElement("button");
+  clearBtn.className = "btn-secondary";
+  clearBtn.textContent = "Clear";
+  clearBtn.style.fontSize = "0.75rem";
+  clearBtn.style.padding = "5px 12px";
+  clearBtn.style.minHeight = "auto";
+
+  btnRow.appendChild(saveBtn);
+  btnRow.appendChild(clearBtn);
+  btnRow.appendChild(cancelBtn);
+  popover.appendChild(textarea);
+  popover.appendChild(btnRow);
+
+  document.body.appendChild(popover);
+
+  // Position popover near the cell
+  const rect = anchorCell.getBoundingClientRect();
+  const popW = 220;
+  let left = rect.left + window.scrollX;
+  let top = rect.bottom + window.scrollY + 4;
+  if (left + popW > window.innerWidth) left = window.innerWidth - popW - 10;
+  if (left < 5) left = 5;
+  popover.style.left = left + "px";
+  popover.style.top = top + "px";
+
+  textarea.focus();
+
+  saveBtn.addEventListener("click", async () => {
+    const note = textarea.value.trim();
+    await safeFetch(`/api/extrapolate/note/${type}/${entry.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note })
+    });
+    closeNotePopover();
+    await loadExtrapolateData();
+  });
+
+  clearBtn.addEventListener("click", async () => {
+    await safeFetch(`/api/extrapolate/note/${type}/${entry.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note: "" })
+    });
+    closeNotePopover();
+    await loadExtrapolateData();
+  });
+
+  cancelBtn.addEventListener("click", () => {
+    closeNotePopover();
+  });
+
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener("mousedown", notePopoverOutsideClick);
+  }, 50);
+}
+
+function notePopoverOutsideClick(e) {
+  const popover = document.getElementById("extrap-note-popover");
+  if (popover && !popover.contains(e.target)) {
+    closeNotePopover();
+  }
+}
+
+function closeNotePopover() {
+  const popover = document.getElementById("extrap-note-popover");
+  if (popover) popover.remove();
+  document.removeEventListener("mousedown", notePopoverOutsideClick);
 }
 
 function renderAddRowButton(grid, type, numMonths) {
@@ -3134,6 +3278,32 @@ function downloadForecastCSV() {
   }
   csvRows.push(balanceRow);
 
+  // Notes section — collect all notes
+  const allNotes = [];
+  for (const label of incomeLabels) {
+    for (const ym of months) {
+      const entry = extrapIncome.find(e => e.label === label && e.month === ym);
+      if (entry && entry.note) {
+        allNotes.push([label, formatMonthLabel(ym), entry.note]);
+      }
+    }
+  }
+  for (const label of oneoffLabels) {
+    for (const ym of months) {
+      const entry = extrapOneoff.find(e => e.label === label && e.month === ym);
+      if (entry && entry.note) {
+        allNotes.push([label, formatMonthLabel(ym), entry.note]);
+      }
+    }
+  }
+  if (allNotes.length > 0) {
+    csvRows.push([]); // blank row separator
+    csvRows.push(["Notes", "Month", "Note"]);
+    for (const [lbl, mo, note] of allNotes) {
+      csvRows.push([lbl, mo, note]);
+    }
+  }
+
   // Convert to CSV string
   const csvContent = csvRows.map(row =>
     row.map(cell => {
@@ -3179,7 +3349,26 @@ async function loadExtrapolateData() {
   } catch {}
 
   renderExtrapGrid();
+
+  // Apply show-notes class based on toggle state
+  const notesToggle = document.getElementById("extrap-show-notes");
+  const grid = document.getElementById("extrap-grid");
+  if (notesToggle && grid) {
+    if (notesToggle.checked) {
+      grid.classList.add("show-notes");
+    } else {
+      grid.classList.remove("show-notes");
+    }
+  }
 }
+
+// Show/hide notes toggle
+document.getElementById("extrap-show-notes")?.addEventListener("change", (e) => {
+  const grid = document.getElementById("extrap-grid");
+  if (grid) {
+    grid.classList.toggle("show-notes", e.target.checked);
+  }
+});
 
 // Apply button
 document.getElementById("extrap-apply-btn")?.addEventListener("click", async () => {

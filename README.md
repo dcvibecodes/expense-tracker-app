@@ -1,6 +1,20 @@
-# Expenses+ v3.7.0
+# Expenses+ v3.8.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.8.0
+
+### Forecast Tab — Cell Notes
+- **Notes on any cell** — right-click (desktop) or long-press (mobile) any amount cell to add a note, similar to comments in Excel/Google Sheets
+- **Blue triangle indicator** — cells with notes show a small blue triangle in the top-right corner at all times
+- **"Show notes" toggle** — flip the toggle above the grid to reveal all notes as floating bubbles above their cells without distorting row heights
+- **Hover tooltip** — hovering over a cell with a note shows its content as a native tooltip (even with toggle off)
+- **Notes in CSV export** — notes are included as a separate "Notes" section at the bottom of the CSV, keeping numeric data clean for SUM formulas
+- **Notes survive edits** — changing or clearing an amount never removes the note; notes are only removed explicitly via the Clear button in the note popover
+
+### Forecast Tab — Bug Fixes
+- **Clearing an amount no longer deletes the row** — setting an amount to empty or 0 now keeps the row and note intact; rows can only be removed via the × button or full reset
+- **Rows no longer vanish on click** — fixed an issue where clicking a cell and blurring without changes could delete the underlying DB entry
 
 ## What's New in v3.7.0
 

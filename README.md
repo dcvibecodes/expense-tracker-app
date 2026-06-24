@@ -1,8 +1,15 @@
-# Expenses+ v3.6.0
+# Expenses+ v3.7.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
 
-## What's New in v3.6.0
+## What's New in v3.7.0
+
+### Forecast Tab Enhancements
+- **Starting balance per month** — the top row now shows the computed starting balance for every month (not just the first); each month's starting balance equals the previous month's ending balance, giving immediate visibility into carry-forward amounts
+- **CSV download** — new "⬇ CSV" button exports the entire forecast table as a CSV file including starting balance row, all income rows, all expense rows (as negative numbers), and the balance row; columns include a "Type" indicator (Income/Expense); spreadsheet SUM on any month column produces the correct balance figure
+- **Drag-and-drop reordering** — replaced ▲/▼ arrow buttons with HTML5 drag-and-drop; grab the ⠿ handle on any row to reorder within its section; visual drop indicator shows placement
+
+### What's New in v3.6.0
 
 ### Forecast Tab
 - **Cash flow projection** — new "Forecast" tab lets you project your monthly balance forward, replacing the need for a separate spreadsheet

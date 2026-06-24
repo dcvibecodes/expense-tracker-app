@@ -2713,6 +2713,21 @@ function startLabelEdit(cell, currentLabel, type, onSave) {
   });
 }
 
+function computeMonthlyBalances(months) {
+  // Compute the starting balance for each month (balance at the end of the previous month)
+  // For the first month, it's the manually set starting_balance
+  const balances = [];
+  let running = extrapSettings.starting_balance || 0;
+  for (let i = 0; i < months.length; i++) {
+    balances.push(running);
+    const ym = months[i];
+    const incomeTotal = extrapIncome.filter(item => item.month === ym).reduce((s, item) => s + item.amount, 0);
+    const expenseTotal = extrapOneoff.filter(item => item.month === ym).reduce((s, item) => s + item.amount, 0);
+    running += incomeTotal - expenseTotal;
+  }
+  return balances;
+}
+
 function renderExtrapGrid() {
   const grid = document.getElementById("extrap-grid");
   if (!grid) return;
@@ -2741,7 +2756,7 @@ function renderExtrapGrid() {
     grid.appendChild(h);
   }
 
-  // Starting Balance row
+  // Starting Balance row (shows computed starting balance for each month)
   renderStartingBalanceRow(grid, months);
 
   // Income section
@@ -2765,6 +2780,8 @@ function renderExtrapGrid() {
 }
 
 function renderStartingBalanceRow(grid, months) {
+  const balances = computeMonthlyBalances(months);
+
   // Empty del col
   const delCell = document.createElement("div");
   delCell.className = "extrap-cell";
@@ -2801,10 +2818,14 @@ function renderStartingBalanceRow(grid, months) {
   });
   grid.appendChild(firstCell);
 
-  // Remaining months: empty
+  // Remaining months: show computed starting balance (read-only)
   for (let i = 1; i < months.length; i++) {
     const cell = document.createElement("div");
-    cell.className = "extrap-cell";
+    cell.className = "extrap-cell extrap-cell-amount";
+    cell.style.fontWeight = "600";
+    cell.style.color = "var(--text-secondary)";
+    cell.textContent = formatExtrapAmount(balances[i]);
+    cell.title = "Computed from previous month's balance";
     grid.appendChild(cell);
   }
 }
@@ -2840,36 +2861,9 @@ function renderDataRow(grid, type, label, months, index, total) {
   const list = type === "income" ? extrapIncome : extrapOneoff;
   const entries = list.filter(e => e.label === label);
 
-  // Delete row button (first column) + reorder
+  // Delete row button (first column) — drag handle via the label cell
   const delCell = document.createElement("div");
   delCell.className = "extrap-cell extrap-cell-del";
-  
-  if (index > 0) {
-    const upBtn = document.createElement("button");
-    upBtn.className = "extrap-move-btn";
-    upBtn.textContent = "▲";
-    upBtn.title = "Move up";
-    upBtn.addEventListener("click", async () => {
-      const labels = getOrderedLabels(type === "income" ? extrapIncome : extrapOneoff);
-      [labels[index - 1], labels[index]] = [labels[index], labels[index - 1]];
-      await reorderRows(type, labels);
-      await loadExtrapolateData();
-    });
-    delCell.appendChild(upBtn);
-  }
-  if (index < total - 1) {
-    const downBtn = document.createElement("button");
-    downBtn.className = "extrap-move-btn";
-    downBtn.textContent = "▼";
-    downBtn.title = "Move down";
-    downBtn.addEventListener("click", async () => {
-      const labels = getOrderedLabels(type === "income" ? extrapIncome : extrapOneoff);
-      [labels[index], labels[index + 1]] = [labels[index + 1], labels[index]];
-      await reorderRows(type, labels);
-      await loadExtrapolateData();
-    });
-    delCell.appendChild(downBtn);
-  }
 
   const delBtn = document.createElement("button");
   delBtn.className = "extrap-row-delete-btn";
@@ -2883,13 +2877,74 @@ function renderDataRow(grid, type, label, months, index, total) {
   delCell.appendChild(delBtn);
   grid.appendChild(delCell);
 
-  // Label cell
+  // Label cell (drag handle)
   const labelCell = document.createElement("div");
-  labelCell.className = "extrap-cell extrap-cell-label";
-  labelCell.textContent = label;
-  labelCell.style.cursor = "pointer";
-  labelCell.title = "Click to rename";
-  labelCell.addEventListener("click", () => {
+  labelCell.className = "extrap-cell extrap-cell-label extrap-draggable-row";
+  labelCell.setAttribute("draggable", "true");
+  labelCell.dataset.rowType = type;
+  labelCell.dataset.rowIndex = index;
+  labelCell.dataset.rowLabel = label;
+  labelCell.innerHTML = `<span class="extrap-drag-handle" title="Drag to reorder">⠿</span><span class="extrap-label-text">${escapeHtml(label)}</span>`;
+  labelCell.style.cursor = "grab";
+  labelCell.title = "Drag to reorder, or click label to rename";
+
+  // Drag events
+  labelCell.addEventListener("dragstart", (e) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", JSON.stringify({ type, index, label }));
+    labelCell.classList.add("extrap-dragging");
+    // Store drag source info globally for drop target identification
+    grid.dataset.dragType = type;
+    grid.dataset.dragIndex = index;
+  });
+  labelCell.addEventListener("dragend", () => {
+    labelCell.classList.remove("extrap-dragging");
+    delete grid.dataset.dragType;
+    delete grid.dataset.dragIndex;
+    // Remove all drop indicators
+    grid.querySelectorAll(".extrap-drop-above, .extrap-drop-below").forEach(el => {
+      el.classList.remove("extrap-drop-above", "extrap-drop-below");
+    });
+  });
+  labelCell.addEventListener("dragover", (e) => {
+    if (grid.dataset.dragType !== type) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const rect = labelCell.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    if (e.clientY < midY) {
+      labelCell.classList.add("extrap-drop-above");
+      labelCell.classList.remove("extrap-drop-below");
+    } else {
+      labelCell.classList.add("extrap-drop-below");
+      labelCell.classList.remove("extrap-drop-above");
+    }
+  });
+  labelCell.addEventListener("dragleave", () => {
+    labelCell.classList.remove("extrap-drop-above", "extrap-drop-below");
+  });
+  labelCell.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    labelCell.classList.remove("extrap-drop-above", "extrap-drop-below");
+    try {
+      const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+      if (data.type !== type) return;
+      const fromIndex = data.index;
+      const toIndex = index;
+      if (fromIndex === toIndex) return;
+
+      const labels = getOrderedLabels(type === "income" ? extrapIncome : extrapOneoff);
+      const [moved] = labels.splice(fromIndex, 1);
+      labels.splice(toIndex, 0, moved);
+      await reorderRows(type, labels);
+      await loadExtrapolateData();
+    } catch {}
+  });
+
+  // Click on label text to rename
+  const labelText = labelCell.querySelector(".extrap-label-text");
+  labelText.addEventListener("click", (e) => {
+    e.stopPropagation();
     startLabelEdit(labelCell, label, type, async (newLabel) => {
       if (!newLabel || newLabel === label) {
         await loadExtrapolateData();
@@ -3022,6 +3077,87 @@ function renderBalanceRow(grid, months) {
   }
 }
 
+// ===== FORECAST CSV DOWNLOAD =====
+function downloadForecastCSV() {
+  const months = getExtrapMonths();
+  if (months.length === 0) {
+    showErrorToast("No forecast data to download.");
+    return;
+  }
+
+  const balances = computeMonthlyBalances(months);
+  const incomeLabels = getOrderedLabels(extrapIncome);
+  const oneoffLabels = getOrderedLabels(extrapOneoff);
+
+  // Build CSV rows
+  const csvRows = [];
+
+  // Header row
+  const header = ["", "Type", ...months.map(ym => formatMonthLabel(ym))];
+  csvRows.push(header);
+
+  // Starting Balance row
+  const startBalRow = ["Starting Balance", ""];
+  for (let i = 0; i < months.length; i++) {
+    startBalRow.push(balances[i]);
+  }
+  csvRows.push(startBalRow);
+
+  // Income rows
+  for (const label of incomeLabels) {
+    const row = [label, "Income"];
+    for (const ym of months) {
+      const entry = extrapIncome.find(e => e.label === label && e.month === ym);
+      row.push(entry && entry.amount !== 0 ? entry.amount : 0);
+    }
+    csvRows.push(row);
+  }
+
+  // Expense rows (negative amounts)
+  for (const label of oneoffLabels) {
+    const row = [label, "Expense"];
+    for (const ym of months) {
+      const entry = extrapOneoff.find(e => e.label === label && e.month === ym);
+      row.push(entry && entry.amount !== 0 ? -entry.amount : 0);
+    }
+    csvRows.push(row);
+  }
+
+  // Balance row
+  const balanceRow = ["Balance", ""];
+  let running = extrapSettings.starting_balance || 0;
+  for (const ym of months) {
+    const incomeTotal = extrapIncome.filter(i => i.month === ym).reduce((s, i) => s + i.amount, 0);
+    const expenseTotal = extrapOneoff.filter(o => o.month === ym).reduce((s, o) => s + o.amount, 0);
+    running += incomeTotal - expenseTotal;
+    balanceRow.push(running);
+  }
+  csvRows.push(balanceRow);
+
+  // Convert to CSV string
+  const csvContent = csvRows.map(row =>
+    row.map(cell => {
+      const str = String(cell);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return '"' + str.replace(/"/g, '""') + '"';
+      }
+      return str;
+    }).join(",")
+  ).join("\n");
+
+  // Download
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `forecast_${extrapSettings.start_month || "export"}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast("Forecast CSV downloaded.", "success");
+}
+
 async function loadExtrapolateData() {
   populateStartMonthDropdown();
   try {
@@ -3117,3 +3253,6 @@ document.getElementById("extrap-reset-btn")?.addEventListener("click", async () 
     }
   } catch {}
 });
+
+// CSV download
+document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadForecastCSV);

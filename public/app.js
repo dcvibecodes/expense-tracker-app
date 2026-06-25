@@ -2293,7 +2293,7 @@ document.getElementById("settings-lock-disable").addEventListener("click", async
   try {
     const res = await safeFetch("/api/lock/disable", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
     const data = await res.json();
-    if (data.success) { localStorage.removeItem("lock-remembered"); msg.textContent = "Lock disabled."; msg.className = "form-msg success"; document.getElementById("settings-disable-pin").value = ""; loadLockSettings(); }
+    if (data.success) { msg.textContent = "Lock disabled."; msg.className = "form-msg success"; document.getElementById("settings-disable-pin").value = ""; loadLockSettings(); }
     else { msg.textContent = data.error || "Incorrect PIN"; msg.className = "form-msg error"; }
   } catch {}
 });

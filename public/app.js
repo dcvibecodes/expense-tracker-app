@@ -1258,10 +1258,14 @@ function renderReportTotals(data) {
   let html = `${data.length} entr${data.length === 1 ? "y" : "ies"}`;
 
   for (const [category, amount] of sortedCategories) {
-    html += ` | ${formatCategory(category)}: ${formatAmountRounded(amount)}`;
-  }
+  const percentage = grandTotal
+    ? Math.round((amount / grandTotal) * 100)
+    : 0;
 
-  html += ` | Total: ${formatAmountRounded(grandTotal)}`;
+  html += ` | ${formatCategory(category)}: ${formatAmountRounded(amount)} (${percentage}%)`;
+}
+
+html += ` | Total: ${formatAmountRounded(grandTotal)}`;
 
   totalsBar.innerHTML = html;
 }

@@ -3537,6 +3537,8 @@ document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadFor
   if (!scratchpadBtn || !scratchpadPanel) return;
 
   let scratchpadLoaded = false;
+  let scratchpadSaveTimer = null;
+  let scratchpadLastSaved = "";
 
   function openScratchpad() {
     // Close notification panel if open
@@ -3549,10 +3551,14 @@ document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadFor
     scratchpadText.focus();
   }
 
-  function closeScratchpad() {
-    scratchpadPanel.classList.remove("open");
-    notifOverlay.classList.remove("open");
-  }
+  async function closeScratchpad() {
+  clearTimeout(scratchpadSaveTimer);
+
+  await saveScratchpad();
+
+  scratchpadPanel.classList.remove("open");
+  notifOverlay.classList.remove("open");
+}
 
   async function loadScratchpad() {
     try {
@@ -3560,6 +3566,7 @@ document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadFor
       if (res.ok) {
         const data = await res.json();
         scratchpadText.value = data.text || "";
+        scratchpadLastSaved = scratchpadText.value;
         scratchpadLoaded = true;
       }
     } catch {}
@@ -3567,8 +3574,14 @@ document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadFor
 
   async function saveScratchpad() {
     const text = scratchpadText.value;
+
+    if (text === scratchpadLastSaved) {
+      return;
+    }
     scratchpadSave.disabled = true;
     scratchpadSave.textContent = "Saving...";
+    scratchpadStatus.textContent = "Saving...";
+    scratchpadStatus.className = "scratchpad-status";
     try {
       const res = await fetch("/api/scratchpad", {
         method: "PUT",
@@ -3576,10 +3589,15 @@ document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadFor
         body: JSON.stringify({ text })
       });
       if (res.ok) {
-        scratchpadStatus.textContent = "Saved ✓";
-        scratchpadStatus.className = "scratchpad-status saved";
-        setTimeout(() => { scratchpadStatus.textContent = ""; scratchpadStatus.className = "scratchpad-status"; }, 2000);
-      } else {
+      scratchpadLastSaved = text;
+
+      scratchpadStatus.textContent = "Saved ✓";
+      scratchpadStatus.className = "scratchpad-status saved";
+      setTimeout(() => {
+        scratchpadStatus.textContent = "";
+        scratchpadStatus.className = "scratchpad-status";
+      }, 2000);
+    } else {
         scratchpadStatus.textContent = "Failed to save";
         scratchpadStatus.className = "scratchpad-status";
       }
@@ -3595,11 +3613,22 @@ document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadFor
   scratchpadClose.addEventListener("click", closeScratchpad);
   scratchpadSave.addEventListener("click", saveScratchpad);
 
-  // Ctrl+Enter to save
-  scratchpadText.addEventListener("keydown", e => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-      e.preventDefault();
-      saveScratchpad();
-    }
-  });
+// Auto-save 1 second after typing stops
+scratchpadText.addEventListener("input", () => {
+  
+  clearTimeout(scratchpadSaveTimer);
+
+  scratchpadSaveTimer = setTimeout(() => {
+    saveScratchpad();
+  }, 2000);
+});
+
+// Ctrl+Enter saves immediately
+scratchpadText.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    e.preventDefault();
+    clearTimeout(scratchpadSaveTimer);
+    saveScratchpad();
+  }
+});
 })();

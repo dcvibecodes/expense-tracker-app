@@ -485,12 +485,16 @@ function renderRows(rows) {
     if (row.original_currency && row.original_amount) {
       amountDisplay += `<br><span class="original-amt">${getCurrencySymbol(row.original_currency)} ${new Intl.NumberFormat(getCurrencyLocale(row.original_currency), { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(row.original_amount)}</span>`;
     }
+    const noteBtn = row.note
+      ? `<button class="action-btn btn-note" data-id="${row.id}" title="View note" aria-label="View note">📝</button>`
+      : `<button class="action-btn btn-note notes-empty" data-id="${row.id}" title="Add note" aria-label="Add note">🗒️</button>`;
     tr.innerHTML = `
       <td data-label="Date">${escapeHtml(formatDate(row.date))}</td>
       <td data-label="Details">${escapeHtml(row.details)}</td>
       <td data-label="Category"><span class="cat-badge" style="background:${getCategoryColor(row.category)}20;color:${getCategoryColor(row.category)}">${escapeHtml(formatCategory(row.category))}</span></td>
       <td data-label="Amount">${amountDisplay}</td>
       <td class="actions-cell" data-label="">
+        ${noteBtn}
         <button class="action-btn btn-copy" data-id="${row.id}" title="Copy to date" aria-label="Copy expense to another date">📋</button>
         <button class="action-btn btn-edit" data-id="${row.id}" title="Edit" aria-label="Edit expense">✏️</button>
         <button class="action-btn delete btn-delete" data-id="${row.id}" title="Delete" aria-label="Delete expense">🗑️</button>
@@ -610,6 +614,7 @@ function openEditModal(row) {
   populateCategorySelect(editCategory, false);
   editCategory.value = row.category;
   editAmount.value = row.amount;
+  document.getElementById("edit-note").value = row.note || "";
   editModal.classList.add("open");
   if (activeModalTrap) activeModalTrap();
   activeModalTrap = trapFocus(editModal.querySelector(".modal-content"));
@@ -712,7 +717,8 @@ rowsEl.addEventListener("click", async e => {
   const btn = e.target.closest("button"); if (!btn) return;
   const id = parseInt(btn.dataset.id, 10);
   const row = currentRows.find(r => r.id === id); if (!row) return;
-  if (btn.classList.contains("btn-edit")) { openEditModal(row); }
+  if (btn.classList.contains("btn-note")) { openNotesModal(row); }
+  else if (btn.classList.contains("btn-edit")) { openEditModal(row); }
   else if (btn.classList.contains("btn-copy")) { openCopyModal(row); }
   else if (btn.classList.contains("btn-delete")) {
     if (!await showConfirm("Delete Expense", `${formatDate(row.date)} — ${row.details} — ${formatAmount(row.amount)}`)) return;
@@ -742,7 +748,8 @@ editForm.addEventListener("submit", async e => {
   saveBtn.disabled = true;
   saveBtn.textContent = "Saving...";
   try {
-    const res = await safeFetch(`/api/expenses/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: editDate.value, details: editDetails.value.trim(), category: editCategory.value, amount: amountNum }) });
+    const editNoteVal = document.getElementById("edit-note").value.trim();
+    const res = await safeFetch(`/api/expenses/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: editDate.value, details: editDetails.value.trim(), category: editCategory.value, amount: amountNum, note: editNoteVal }) });
     if (res.ok) { closeEditModal(); await refreshAll(); await loadReports(); populateDetailsList(); }
     else { const err = await res.json(); alert(err.error || "Failed to update"); }
   } catch {}
@@ -814,6 +821,9 @@ expenseForm.addEventListener("submit", async e => {
   try {
     // Build request body — handle abroad mode conversion
     const body = { date, details, category, amount: amountNum };
+    const noteVal = document.getElementById("note").value.trim();
+    if (noteVal) body.note = noteVal;
+
     if (abroadMode.active && abroadMode.currency) {
       const rate = currencyRates.find(r => r.code === abroadMode.currency);
       if (rate) {
@@ -829,6 +839,9 @@ expenseForm.addEventListener("submit", async e => {
       addExpenseMsg.textContent = "Expense added successfully.";
       addExpenseMsg.className = "form-msg success";
       detailsInput.value = ""; amountInput.value = "";
+      document.getElementById("note").value = "";
+      document.getElementById("note-field-wrap").style.display = "none";
+      document.getElementById("note-toggle-link").textContent = "📝 Add note";
       hideSuggestions();
       detailsAutocomplete.hide();
       await refreshAll(); populateDetailsList();
@@ -860,6 +873,9 @@ document.getElementById("clear-form-btn").addEventListener("click", () => {
   dateInput.value = todayStr();
   detailsInput.value = "";
   amountInput.value = "";
+  document.getElementById("note").value = "";
+  document.getElementById("note-field-wrap").style.display = "none";
+  document.getElementById("note-toggle-link").textContent = "📝 Add note";
   if (categories.length) categoryInput.value = categories[0].name;
   detailsAutocomplete.hide();
   hideSuggestions();
@@ -871,8 +887,84 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     closeEditModal();
     closeCopyModal();
+    closeNotesModal();
     if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
   }
+});
+
+// ===== NOTE TOGGLE =====
+document.getElementById("note-toggle-link").addEventListener("click", e => {
+  e.preventDefault();
+  const wrap = document.getElementById("note-field-wrap");
+  const link = document.getElementById("note-toggle-link");
+  if (wrap.style.display === "none") {
+    wrap.style.display = "block";
+    link.textContent = "📝 Hide note";
+    document.getElementById("note").focus();
+  } else {
+    wrap.style.display = "none";
+    link.textContent = "📝 Add note";
+  }
+});
+
+// ===== NOTES MODAL =====
+let notesCurrentExpenseId = null;
+
+function openNotesModal(row) {
+  notesCurrentExpenseId = row.id;
+  document.getElementById("notes-modal-details").textContent = `${formatDate(row.date)} — ${row.details} — ${formatAmount(row.amount)}`;
+  document.getElementById("notes-modal-text").value = row.note || "";
+  const modal = document.getElementById("notes-modal");
+  modal.classList.add("open");
+  if (activeModalTrap) activeModalTrap();
+  activeModalTrap = trapFocus(modal.querySelector(".modal-content"));
+  document.getElementById("notes-modal-text").focus();
+}
+
+function closeNotesModal() {
+  document.getElementById("notes-modal").classList.remove("open");
+  notesCurrentExpenseId = null;
+  if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
+}
+
+document.getElementById("notes-cancel-btn").addEventListener("click", closeNotesModal);
+
+document.getElementById("notes-save-btn").addEventListener("click", async () => {
+  if (!notesCurrentExpenseId) return;
+  const noteText = document.getElementById("notes-modal-text").value.trim();
+  const row = currentRows.find(r => r.id === notesCurrentExpenseId) || reportRows.find(r => r.id === notesCurrentExpenseId);
+  if (!row) { closeNotesModal(); return; }
+
+  const saveBtn = document.getElementById("notes-save-btn");
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Saving...";
+  try {
+    const res = await safeFetch(`/api/expenses/${notesCurrentExpenseId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date: row.date,
+        details: row.details,
+        category: row.category,
+        amount: row.amount,
+        original_amount: row.original_amount || null,
+        original_currency: row.original_currency || null,
+        exchange_rate: row.exchange_rate || null,
+        note: noteText
+      })
+    });
+    if (res.ok) {
+      closeNotesModal();
+      showToast("Note saved", "success");
+      await refreshAll();
+      await loadReports();
+    } else {
+      const err = await res.json();
+      showErrorToast(err.error || "Failed to save note");
+    }
+  } catch {}
+  saveBtn.disabled = false;
+  saveBtn.textContent = "Save";
 });
 
 // ===== REPORTS TAB =====
@@ -1210,7 +1302,7 @@ function renderReportTable(data) {
     html += `  <span class="rpt-label">${escapeHtml(exp.details)}</span>`;
     html += `  <span class="rpt-cat"><span class="cat-badge" style="background:${getCategoryColor(exp.category)}20;color:${getCategoryColor(exp.category)}">${escapeHtml(formatCategory(exp.category))}</span></span>`;
     html += `  <span class="rpt-amt">${amountDisplay}</span>`;
-    html += `  <span class="rpt-actions"><button class="action-btn rpt-copy-btn" data-id="${exp.id}" title="Copy to date" aria-label="Copy expense">📋</button><button class="action-btn rpt-edit-btn" data-id="${exp.id}" title="Edit" aria-label="Edit expense">✏️</button><button class="action-btn delete rpt-delete-btn" data-id="${exp.id}" title="Delete" aria-label="Delete expense">🗑️</button></span>`;
+    html += `  <span class="rpt-actions">${exp.note ? `<button class="action-btn rpt-note-btn" data-id="${exp.id}" title="View note" aria-label="View note">📝</button>` : `<button class="action-btn rpt-note-btn notes-empty" data-id="${exp.id}" title="Add note" aria-label="Add note">🗒️</button>`}<button class="action-btn rpt-copy-btn" data-id="${exp.id}" title="Copy to date" aria-label="Copy expense">📋</button><button class="action-btn rpt-edit-btn" data-id="${exp.id}" title="Edit" aria-label="Edit expense">✏️</button><button class="action-btn delete rpt-delete-btn" data-id="${exp.id}" title="Delete" aria-label="Delete expense">🗑️</button></span>`;
     html += `</div>`;
   }
   html += `</div>`;
@@ -1272,6 +1364,15 @@ async function batchUpdateSelected(payload, confirmMessage) {
 
 // Report table click handlers (select + edit/delete/copy)
 reportWrap.addEventListener("click", async e => {
+  // Handle note button click in report
+  const noteBtn = e.target.closest(".rpt-note-btn");
+  if (noteBtn) {
+    const id = parseInt(noteBtn.dataset.id, 10);
+    const exp = reportRows.find(r => r.id === id);
+    if (exp) openNotesModal(exp);
+    return;
+  }
+
   const selectAll = e.target.closest("#report-select-all");
   if (selectAll) {
     const checked = selectAll.checked;
@@ -2444,6 +2545,8 @@ document.body.appendChild(notifOverlay);
 document.getElementById("notification-bell")?.addEventListener("click", async () => {
   const panel = document.getElementById("notification-panel");
   if (!panel) return;
+  // Close scratchpad if open
+  document.getElementById("scratchpad-panel")?.classList.remove("open");
   // Mark all unread as dismissed on the server
   const notifs = cachedNotifications;
   const unread = notifs.filter(n => !n.dismissed);
@@ -2466,6 +2569,7 @@ document.getElementById("notification-close")?.addEventListener("click", () => {
 
 notifOverlay.addEventListener("click", () => {
   document.getElementById("notification-panel")?.classList.remove("open");
+  document.getElementById("scratchpad-panel")?.classList.remove("open");
   notifOverlay.classList.remove("open");
 });
 
@@ -3421,3 +3525,81 @@ document.getElementById("extrap-reset-btn")?.addEventListener("click", async () 
 
 // CSV download
 document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadForecastCSV);
+
+// ===== SCRATCHPAD (Quick Notes) =====
+(function() {
+  const scratchpadBtn = document.getElementById("scratchpad-btn");
+  const scratchpadPanel = document.getElementById("scratchpad-panel");
+  const scratchpadClose = document.getElementById("scratchpad-close");
+  const scratchpadText = document.getElementById("scratchpad-text");
+  const scratchpadSave = document.getElementById("scratchpad-save");
+  const scratchpadStatus = document.getElementById("scratchpad-status");
+  if (!scratchpadBtn || !scratchpadPanel) return;
+
+  let scratchpadLoaded = false;
+
+  function openScratchpad() {
+    // Close notification panel if open
+    document.getElementById("notification-panel")?.classList.remove("open");
+    scratchpadPanel.classList.add("open");
+    notifOverlay.classList.add("open");
+    if (!scratchpadLoaded) {
+      loadScratchpad();
+    }
+    scratchpadText.focus();
+  }
+
+  function closeScratchpad() {
+    scratchpadPanel.classList.remove("open");
+    notifOverlay.classList.remove("open");
+  }
+
+  async function loadScratchpad() {
+    try {
+      const res = await fetch("/api/scratchpad");
+      if (res.ok) {
+        const data = await res.json();
+        scratchpadText.value = data.text || "";
+        scratchpadLoaded = true;
+      }
+    } catch {}
+  }
+
+  async function saveScratchpad() {
+    const text = scratchpadText.value;
+    scratchpadSave.disabled = true;
+    scratchpadSave.textContent = "Saving...";
+    try {
+      const res = await fetch("/api/scratchpad", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+      if (res.ok) {
+        scratchpadStatus.textContent = "Saved ✓";
+        scratchpadStatus.className = "scratchpad-status saved";
+        setTimeout(() => { scratchpadStatus.textContent = ""; scratchpadStatus.className = "scratchpad-status"; }, 2000);
+      } else {
+        scratchpadStatus.textContent = "Failed to save";
+        scratchpadStatus.className = "scratchpad-status";
+      }
+    } catch {
+      scratchpadStatus.textContent = "Network error";
+      scratchpadStatus.className = "scratchpad-status";
+    }
+    scratchpadSave.disabled = false;
+    scratchpadSave.textContent = "Save";
+  }
+
+  scratchpadBtn.addEventListener("click", openScratchpad);
+  scratchpadClose.addEventListener("click", closeScratchpad);
+  scratchpadSave.addEventListener("click", saveScratchpad);
+
+  // Ctrl+Enter to save
+  scratchpadText.addEventListener("keydown", e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      saveScratchpad();
+    }
+  });
+})();

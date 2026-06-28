@@ -139,6 +139,9 @@ db.serialize(() => {
     if (!colNames.includes("exchange_rate")) {
       db.run("ALTER TABLE expenses ADD COLUMN exchange_rate REAL");
     }
+    if (!colNames.includes("note")) {
+      db.run("ALTER TABLE expenses ADD COLUMN note TEXT DEFAULT ''");
+    }
   });
 
   db.run(`
@@ -513,7 +516,7 @@ app.get("/api/suggestions", (req, res) => {
 });
 
 app.post("/api/expenses", (req, res) => {
-  const { date, details, category, amount, original_amount, original_currency, exchange_rate } = req.body;
+  const { date, details, category, amount, original_amount, original_currency, exchange_rate, note } = req.body;
   if (!isValidDate(date)) {
     return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
   }
@@ -532,11 +535,12 @@ app.post("/api/expenses", (req, res) => {
   const origAmt = original_amount != null ? Number(original_amount) : null;
   const origCurr = original_currency || null;
   const exRate = exchange_rate != null ? Number(exchange_rate) : null;
+  const cleanNote = (typeof note === "string" ? note.trim() : "") || "";
 
   isValidCategory(category, (valid) => {
     if (!valid) return res.status(400).json({ error: "Invalid category." });
-    const sql = "INSERT INTO expenses (date, details, category, amount, original_amount, original_currency, exchange_rate) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    db.run(sql, [date, details.trim(), category, amt, origAmt, origCurr, exRate], function onInsert(err) {
+    const sql = "INSERT INTO expenses (date, details, category, amount, original_amount, original_currency, exchange_rate, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    db.run(sql, [date, details.trim(), category, amt, origAmt, origCurr, exRate, cleanNote], function onInsert(err) {
       if (err) return res.status(500).json({ error: "Failed to save expense." });
       return res.json({ id: this.lastID });
     });
@@ -581,7 +585,7 @@ app.get("/api/expenses", (req, res) => {
   }
 
   const sql = `
-    SELECT id, date, details, category, amount, original_amount, original_currency, exchange_rate
+    SELECT id, date, details, category, amount, original_amount, original_currency, exchange_rate, COALESCE(note, '') as note
     FROM expenses
     ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
     ORDER BY date DESC, id DESC
@@ -617,7 +621,7 @@ app.get("/api/details", (req, res) => {
 
 app.put("/api/expenses/:id", (req, res) => {
   const { id } = req.params;
-  const { date, details, category, amount, original_amount, original_currency, exchange_rate } = req.body;
+  const { date, details, category, amount, original_amount, original_currency, exchange_rate, note } = req.body;
   if (!isValidDate(date)) {
     return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
   }
@@ -635,11 +639,12 @@ app.put("/api/expenses/:id", (req, res) => {
   const origAmt = original_amount != null ? Number(original_amount) : null;
   const origCurr = original_currency || null;
   const exRate = exchange_rate != null ? Number(exchange_rate) : null;
+  const cleanNote = (typeof note === "string" ? note.trim() : "") || "";
 
   isValidCategory(category, (valid) => {
     if (!valid) return res.status(400).json({ error: "Invalid category." });
-    const sql = "UPDATE expenses SET date = ?, details = ?, category = ?, amount = ?, original_amount = ?, original_currency = ?, exchange_rate = ? WHERE id = ?";
-    db.run(sql, [date, details.trim(), category, amt, origAmt, origCurr, exRate, id], function onUpdate(err) {
+    const sql = "UPDATE expenses SET date = ?, details = ?, category = ?, amount = ?, original_amount = ?, original_currency = ?, exchange_rate = ?, note = ? WHERE id = ?";
+    db.run(sql, [date, details.trim(), category, amt, origAmt, origCurr, exRate, cleanNote, id], function onUpdate(err) {
       if (err) return res.status(500).json({ error: "Failed to update expense." });
       if (this.changes === 0) return res.status(404).json({ error: "Expense not found." });
       return res.json({ success: true });
@@ -676,12 +681,12 @@ app.post("/api/expenses/repeat-last-month", (req, res) => {
     if (cntErr) return res.status(500).json({ error: "DB error." });
     if (cntRow.cnt > 0) return res.status(400).json({ error: "Current month already has expenses. Use this only on an empty month." });
 
-    const sql = "SELECT date, details, category, amount FROM expenses WHERE substr(date, 1, 7) = ? ORDER BY date ASC, id ASC";
+    const sql = "SELECT date, details, category, amount, COALESCE(note, '') as note FROM expenses WHERE substr(date, 1, 7) = ? ORDER BY date ASC, id ASC";
     db.all(sql, [ym], (err, rows) => {
       if (err) return res.status(500).json({ error: "Failed to fetch last month." });
       if (rows.length === 0) return res.status(400).json({ error: "No expenses found in last month." });
 
-      const stmt = db.prepare("INSERT INTO expenses (date, details, category, amount) VALUES (?, ?, ?, ?)");
+      const stmt = db.prepare("INSERT INTO expenses (date, details, category, amount, note) VALUES (?, ?, ?, ?, ?)");
       let inserted = 0;
       for (const row of rows) {
         // Shift date to current month, clamping day to valid range
@@ -689,7 +694,7 @@ app.post("/api/expenses/repeat-last-month", (req, res) => {
         const maxDay = new Date(curYear, curMonth, 0).getDate();
         const newDay = Math.min(day, maxDay);
         const newDate = `${curYear}-${String(curMonth).padStart(2, "0")}-${String(newDay).padStart(2, "0")}`;
-        stmt.run(newDate, row.details, row.category, row.amount);
+        stmt.run(newDate, row.details, row.category, row.amount, row.note);
         inserted++;
       }
       stmt.finalize();
@@ -700,7 +705,7 @@ app.post("/api/expenses/repeat-last-month", (req, res) => {
 
 app.get("/api/expenses/:id", (req, res) => {
   const { id } = req.params;
-  db.get("SELECT id, date, details, category, amount, original_amount, original_currency, exchange_rate FROM expenses WHERE id = ?", [id], (err, row) => {
+  db.get("SELECT id, date, details, category, amount, original_amount, original_currency, exchange_rate, COALESCE(note, '') as note FROM expenses WHERE id = ?", [id], (err, row) => {
     if (err) return res.status(500).json({ error: "Failed to fetch expense." });
     if (!row) return res.status(404).json({ error: "Expense not found." });
     return res.json(row);
@@ -812,7 +817,7 @@ app.post("/api/expenses/copy", (req, res) => {
     if (!isValidDate(d)) return res.status(400).json({ error: `Invalid date: ${d}` });
   }
 
-  db.get("SELECT date, details, category, amount FROM expenses WHERE id = ?", [id], (err, row) => {
+  db.get("SELECT date, details, category, amount, COALESCE(note, '') as note FROM expenses WHERE id = ?", [id], (err, row) => {
     if (err) return res.status(500).json({ error: "DB error." });
     if (!row) return res.status(404).json({ error: "Expense not found." });
 
@@ -832,10 +837,10 @@ app.post("/api/expenses/copy", (req, res) => {
         return res.json({ success: true, inserted: 0, skipped, message: "All target dates already have this expense." });
       }
 
-      const stmt = db.prepare("INSERT INTO expenses (date, details, category, amount) VALUES (?, ?, ?, ?)");
+      const stmt = db.prepare("INSERT INTO expenses (date, details, category, amount, note) VALUES (?, ?, ?, ?, ?)");
       let inserted = 0;
       for (const d of datesToInsert) {
-        stmt.run(d, row.details, row.category, row.amount);
+        stmt.run(d, row.details, row.category, row.amount, row.note);
         inserted++;
       }
       stmt.finalize();
@@ -957,7 +962,7 @@ app.get("/api/reports", (req, res) => {
     params.push(category);
   }
 
-  const sql = `SELECT id, date, details, category, amount, original_amount, original_currency, exchange_rate FROM expenses
+  const sql = `SELECT id, date, details, category, amount, original_amount, original_currency, exchange_rate, COALESCE(note, '') as note FROM expenses
 ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY date DESC, id DESC`;
 
   db.all(sql, params, (err, rows) => {
@@ -1011,12 +1016,12 @@ app.get("/api/export/csv", (req, res) => {
     params.push(category);
   }
 
-  const sql = `SELECT date, details, category, amount FROM expenses ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY date ASC, id ASC`;
+  const sql = `SELECT date, details, category, amount, COALESCE(note, '') as note FROM expenses ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY date ASC, id ASC`;
 
   db.all(sql, params, (err, rows) => {
     if (err) return res.status(500).json({ error: "Failed to export." });
 
-    let csv = "Date,Details,Category,Amount\n";
+    let csv = "Date,Details,Category,Amount,Note\n";
     for (const r of rows) {
       // Proper CSV escaping: wrap in quotes if contains comma, quote, or newline
       // Escape double quotes by doubling them
@@ -1026,7 +1031,11 @@ app.get("/api/export/csv", (req, res) => {
         details = '"' + details.replace(/"/g, '""') + '"';
       }
       let catName = r.category.charAt(0).toUpperCase() + r.category.slice(1);
-      csv += `${r.date},${details},${catName},${r.amount}\n`;
+      let noteVal = r.note || "";
+      if (/[,"\r\n]/.test(noteVal) || /^[=+\-@\t\r]/.test(noteVal)) {
+        noteVal = '"' + noteVal.replace(/"/g, '""') + '"';
+      }
+      csv += `${r.date},${details},${catName},${r.amount},${noteVal}\n`;
     }
 
     res.setHeader("Content-Type", "text/csv");
@@ -1233,6 +1242,28 @@ app.put("/api/settings", (req, res) => {
 });
 
 // --- Currency Rates API ---
+
+// --- Scratchpad API (single persistent note) ---
+app.get("/api/scratchpad", (req, res) => {
+  db.get("SELECT value FROM settings WHERE key = 'scratchpad'", (err, row) => {
+    if (err) return res.status(500).json({ error: "DB error" });
+    return res.json({ text: row ? row.value : "" });
+  });
+});
+
+app.put("/api/scratchpad", (req, res) => {
+  const { text } = req.body;
+  if (typeof text !== "string") {
+    return res.status(400).json({ error: "Text is required." });
+  }
+  if (text.length > 10000) {
+    return res.status(400).json({ error: "Note too long (max 10,000 characters)." });
+  }
+  db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('scratchpad', ?)", [text], (err) => {
+    if (err) return res.status(500).json({ error: "Failed to save." });
+    return res.json({ success: true });
+  });
+});
 
 app.get("/api/currency-rates", (req, res) => {
   db.all("SELECT code, name, rate, updated_at FROM currency_rates ORDER BY code ASC", (err, rows) => {

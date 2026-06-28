@@ -3536,20 +3536,19 @@ document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadFor
   const scratchpadStatus = document.getElementById("scratchpad-status");
   if (!scratchpadBtn || !scratchpadPanel) return;
 
-  let scratchpadLoaded = false;
   let scratchpadSaveTimer = null;
   let scratchpadLastSaved = "";
 
-  function openScratchpad() {
-    // Close notification panel if open
+  async function openScratchpad() {
     document.getElementById("notification-panel")?.classList.remove("open");
+
     scratchpadPanel.classList.add("open");
     notifOverlay.classList.add("open");
-    if (!scratchpadLoaded) {
-      loadScratchpad();
-    }
+
+    await loadScratchpad();
+
     scratchpadText.focus();
-  }
+}
 
   async function closeScratchpad() {
   clearTimeout(scratchpadSaveTimer);
@@ -3567,7 +3566,7 @@ document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadFor
         const data = await res.json();
         scratchpadText.value = data.text || "";
         scratchpadLastSaved = scratchpadText.value;
-        scratchpadLoaded = true;
+       
       }
     } catch {}
   }

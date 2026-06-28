@@ -30,17 +30,29 @@
     <!-- App Header --> 
     <header class="app-header"> 
       <span class="app-title">Expenses+</span> 
-      <div class="header-actions"> 
+      <div class="header-actions">
+        <button id="scratchpad-btn" class="notification-bell" type="button" title="Quick Notes" aria-label="Quick Notes">
+          <svg class="header-icon" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+        </button>
         <button id="notification-bell" class="notification-bell" type="button" title="Notifications" aria-label="Notifications">
-        <svg class="header-icon" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
-          <path d="M13.73 21a2 2 0 01-3.46 0"/>
-        </svg>
-
-        <span id="notification-badge" class="notification-badge" aria-hidden="true" style="display:none;">0</span>
-      </button> 
+          <svg class="header-icon" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 01-3.46 0"/>
+          </svg>
+          <span id="notification-badge" class="notification-badge" aria-hidden="true" style="display:none;">0</span>
+        </button>
+      </div> 
+    </header> 
       </div> 
     </header> 
 
@@ -51,6 +63,21 @@
         <button id="notification-close" type="button">✕</button> 
       </div> 
       <div id="notification-list" class="notification-list"></div> 
+    </div> 
+
+    <!-- Scratchpad Panel -->
+    <div id="scratchpad-panel" class="notification-panel">
+      <div class="notification-panel-header">
+        <span>Quick Notes</span>
+        <button id="scratchpad-close" type="button">✕</button>
+      </div>
+      <div class="scratchpad-body">
+        <textarea id="scratchpad-text" class="scratchpad-textarea" placeholder="Jot down anything — reminders, budget goals, things to track..."></textarea>
+        <div class="scratchpad-footer">
+          <span id="scratchpad-status" class="scratchpad-status"></span>
+          <button id="scratchpad-save" type="button" class="add-btn">Save</button>
+        </div>
+      </div>
     </div> 
 
     <!-- Bottom Navigation --> 
@@ -105,6 +132,13 @@
             <label><span id="amount-label-text">Amount</span>
               <input type="text" id="amount" inputmode="decimal" placeholder="0.00" autocomplete="off" required />
             </label>
+
+            <div class="note-toggle-row" style="grid-column: 1/-1;">
+              <a href="#" id="note-toggle-link" class="note-toggle-link">📝 Add note</a>
+              <div id="note-field-wrap" class="note-field-wrap" style="display:none;">
+                <textarea id="note" rows="2" placeholder="Optional note..." class="note-textarea"></textarea>
+              </div>
+            </div>
 
             <div style="grid-column: 1/-1; display: flex; gap: 10px;">
               <button type="submit" class="add-btn" id="add-btn">+ Add</button>
@@ -359,6 +393,9 @@
             <select id="edit-category" required></select> 
           </label> 
           <label>Amount <input type="text" id="edit-amount" inputmode="decimal" placeholder="0.00" autocomplete="off" required /></label> 
+          <label style="grid-column: 1/-1;">Note
+            <textarea id="edit-note" rows="2" placeholder="Optional note..." class="note-textarea"></textarea>
+          </label>
           <div class="modal-buttons"> 
             <button type="submit" class="save-btn">Save</button> 
             <button type="button" id="edit-cancel" class="cancel-btn">Cancel</button> 
@@ -385,6 +422,19 @@
         </form> 
       </div> 
     </div> 
+
+    <!-- Notes Modal -->
+    <div id="notes-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="notes-modal-title">
+      <div class="modal-content modal-content-sm">
+        <h2 id="notes-modal-title">Note</h2>
+        <p id="notes-modal-details" class="notes-expense-details"></p>
+        <textarea id="notes-modal-text" class="note-textarea" rows="3" placeholder="Add a note..."></textarea>
+        <div class="modal-buttons">
+          <button id="notes-save-btn" type="button" class="save-btn">Save</button>
+          <button id="notes-cancel-btn" type="button" class="cancel-btn">Close</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>

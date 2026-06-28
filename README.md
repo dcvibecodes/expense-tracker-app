@@ -1,6 +1,24 @@
-# Expenses+ v3.8.0
+# Expenses+ v3.9.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.9.0
+
+### Per-Expense Notes
+- **Note on any expense** — add an optional note to any expense via the Add form, Edit modal, or the dedicated Notes modal
+- **Notes button in Actions column** — each expense row shows 📝 (has note) or 🗒️ (no note) in the actions column; clicking opens a focused note editor modal
+- **Works everywhere** — notes available on both Tracker and Reports tabs with the same modal
+- **Carried on copy/repeat** — notes are preserved when copying expenses to other months or repeating last month
+- **CSV export** — notes included as a "Note" column in exported CSV files
+- **Non-destructive migration** — adds a `note` column to the expenses table; existing data is untouched
+
+### Quick Notes (Scratchpad)
+- **Header icon** — document icon in the app header opens a slide-out scratchpad panel (same pattern as notifications)
+- **Single persistent textarea** — one scratchpad for jotting down reminders, budget goals, or anything to remember later
+- **Saved in the database** — persists across sessions, browsers, and devices (stored in the settings table)
+- **Ctrl+Enter to save** — keyboard shortcut for quick saves; "Saved ✓" confirmation shown
+- **10,000 character limit** — plenty of room for free-form notes
+- **Mutually exclusive panels** — opening scratchpad closes notifications and vice versa
 
 ## What's New in v3.8.0
 
@@ -146,7 +164,9 @@ Recurring series set up before this update will not automatically generate notif
 
 ## Features
 
-- **Add expenses** — date, details (with smart autocomplete + auto-category), category, amount
+- **Add expenses** — date, details (with smart autocomplete + auto-category), category, amount, optional note
+- **Per-expense notes** — attach a note to any expense; view/edit via the 📝 button in the actions column
+- **Quick Notes scratchpad** — persistent scratchpad accessible from the header for general reminders and budget goals
 - **Forecast** — project monthly cash flow with income and expense rows in a spreadsheet-style inline-editable grid; running cumulative balance
 - **Multi-currency** — set base currency, define exchange rates, toggle abroad mode when traveling; amounts auto-convert and display with correct currency symbol
 - **Monthly summary** — color-coded category totals with rounded amounts at a glance

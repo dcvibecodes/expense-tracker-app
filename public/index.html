@@ -68,16 +68,30 @@
     <!-- Scratchpad Panel -->
     <div id="scratchpad-panel" class="notification-panel">
       <div class="notification-panel-header">
-        <span>Quick Notes</span>
-        <button id="scratchpad-close" type="button">✕</button>
+  <span>Quick Notes</span>
+
+  <div class="scratchpad-header-actions">
+        <button id="scratchpad-save" type="button" class="add-btn">
+          Save
+        </button>
+
+        <button id="scratchpad-close" type="button">
+          ✕
+        </button>
       </div>
-      <div class="scratchpad-body">
-        <textarea id="scratchpad-text" class="scratchpad-textarea" placeholder="Jot down anything — reminders, budget goals, things to track..."></textarea>
-        <div class="scratchpad-footer">
-          <span id="scratchpad-status" class="scratchpad-status"></span>
-          <button id="scratchpad-save" type="button" class="add-btn">Save</button>
-        </div>
+    </div>
+
+    <div class="scratchpad-body">
+      <textarea
+        id="scratchpad-text"
+        class="scratchpad-textarea"
+        placeholder="Jot down anything — reminders, budget goals, things to track..."
+      ></textarea>
+
+      <div class="scratchpad-footer">
+        <span id="scratchpad-status" class="scratchpad-status"></span>
       </div>
+    </div>
     </div> 
 
     <!-- Bottom Navigation --> 

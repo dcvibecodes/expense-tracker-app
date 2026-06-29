@@ -1447,10 +1447,10 @@ function generateDailyRecurringNotifications() {
 
       if (!upcomingDate) continue;
 
-      // Check if "today" notification already exists for this series + today
+      // Check if "today" notification already exists for this series + upcoming date
       db.get(
         "SELECT id FROM notifications WHERE type = 'today' AND details = ? AND amount = ? AND dates = ?",
-        [series.details, series.amount, JSON.stringify([today])],
+        [series.details, series.amount, JSON.stringify([upcomingDate])],
         (err2, existing) => {
           if (err2 || existing) return; // already exists or error
 

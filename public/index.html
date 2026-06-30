@@ -221,7 +221,12 @@
         <section class="card report-table-card"> 
           <div id="report-filters-content" class="report-filters-content" style="display:block;">
             <div class="report-range"> 
-              <label>Search <input type="text" id="report-search" placeholder="Search across all data" autocomplete="off" /></label>
+              <label>Search
+                <span class="search-with-toggle">
+                  <input type="text" id="report-search" placeholder="Search by description" autocomplete="off" />
+                  <button type="button" id="report-search-all-toggle" class="search-all-toggle" title="Search across all data">All</button>
+                </span>
+              </label>
               <label>Year <select id="report-year"></select></label> 
               <label>Month 
                 <select id="report-month"> 

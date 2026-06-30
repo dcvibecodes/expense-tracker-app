@@ -1,6 +1,19 @@
-# Expenses+ v3.9.0
+# Expenses+ v3.10.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.10.0
+
+### Reports Search + Filter Combination
+- **Search within filters** — search now respects the currently selected year/month instead of overriding them; results are filtered by both text match and date range
+- **"All" toggle button** — small button next to the search input; click to search across all data regardless of year/month selection (equivalent to setting "All Years" + "All Months" manually)
+- **Month filter with All Years** — selecting "All Years" + a specific month now correctly filters to that month across all years (previously ignored the month)
+- **Dropdowns stay interactive** — year/month/category dropdowns are no longer cleared or disabled when searching; change them anytime to narrow or broaden results
+- **CSV export matches** — CSV download respects the same combined search + filter state
+- **Updated placeholder** — search input now reads "Search by description" to accurately reflect scoped behavior
+
+### App Lock
+- **Session extended to 1 week** — authenticated session now lasts 7 days instead of 24 hours; fewer re-entries of the PIN
 
 ## What's New in v3.9.0
 
@@ -172,7 +185,7 @@ Recurring series set up before this update will not automatically generate notif
 - **Monthly summary** — color-coded category totals with rounded amounts at a glance
 - **Inline search** — search expenses as you type from the Tracker tab; searches across all data
 - **Reports** — spending trends chart, yearly/monthly pivot table with expand/collapse, CSV export
-- **Report filters** — year, month, category, and full-text search with dynamic instant filtering
+- **Report filters** — year, month, category, and full-text search with dynamic instant filtering; search works within selected date range or across all data via "All" toggle
 - **Batch operations** — rename details across entries, reassign categories in bulk (in Settings)
 - **Copy expense** — duplicate an expense across multiple months
 - **Categories** — up to 15, custom colors, rename propagates everywhere

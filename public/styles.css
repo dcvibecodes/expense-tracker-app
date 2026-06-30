@@ -385,6 +385,12 @@ tbody tr:hover td { background: rgba(59, 130, 246, 0.03); }
 .report-range-btns { display: flex; gap: 8px; align-items: flex-end; white-space: nowrap; }
 .report-range-btns button { white-space: nowrap; padding: 8px 12px; font-size: 0.8rem; }
 
+.search-with-toggle { display: flex; gap: 6px; align-items: stretch; }
+.search-with-toggle input { flex: 1; min-width: 0; }
+.search-all-toggle { padding: 6px 10px; font-size: 0.75rem; font-weight: 600; border: 1.5px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-secondary); cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; white-space: nowrap; }
+.search-all-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.search-all-toggle.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
 .report-filters-content { padding: 14px 20px; border-bottom: 1px solid var(--border); }
 .report-day-links {
   display: flex;

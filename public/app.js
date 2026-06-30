@@ -462,7 +462,7 @@ async function fetchExpenses() {
   const search = searchInput.value.trim();
   const params = new URLSearchParams();
   if (search) {
-    // Search across all data
+    // Search within current filters
     params.set("search", search);
   } else {
     // Default: current month
@@ -1195,15 +1195,20 @@ async function loadReports() {
   const search = reportSearch.value.trim();
 
   if (search) {
-    // Search overrides year/month filters — searches across all data
     params.set("search", search);
-  } else if (reportYear.value === "all") {
-    // All Years — no year/month filter, fetch everything
+  }
+
+  if (search && reportSearchAll) {
+    // "Search All" active — skip year/month filters
     params.set("year", "all");
+  } else if (reportYear.value === "all") {
+    params.set("year", "all");
+    if (reportMonth.value) params.set("month", reportMonth.value);
   } else if (reportYear.value) {
     params.set("year", reportYear.value);
     if (reportMonth.value) params.set("month", reportMonth.value);
   }
+
   if (!search && reportYear.value !== "all" && reportYear.value && reportMonth.value) {
     applyReportDayParams(params);
   }
@@ -1551,15 +1556,12 @@ function selectReportDay(day, extendRange) {
   selectedReportEndDay = "";
 }
 
-// When user changes year/month/category, clear search (they want filtered browsing)
+// When user changes year/month/category, reload with current filters (including search)
 function onReportFilterChange(e) {
-  if (reportSearch.value.trim()) {
-    reportSearch.value = "";
-    updateReportFilterState();
-  }
   if (e && (e.currentTarget === reportYear || e.currentTarget === reportMonth)) {
     clearReportDaySelection();
   }
+  updateReportFilterState();
   renderReportDayLinks();
   debouncedLoadReports();
 }
@@ -1579,7 +1581,7 @@ reportDayLinks.addEventListener("click", e => {
   loadReports();
 });
 
-// Report search — as-you-type, overrides date filters, min 2 chars
+// Report search — as-you-type, respects current year/month selection, min 2 chars
 reportSearch.addEventListener("input", () => {
   clearReportDaySelection();
   updateReportFilterState();
@@ -1590,18 +1592,33 @@ reportSearch.addEventListener("input", () => {
   reportFilterDebounce = setTimeout(loadReports, 400);
 });
 
-// Visual feedback: dim year/month/category when search is active
+// "Search All" toggle — when active, search ignores year/month filters
+const reportSearchAllToggle = document.getElementById("report-search-all-toggle");
+let reportSearchAll = false;
+
+reportSearchAllToggle.addEventListener("click", () => {
+  reportSearchAll = !reportSearchAll;
+  reportSearchAllToggle.classList.toggle("active", reportSearchAll);
+  updateReportFilterState();
+  if (reportSearch.value.trim().length >= 2) {
+    debouncedLoadReports();
+  }
+});
+
+// Visual feedback: dim year/month when "Search All" is active and there's a search term
 function updateReportFilterState() {
-  const hasSearch = reportSearch.value.trim().length >= 2;
-  reportYear.style.opacity = hasSearch ? "0.5" : "";
-  reportMonth.style.opacity = hasSearch ? "0.5" : "";
-  reportYear.closest("label").style.opacity = hasSearch ? "0.5" : "";
-  reportMonth.closest("label").style.opacity = hasSearch ? "0.5" : "";
+  const dimFilters = reportSearchAll && reportSearch.value.trim().length >= 2;
+  reportYear.style.opacity = dimFilters ? "0.5" : "";
+  reportMonth.style.opacity = dimFilters ? "0.5" : "";
+  reportYear.closest("label").style.opacity = dimFilters ? "0.5" : "";
+  reportMonth.closest("label").style.opacity = dimFilters ? "0.5" : "";
 }
 
 document.getElementById("report-reset").addEventListener("click", () => {
   reportSearch.value = "";
   reportCategory.value = "all";
+  reportSearchAll = false;
+  reportSearchAllToggle.classList.remove("active");
   clearReportDaySelection();
   setReportDefaults();
   updateReportFilterState();
@@ -1624,8 +1641,13 @@ document.getElementById("report-csv-btn").addEventListener("click", async () => 
 
   if (search) {
     params.set("search", search);
+  }
+
+  if (search && reportSearchAll) {
+    params.set("year", "all");
   } else if (reportYear.value === "all") {
     params.set("year", "all");
+    if (reportMonth.value) params.set("month", reportMonth.value);
   } else if (reportYear.value) {
     params.set("year", reportYear.value);
     if (reportMonth.value) params.set("month", reportMonth.value);

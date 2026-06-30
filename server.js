@@ -238,7 +238,7 @@ app.use(session({
     httpOnly: true,
     secure: false,
     sameSite: "lax",
-    maxAge: 24 * 60 * 60 * 1000
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 1 week
   }
 }));
 
@@ -928,10 +928,12 @@ app.get("/api/reports", (req, res) => {
   const endDayNumber = Number.parseInt(endDay, 10);
 
   if (trimmedSearch) {
-    // Search overrides year/month — searches across all data
+    // Search text filter (combinable with year/month)
     where.push("lower(details) LIKE ?");
     params.push(`%${trimmedSearch.toLowerCase()}%`);
-  } else if (year && year !== "all") {
+  }
+
+  if (year && year !== "all") {
     where.push("substr(date, 1, 4) = ?");
     params.push(String(year));
     if (month) {
@@ -947,15 +949,19 @@ app.get("/api/reports", (req, res) => {
         params.push(String(rangeStart).padStart(2, "0"), String(rangeEnd).padStart(2, "0"));
       }
     }
-  } else if (!year) {
-    // No year specified at all — default to current month
+  } else if (year === "all" && month) {
+    // All years but specific month selected
+    where.push("substr(date, 6, 2) = ?");
+    params.push(String(month).padStart(2, "0"));
+  } else if (!year && !trimmedSearch) {
+    // No year specified at all and no search — default to current month
     const now = new Date();
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, "0");
     where.push("substr(date, 1, 7) = ?");
     params.push(`${y}-${m}`);
   }
-  // year === "all" — no date filter, return everything
+  // year === "all" with no month — no date filter, return everything
 
   if (category && category !== "all") {
     where.push("category = ?");
@@ -985,9 +991,9 @@ app.get("/api/export/csv", (req, res) => {
   if (trimmedSearch) {
     where.push("lower(details) LIKE ?");
     params.push(`%${trimmedSearch.toLowerCase()}%`);
-  } else if (all === "true" || year === "all") {
-    // no filter
-  } else if (year) {
+  }
+
+  if (year && year !== "all") {
     where.push("substr(date, 1, 4) = ?");
     params.push(String(year));
     if (month) {
@@ -1003,7 +1009,11 @@ app.get("/api/export/csv", (req, res) => {
         params.push(String(rangeStart).padStart(2, "0"), String(rangeEnd).padStart(2, "0"));
       }
     }
-  } else {
+  } else if ((all === "true" || year === "all") && month) {
+    // All years but specific month
+    where.push("substr(date, 6, 2) = ?");
+    params.push(String(month).padStart(2, "0"));
+  } else if (!year && !trimmedSearch) {
     const now = new Date();
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, "0");

@@ -1,6 +1,35 @@
-# Expenses+ v3.11.0
+# Expenses+ v3.12.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.12.0
+
+### Reports Tab — Mobile Card Layout
+- **Card layout on mobile** — report entries now display as stacked cards (matching the Tracker tab) instead of a side-scrolling table; each card shows labeled fields (DATE, DETAILS, CATEGORY, AMOUNT) with actions at the bottom
+- **Long-press to select** — on mobile, long-press any expense row to enter selection mode; subsequent taps toggle selection; replaces checkbox column
+- **Select All / Deselect All** — button in the batch bar for quick bulk selection on mobile
+- **Selected state styling** — selected rows highlighted with blue left border
+
+### Reports Tab — Mobile Filters
+- **Inline search + filter chip** — full filter panel replaced by a compact search bar with "Filters" pill on mobile; tapping the pill opens year/month/category/reset/CSV in a bottom sheet
+- **Day links after Month** — in the mobile filter sheet, day-of-month links appear right after the Month dropdown (logical grouping); desktop layout unchanged
+- **Day links full-width** — horizontally scrollable row stretches to screen edges on mobile
+
+### Naming Consistency
+- **"Description" → "Details"** — Reports tab column header and search placeholder now say "Details" to match the Tracker tab and form field naming
+
+### Swipe to Dismiss
+- **All bottom sheets** — swipe down from the header or when scrolled to top to dismiss; drag handle (gray bar) shown at the top as affordance
+- **Instant dismiss** — no snap-back flash; sheet disappears immediately when threshold is crossed
+
+### Font & Style Consistency (with Portfolio+)
+- **Summary card values** — PT matched to ET at `1.1rem`
+- **Chart headings (h3)** — PT matched to ET: `0.75rem`, uppercase, letter-spacing
+- **Toast weight** — PT toasts now `font-weight: 600` matching ET
+- **`.btn-secondary`** — added to PT with same sizing as ET
+
+### FAB Position Fix
+- **PWA safe area** — FAB positioned at `bottom: 110px` to clear the nav bar in both Safari and PWA standalone mode
 
 ## What's New in v3.11.0
 

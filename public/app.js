@@ -1294,7 +1294,7 @@ function renderReportTable(data) {
   html += `<div class="rpt-row rpt-header rpt-flat-row">
     <span class="rpt-select"><input type="checkbox" id="report-select-all" aria-label="Select all visible expenses"></span>
     <span class="rpt-date">Date</span>
-    <span class="rpt-label">Description</span>
+    <span class="rpt-label">Details</span>
     <span class="rpt-cat">Category</span>
     <span class="rpt-amt">Amount</span>
     <span class="rpt-actions">Actions</span>
@@ -1344,6 +1344,10 @@ function updateReportSelectionUI() {
 function clearReportSelection() {
   selectedReportIds.clear();
   updateReportSelectionUI();
+  // Remove mobile selected highlighting
+  document.querySelectorAll(".rpt-flat-row.rpt-selected").forEach(function(row) {
+    row.classList.remove("rpt-selected");
+  });
 }
 
 async function batchUpdateSelected(payload, confirmMessage) {
@@ -3790,6 +3794,13 @@ scratchpadText.addEventListener("keydown", e => {
     filterBody.appendChild(filtersDiv);
     filtersDiv.style.display = "block";
 
+    // Move day links after the Month field inside .report-range
+    var dayLinks = filtersDiv.querySelector("#report-day-links");
+    var monthLabel = filtersDiv.querySelector("#report-month");
+    if (dayLinks && monthLabel && monthLabel.closest("label")) {
+      monthLabel.closest("label").after(dayLinks);
+    }
+
     filterOverlay.classList.add("open");
   }
 
@@ -3802,6 +3813,12 @@ scratchpadText.addEventListener("keydown", e => {
     document.body.style.right = "";
     document.body.style.overflow = "";
     window.scrollTo(0, scrollY);
+
+    // Move day links back to end of report-filters-content
+    var dayLinks = filtersDiv.querySelector("#report-day-links");
+    if (dayLinks) {
+      filtersDiv.appendChild(dayLinks);
+    }
 
     // Move filters back to original position
     if (filtersNextSibling) {
@@ -3824,4 +3841,234 @@ scratchpadText.addEventListener("keydown", e => {
       closeFilterSheet();
     }
   });
+})();
+
+
+// ===== MOBILE REPORT: Long-press to select rows =====
+(function() {
+  const reportWrap = document.getElementById("report-table-wrap");
+  const batchBar = document.getElementById("report-batch-bar");
+  const selectAllBtn = document.getElementById("report-select-all-mobile");
+
+  if (!reportWrap || !selectAllBtn) return;
+
+  function isMobile() {
+    return window.matchMedia("(max-width: 768px)").matches;
+  }
+
+  let longPressTimer = null;
+  let longPressTarget = null;
+  const LONG_PRESS_DURATION = 500; // ms
+
+  // Long-press start
+  reportWrap.addEventListener("touchstart", function(e) {
+    if (!isMobile()) return;
+    const row = e.target.closest(".rpt-flat-row.rpt-expense");
+    if (!row) return;
+    // Don't trigger on button/link taps
+    if (e.target.closest("button, a, input")) return;
+
+    longPressTarget = row;
+    longPressTimer = setTimeout(function() {
+      // Trigger selection
+      const id = parseInt(row.dataset.id, 10);
+      if (!id) return;
+      toggleReportSelection(id, row);
+      // Haptic feedback if available
+      if (navigator.vibrate) navigator.vibrate(30);
+    }, LONG_PRESS_DURATION);
+  }, { passive: true });
+
+  // Cancel long-press on move or end
+  reportWrap.addEventListener("touchmove", cancelLongPress, { passive: true });
+  reportWrap.addEventListener("touchend", cancelLongPress, { passive: true });
+  reportWrap.addEventListener("touchcancel", cancelLongPress, { passive: true });
+
+  function cancelLongPress() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+    longPressTarget = null;
+  }
+
+  // Once in selection mode, taps toggle selection
+  reportWrap.addEventListener("click", function(e) {
+    if (!isMobile()) return;
+    // Only if we're already in selection mode (batch bar visible)
+    if (batchBar.hidden) return;
+    // Don't interfere with action buttons
+    if (e.target.closest("button, a, input")) return;
+
+    const row = e.target.closest(".rpt-flat-row.rpt-expense");
+    if (!row) return;
+
+    const id = parseInt(row.dataset.id, 10);
+    if (!id) return;
+    toggleReportSelection(id, row);
+  });
+
+  function toggleReportSelection(id, row) {
+    if (typeof selectedReportIds === "undefined") return;
+
+    if (selectedReportIds.has(id)) {
+      selectedReportIds.delete(id);
+      row.classList.remove("rpt-selected");
+    } else {
+      selectedReportIds.add(id);
+      row.classList.add("rpt-selected");
+    }
+    updateReportSelectionUI();
+    updateMobileSelectedClasses();
+  }
+
+  function updateMobileSelectedClasses() {
+    if (!isMobile()) return;
+    reportWrap.querySelectorAll(".rpt-flat-row.rpt-expense").forEach(function(row) {
+      const id = parseInt(row.dataset.id, 10);
+      if (selectedReportIds.has(id)) {
+        row.classList.add("rpt-selected");
+      } else {
+        row.classList.remove("rpt-selected");
+      }
+    });
+  }
+
+  // Select All button
+  selectAllBtn.addEventListener("click", function() {
+    if (typeof selectedReportIds === "undefined" || typeof reportRows === "undefined") return;
+
+    const visibleIds = reportRows.map(function(r) { return r.id; });
+    const allSelected = visibleIds.every(function(id) { return selectedReportIds.has(id); });
+
+    if (allSelected) {
+      // Deselect all
+      visibleIds.forEach(function(id) { selectedReportIds.delete(id); });
+      selectAllBtn.textContent = "Select All";
+    } else {
+      // Select all
+      visibleIds.forEach(function(id) { selectedReportIds.add(id); });
+      selectAllBtn.textContent = "Deselect All";
+    }
+    updateReportSelectionUI();
+    updateMobileSelectedClasses();
+  });
+
+  // Update select all button text when selection changes
+  const origUpdateUI = window.updateReportSelectionUI;
+  const observer = new MutationObserver(function() {
+    if (!isMobile()) return;
+    if (typeof selectedReportIds === "undefined" || typeof reportRows === "undefined") return;
+    const visibleIds = reportRows.map(function(r) { return r.id; });
+    const allSelected = visibleIds.length > 0 && visibleIds.every(function(id) { return selectedReportIds.has(id); });
+    selectAllBtn.textContent = allSelected ? "Deselect All" : "Select All";
+  });
+  if (batchBar) observer.observe(batchBar, { attributes: true, attributeFilter: ["hidden"] });
+})();
+
+
+// ===== SWIPE TO DISMISS BOTTOM SHEETS =====
+(function() {
+  const DISMISS_THRESHOLD = 80;
+
+  function setupSwipeDismiss(overlay, sheet, onDismiss) {
+    if (!overlay || !sheet) return;
+
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+
+    function getHeader() {
+      return sheet.querySelector(".mobile-form-header");
+    }
+
+    sheet.addEventListener("touchstart", function(e) {
+      // Only start drag from the header area or when sheet is scrolled to top
+      const header = getHeader();
+      const touchedHeader = header && header.contains(e.target);
+      const scrolledToTop = sheet.scrollTop <= 0;
+
+      if (!touchedHeader && !scrolledToTop) return;
+      if (e.target.closest("button, input, select, textarea, a")) return;
+
+      startY = e.touches[0].clientY;
+      isDragging = false;
+    }, { passive: true });
+
+    sheet.addEventListener("touchmove", function(e) {
+      if (startY === 0) return;
+      currentY = e.touches[0].clientY;
+      const deltaY = currentY - startY;
+
+      // Only drag downward
+      if (deltaY < 0) {
+        if (isDragging) {
+          sheet.style.transform = "";
+          sheet.classList.remove("dragging");
+          isDragging = false;
+        }
+        return;
+      }
+
+      // Start dragging after 10px threshold
+      if (deltaY > 10) {
+        isDragging = true;
+        sheet.classList.add("dragging");
+        sheet.style.transform = "translateY(" + deltaY + "px)";
+      }
+    }, { passive: true });
+
+    sheet.addEventListener("touchend", function() {
+      if (!isDragging) {
+        startY = 0;
+        return;
+      }
+
+      const deltaY = currentY - startY;
+      sheet.classList.remove("dragging");
+
+      if (deltaY > DISMISS_THRESHOLD) {
+        // Dismiss immediately — keep sheet at current position, hide overlay
+        onDismiss();
+        // Reset transform after overlay is hidden
+        setTimeout(function() {
+          sheet.style.transform = "";
+          sheet.style.transition = "";
+        }, 50);
+      } else {
+        // Snap back
+        sheet.style.transition = "transform 0.15s ease";
+        sheet.style.transform = "";
+        setTimeout(function() {
+          sheet.style.transition = "";
+        }, 150);
+      }
+
+      startY = 0;
+      currentY = 0;
+      isDragging = false;
+    }, { passive: true });
+  }
+
+  // Setup for Add Expense sheet
+  var formOverlay = document.getElementById("mobile-form-overlay");
+  var formSheet = document.getElementById("mobile-form-sheet");
+  if (formOverlay && formSheet) {
+    setupSwipeDismiss(formOverlay, formSheet, function() {
+      var closeBtn = document.getElementById("mobile-form-close");
+      if (closeBtn) closeBtn.click();
+    });
+  }
+
+  // Setup for Report Filter sheet
+  var filterOverlay = document.getElementById("mobile-report-filter-overlay");
+  if (filterOverlay) {
+    var filterSheet = filterOverlay.querySelector(".mobile-form-sheet");
+    if (filterSheet) {
+      setupSwipeDismiss(filterOverlay, filterSheet, function() {
+        var closeBtn = document.getElementById("mobile-report-filter-close");
+        if (closeBtn) closeBtn.click();
+      });
+    }
+  }
 })();

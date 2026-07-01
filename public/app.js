@@ -3688,6 +3688,8 @@ scratchpadText.addEventListener("keydown", e => {
     document.body.style.left = "0";
     document.body.style.right = "0";
     document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    document.documentElement.style.overscrollBehavior = "none";
     // Move the sidebar content into the bottom sheet
     sheet.appendChild(sidebarInner);
     overlay.classList.add("open");
@@ -3702,6 +3704,8 @@ scratchpadText.addEventListener("keydown", e => {
     document.body.style.left = "";
     document.body.style.right = "";
     document.body.style.overflow = "";
+    document.body.style.overscrollBehavior = "";
+    document.documentElement.style.overscrollBehavior = "";
     window.scrollTo(0, scrollY);
     // Move sidebar content back
     sidebar.appendChild(sidebarInner);
@@ -3789,6 +3793,8 @@ scratchpadText.addEventListener("keydown", e => {
     document.body.style.left = "0";
     document.body.style.right = "0";
     document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    document.documentElement.style.overscrollBehavior = "none";
 
     // Move filters into the sheet
     filterBody.appendChild(filtersDiv);
@@ -3812,6 +3818,8 @@ scratchpadText.addEventListener("keydown", e => {
     document.body.style.left = "";
     document.body.style.right = "";
     document.body.style.overflow = "";
+    document.body.style.overscrollBehavior = "";
+    document.documentElement.style.overscrollBehavior = "";
     window.scrollTo(0, scrollY);
 
     // Move day links back to end of report-filters-content

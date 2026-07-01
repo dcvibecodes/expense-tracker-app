@@ -461,15 +461,22 @@ if (detailsList) {
 async function fetchExpenses() {
   const search = searchInput.value.trim();
   const params = new URLSearchParams();
+
   if (search) {
-    // Search within current filters
+    // Leave search behavior unchanged
     params.set("search", search);
   } else {
-    // Default: current month
+    // Default Tracker view: current month up to today only
     const now = new Date();
+
     params.set("year", now.getFullYear());
     params.set("month", now.getMonth() + 1);
+    const today =
+  `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    params.set("through", today);
   }
+
   const res = await safeFetch(`/api/expenses?${params}`);
   if (!res.ok) throw new Error("Failed to fetch expenses");
   return res.json();

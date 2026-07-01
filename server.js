@@ -548,7 +548,7 @@ app.post("/api/expenses", (req, res) => {
 });
 
 app.get("/api/expenses", (req, res) => {
-  const { year, month, category, search } = req.query;
+  const { year, month, category, search, through } = req.query;
 
   const where = [];
   const params = [];
@@ -556,23 +556,37 @@ app.get("/api/expenses", (req, res) => {
   const useGlobalSearch = Boolean(trimmedSearch);
 
   if (!useGlobalSearch) {
-    if (year && year !== "all") {
-      where.push("substr(date, 1, 4) = ?");
-      params.push(String(year));
-      if (month) {
-        where.push("substr(date, 6, 2) = ?");
-        params.push(String(month).padStart(2, "0"));
+  if (year && year !== "all") {
+    where.push("substr(date, 1, 4) = ?");
+    params.push(String(year));
+
+    if (month) {
+      where.push("substr(date, 6, 2) = ?");
+      params.push(String(month).padStart(2, "0"));
+
+      // Hide future dates on the Tracker tab
+      if (through) {
+        where.push("date <= ?");
+        params.push(through);
       }
-    } else if (!year) {
-      // No year specified — default to current month
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, "0");
-      where.push("substr(date, 1, 7) = ?");
-      params.push(`${y}-${m}`);
     }
-    // year === "all" — no date filter
+  } else if (!year) {
+    // No year specified — default to current month
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+
+    where.push("substr(date, 1, 7) = ?");
+    params.push(`${y}-${m}`);
+
+    if (through) {
+      where.push("date <= ?");
+      params.push(through);
+    }
   }
+
+  // year === "all" — no date filter
+}
 
   if (category && category !== "all") {
     where.push("category = ?");

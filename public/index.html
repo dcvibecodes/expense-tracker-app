@@ -118,78 +118,102 @@
 
       <!-- ===== TRACKER TAB ===== --> 
       <div id="tab-tracker" class="tab-content active"> 
+        <div class="tracker-layout">
 
-        <section class="card summary-card" id="summary-panel">
-          <h2 id="summary-heading">This Month Summary</h2>
-          <div class="summary-grid" id="summary-grid"></div>
-        </section>
+          <!-- Sidebar: Add Expense Form (desktop) -->
+          <aside class="tracker-sidebar" id="tracker-sidebar">
+            <div class="sidebar-inner">
+              <h2 class="sidebar-heading">Add Expense</h2>
+              <form id="expense-form" class="grid sidebar-form-grid">
+                <label>Date
+                  <div class="date-with-today">
+                    <input type="date" id="date" required />
+                    <button type="button" id="date-today-btn" class="today-btn" title="Reset to today">Today</button>
+                  </div>
+                </label>
 
-        <section class="card">
-          <h2>Add Expense</h2>
-          <form id="expense-form" class="grid add-grid">
-            <label>Date
-              <div class="date-with-today">
-                <input type="date" id="date" required />
-                <button type="button" id="date-today-btn" class="today-btn" title="Reset to today">Today</button>
-              </div>
-            </label>
+                <label>Details
+                  <input type="text" id="details" placeholder="e.g. Milk, Wifi Recharge" list="details-list" autocomplete="off" required />
+                  <datalist id="details-list"></datalist>
+                </label>
 
-            <label>Details
-              <input type="text" id="details" placeholder="e.g. Milk, Wifi Recharge" list="details-list" autocomplete="off" required />
-              <datalist id="details-list"></datalist>
-            </label>
+                <label>Category
+                  <select id="category" required></select>
+                </label>
 
-            <label>Category
-              <select id="category" required></select>
-            </label>
+                <label><span id="amount-label-text">Amount</span>
+                  <input type="text" id="amount" inputmode="decimal" placeholder="0.00" autocomplete="off" required />
+                </label>
 
-            <label><span id="amount-label-text">Amount</span>
-              <input type="text" id="amount" inputmode="decimal" placeholder="0.00" autocomplete="off" required />
-            </label>
+                <div class="note-toggle-row">
+                  <a href="#" id="note-toggle-link" class="note-toggle-link">📝 Add note</a>
+                  <div id="note-field-wrap" class="note-field-wrap" style="display:none;">
+                    <textarea id="note" rows="2" placeholder="Optional note..." class="note-textarea"></textarea>
+                  </div>
+                </div>
 
-            <div class="note-toggle-row" style="grid-column: 1/-1;">
-              <a href="#" id="note-toggle-link" class="note-toggle-link">📝 Add note</a>
-              <div id="note-field-wrap" class="note-field-wrap" style="display:none;">
-                <textarea id="note" rows="2" placeholder="Optional note..." class="note-textarea"></textarea>
-              </div>
+                <div class="sidebar-form-actions">
+                  <button type="submit" class="add-btn" id="add-btn">+ Add</button>
+                  <button type="button" class="cancel-btn" id="clear-form-btn">Clear</button>
+                </div>
+              </form>
+
+              <p id="add-expense-msg" class="form-msg"></p>
+              <p id="abroad-mode-info" class="abroad-mode-info" style="display:none;"></p>
             </div>
+          </aside>
 
-            <div style="grid-column: 1/-1; display: flex; gap: 10px;">
-              <button type="submit" class="add-btn" id="add-btn">+ Add</button>
-              <button type="button" class="cancel-btn" id="clear-form-btn">Clear</button>
-            </div>
-          </form>
+          <!-- Main: Summary + Expenses Table -->
+          <div class="tracker-main">
+            <section class="card summary-card" id="summary-panel">
+              <h2 id="summary-heading">This Month Summary</h2>
+              <div class="summary-grid" id="summary-grid"></div>
+            </section>
 
-          <p id="add-expense-msg" class="form-msg"></p>
-          <p id="abroad-mode-info" class="abroad-mode-info" style="display:none;"></p>
-        </section> 
-
-        <section class="card"> 
-          <h2>Expenses</h2> 
-          <div class="tracker-search-bar">
-            <form autocomplete="off" onsubmit="return false;" role="search" class="search-form-wrap">
-              <input
-              type="search"
-              id="expense-search"
-              name="exp-srch-q-x7k2"
-              placeholder="Search expenses..."
-              autocomplete="off"
-              autocorrect="off"
-              autocapitalize="off"
-              spellcheck="false"
-              role="searchbox"
-            />
-            </form>
+            <section class="card"> 
+              <h2>Expenses</h2> 
+              <div class="tracker-search-bar">
+                <form autocomplete="off" onsubmit="return false;" role="search" class="search-form-wrap">
+                  <input
+                  type="search"
+                  id="expense-search"
+                  name="exp-srch-q-x7k2"
+                  placeholder="Search expenses..."
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  role="searchbox"
+                />
+                </form>
+              </div>
+              <div class="table-wrap"> 
+                <table> 
+                  <thead><tr> 
+                    <th class="col-date">Date</th><th>Details</th><th>Category</th><th class="col-amount">Amount</th><th class="col-actions">Actions</th> 
+                  </tr></thead> 
+                  <tbody id="expense-rows"></tbody> 
+                </table> 
+              </div> 
+            </section> 
           </div>
-          <div class="table-wrap"> 
-            <table> 
-              <thead><tr> 
-                <th class="col-date">Date</th><th>Details</th><th>Category</th><th class="col-amount">Amount</th><th class="col-actions">Actions</th> 
-              </tr></thead> 
-              <tbody id="expense-rows"></tbody> 
-            </table> 
-          </div> 
-        </section> 
+
+        </div>
+
+        <!-- Mobile FAB to open form -->
+        <button type="button" id="mobile-add-fab" class="mobile-add-fab" aria-label="Add expense">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+
+        <!-- Mobile form overlay (bottom sheet) -->
+        <div id="mobile-form-overlay" class="mobile-form-overlay">
+          <div class="mobile-form-sheet" id="mobile-form-sheet">
+            <div class="mobile-form-header">
+              <span class="mobile-form-title">Add Expense</span>
+              <button type="button" id="mobile-form-close" class="mobile-form-close" aria-label="Close">✕</button>
+            </div>
+          </div>
+        </div>
       </div> 
 
       <!-- ===== REPORTS TAB ===== --> 
@@ -219,6 +243,14 @@
         </section> 
 
         <section class="card report-table-card"> 
+          <!-- Mobile compact search + filter chip -->
+          <div class="mobile-report-search-bar" id="mobile-report-search-bar">
+            <input type="search" id="mobile-report-search" placeholder="Search expenses..." autocomplete="off" />
+            <button type="button" id="mobile-report-filter-chip" class="mobile-filter-chip">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+              Filters
+            </button>
+          </div>
           <div id="report-filters-content" class="report-filters-content" style="display:block;">
             <div class="report-range"> 
               <label>Search
@@ -260,6 +292,17 @@
           </div>
           <div class="report-table-wrap" id="report-table-wrap"></div>
         </section> 
+
+        <!-- Mobile report filter overlay (bottom sheet) -->
+        <div id="mobile-report-filter-overlay" class="mobile-form-overlay">
+          <div class="mobile-form-sheet">
+            <div class="mobile-form-header">
+              <span class="mobile-form-title">Filters</span>
+              <button type="button" id="mobile-report-filter-close" class="mobile-form-close" aria-label="Close">✕</button>
+            </div>
+            <div id="mobile-report-filter-body"></div>
+          </div>
+        </div>
       </div> 
 
       <!-- ===== FORECAST TAB ===== -->
@@ -351,7 +394,7 @@
               <input type="color" id="new-category-color" value="#10b981" aria-label="Category color" />
             </label>
             <div class="category-add-actions">
-              <button id="add-category-btn" type="button">Add</button> 
+              <button id="add-category-btn" type="button" class="add-btn">Add</button> 
               <button id="cancel-add-category-btn" type="button" class="btn-secondary">Cancel</button> 
             </div>
           </div> 

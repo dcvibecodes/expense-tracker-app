@@ -167,55 +167,7 @@ button, a, input, select, textarea, [tabindex] {
 .tab-content.active { display: block; }
 
 /* ---- Layout ---- */
-.container { max-width: 1280px; margin: 0 auto; padding: 24px 20px; }
-
-/* ---- Tracker Sidebar Layout (Desktop) ---- */
-.tracker-layout {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-}
-
-.tracker-sidebar {
-  flex: 0 0 320px;
-  position: sticky;
-  top: 60px;
-  max-height: calc(100vh - 80px);
-  overflow-y: auto;
-}
-
-.sidebar-inner {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px;
-}
-
-.sidebar-heading {
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 16px;
-}
-
-.sidebar-form-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-
-.sidebar-form-actions {
-  display: flex;
-  gap: 10px;
-}
-.sidebar-form-actions .add-btn,
-.sidebar-form-actions .cancel-btn {
-  flex: 1;
-}
-
-.tracker-main {
-  flex: 1;
-  min-width: 0;
-}
+.container { max-width: 1120px; margin: 0 auto; padding: 24px 20px; }
 
 /* Mobile FAB */
 .mobile-add-fab {
@@ -307,17 +259,6 @@ button, a, input, select, textarea, [tabindex] {
   border-radius: 6px;
 }
 .mobile-form-close:hover { color: var(--text); background: var(--border); }
-
-.mobile-form-sheet .sidebar-heading {
-  display: none;
-}
-
-.mobile-form-sheet .sidebar-inner {
-  background: transparent;
-  border: none;
-  padding: 0;
-  box-shadow: none;
-}
 
 .card {
   background: var(--surface);
@@ -889,9 +830,7 @@ tbody tr:hover td { background: rgba(59, 130, 246, 0.03); }
 /* ===== MOBILE RESPONSIVE ===== */
 
 /* Prevent horizontal scroll on page */
-body {
-    overflow-x: clip;
-}
+body { overflow-x: clip; }
 
 @media (max-width: 768px) {
   /* Nav → fixed bottom tab bar */
@@ -935,24 +874,22 @@ body {
   /* Container */
   .container { padding: 10px 8px; }
 
-  /* Tracker layout → single column, hide sidebar */
-  .tracker-layout { flex-direction: column; gap: 12px; }
-  .tracker-sidebar { display: none; }
-  .tracker-main { width: 100%; }
-
   /* Show mobile FAB */
   .mobile-add-fab { display: flex; }
+
+  /* Hide add expense card on mobile (FAB opens it as sheet) */
+  #add-expense-card { display: none; }
 
   /* Summary cards */
   .summary-amount { font-size: 0.95rem; }
   .summary-item { min-width: 0; padding: 10px; }
 
   /* Cards — compact on mobile */
-  .card { padding: 12px 10px; margin-bottom: 10px; border-radius: 8px; }
+  .card { padding: 12px 14px; margin-bottom: 10px; border-radius: 8px; }
   .card h2 { font-size: 1rem; margin-bottom: 10px; }
 
   /* Forms → single column */
-  .grid, .sidebar-form-grid, .edit-grid, .batch-grid { grid-template-columns: 1fr; }
+  .grid, .add-grid, .edit-grid, .batch-grid { grid-template-columns: 1fr; }
 
   /* Charts → single column */
   .dashboard-charts-row, .charts { grid-template-columns: 1fr; }
@@ -1042,6 +979,7 @@ body {
   /* ---- MOBILE TABLE: Card Layout for Expenses ---- */
 
   /* Card layout for expense table */
+  #tab-tracker .table-wrap { padding: 0 4px; }
   #tab-tracker .table-wrap table thead { display: none; }
   #tab-tracker .table-wrap table,
   #tab-tracker .table-wrap table tbody,
@@ -1086,7 +1024,7 @@ body {
   /* Convert rows to cards */
   .rpt-flat-row.rpt-expense {
     display: block;
-    padding: 12px 0;
+    padding: 12px 14px;
     border-bottom: 1px solid var(--border);
     position: relative;
   }
@@ -1148,11 +1086,17 @@ body {
 
   .report-table-card > .report-filters-content { display: none !important; }
   .mobile-report-search-bar { display: flex !important; }
+  .report-totals-bar { padding-left: 14px; padding-right: 14px; }
 }
 
 @media (max-width: 480px) {
   .container { padding: 8px 6px; }
-  .card { padding: 10px 8px; margin-bottom: 8px; }
+  .card { padding: 10px 12px; margin-bottom: 8px; }
+
+  /* Report cards match tracker cards */
+  .rpt-flat-row.rpt-expense { padding: 12px 12px; }
+  .mobile-report-search-bar { padding: 10px 12px; }
+  .report-totals-bar { padding-left: 12px; padding-right: 12px; }
 
   /* Summary → 2 per row always on mobile */
   .summary-item { min-width: calc(50% - 5px); flex: 1 1 calc(50% - 5px); }
@@ -1590,7 +1534,7 @@ body {
   display: none;
   gap: 8px;
   align-items: center;
-  padding: 10px 12px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border);
 }
 .mobile-report-search-bar input[type="search"] {

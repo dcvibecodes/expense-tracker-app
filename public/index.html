@@ -245,7 +245,7 @@
         <section class="card report-table-card"> 
           <!-- Mobile compact search + filter chip -->
           <div class="mobile-report-search-bar" id="mobile-report-search-bar">
-            <input type="search" id="mobile-report-search" placeholder="Search expenses..." autocomplete="off" />
+            <input type="search" id="mobile-report-search" placeholder="Search by details" autocomplete="off" />
             <button type="button" id="mobile-report-filter-chip" class="mobile-filter-chip">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
               Filters
@@ -255,7 +255,7 @@
             <div class="report-range"> 
               <label>Search
                 <span class="search-with-toggle">
-                  <input type="text" id="report-search" placeholder="Search by description" autocomplete="off" />
+                  <input type="text" id="report-search" placeholder="Search by details" autocomplete="off" />
                   <button type="button" id="report-search-all-toggle" class="search-all-toggle" title="Search across all data">All</button>
                 </span>
               </label>
@@ -284,6 +284,7 @@
           <div id="report-totals-bar" class="report-totals-bar"></div>
           <div class="report-batch-bar" id="report-batch-bar" hidden>
             <span id="report-selected-count" class="report-selected-count">0 selected</span>
+            <button id="report-select-all-mobile" type="button" class="btn-secondary report-select-all-mobile-btn">Select All</button>
             <select id="report-batch-category" aria-label="Batch category"></select>
             <button id="report-apply-category" type="button" class="btn-secondary">Change Category</button>
             <input type="text" id="report-batch-details" placeholder="New details" aria-label="Batch details" />

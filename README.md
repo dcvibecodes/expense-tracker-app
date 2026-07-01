@@ -1,6 +1,20 @@
-# Expenses+ v3.12.0
+# Expenses+ v3.13.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.13.0
+
+### Layout — Form Restored to Main Flow
+- **Add Expense form back inline** — on desktop, the form is now a standard card between the Summary and Expenses cards (no longer a sidebar); cleaner single-column flow
+- **Mobile unchanged** — FAB + bottom sheet still handles the form on mobile
+
+### Mobile Card Alignment
+- **Consistent padding** — tracker tab and reports tab card content now aligned identically (same margins from card border to content)
+- **Totals bar aligned** — "X entries | ..." line matches content indent
+
+### Scroll Fix (Chromium)
+- **`overflow-x: clip` replaces `overflow-x: hidden`** — fixes an issue where vertical scrolling was blocked on Chrome/Edge when combined with `overscroll-behavior`
+- **Pull-to-refresh disabled** — `overscroll-behavior-y: contain` on body prevents browser pull-to-refresh globally; eliminates conflict with swipe-to-dismiss on bottom sheets
 
 ## What's New in v3.12.0
 

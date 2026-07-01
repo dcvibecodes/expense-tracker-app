@@ -3668,11 +3668,12 @@ scratchpadText.addEventListener("keydown", e => {
   const overlay = document.getElementById("mobile-form-overlay");
   const sheet = document.getElementById("mobile-form-sheet");
   const closeBtn = document.getElementById("mobile-form-close");
-  const sidebar = document.getElementById("tracker-sidebar");
+  const formCard = document.getElementById("add-expense-card");
 
-  if (!fab || !overlay || !sheet || !sidebar) return;
+  if (!fab || !overlay || !sheet || !formCard) return;
 
-  const sidebarInner = sidebar.querySelector(".sidebar-inner");
+  const formCardParent = formCard.parentElement;
+  const formCardNextSibling = formCard.nextElementSibling;
 
   function isMobile() {
     return window.matchMedia("(max-width: 768px)").matches;
@@ -3690,8 +3691,17 @@ scratchpadText.addEventListener("keydown", e => {
     document.body.style.overflow = "hidden";
     document.body.style.overscrollBehavior = "none";
     document.documentElement.style.overscrollBehavior = "none";
-    // Move the sidebar content into the bottom sheet
-    sheet.appendChild(sidebarInner);
+    // Move form card into the bottom sheet
+    sheet.appendChild(formCard);
+    formCard.style.display = "block";
+    // Hide the h2 inside (sheet header has the title)
+    var heading = formCard.querySelector("h2");
+    if (heading) heading.style.display = "none";
+    // Remove card styling inside the sheet
+    formCard.style.border = "none";
+    formCard.style.boxShadow = "none";
+    formCard.style.padding = "0";
+    formCard.style.margin = "0";
     overlay.classList.add("open");
     fab.style.display = "none";
   }
@@ -3707,8 +3717,20 @@ scratchpadText.addEventListener("keydown", e => {
     document.body.style.overscrollBehavior = "";
     document.documentElement.style.overscrollBehavior = "";
     window.scrollTo(0, scrollY);
-    // Move sidebar content back
-    sidebar.appendChild(sidebarInner);
+    // Move form card back
+    if (formCardNextSibling) {
+      formCardParent.insertBefore(formCard, formCardNextSibling);
+    } else {
+      formCardParent.appendChild(formCard);
+    }
+    // Restore card styling
+    formCard.style.display = "";
+    formCard.style.border = "";
+    formCard.style.boxShadow = "";
+    formCard.style.padding = "";
+    formCard.style.margin = "";
+    var heading = formCard.querySelector("h2");
+    if (heading) heading.style.display = "";
     if (isMobile()) fab.style.display = "flex";
   }
 

@@ -3657,3 +3657,171 @@ scratchpadText.addEventListener("keydown", e => {
   }
 });
 })();
+
+// ===== MOBILE FORM (Bottom Sheet) =====
+(function() {
+  const fab = document.getElementById("mobile-add-fab");
+  const overlay = document.getElementById("mobile-form-overlay");
+  const sheet = document.getElementById("mobile-form-sheet");
+  const closeBtn = document.getElementById("mobile-form-close");
+  const sidebar = document.getElementById("tracker-sidebar");
+
+  if (!fab || !overlay || !sheet || !sidebar) return;
+
+  const sidebarInner = sidebar.querySelector(".sidebar-inner");
+
+  function isMobile() {
+    return window.matchMedia("(max-width: 768px)").matches;
+  }
+
+  let scrollY = 0;
+
+  function openMobileForm() {
+    // Lock background scroll
+    scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.overflow = "hidden";
+    // Move the sidebar content into the bottom sheet
+    sheet.appendChild(sidebarInner);
+    overlay.classList.add("open");
+    fab.style.display = "none";
+  }
+
+  function closeMobileForm() {
+    overlay.classList.remove("open");
+    // Restore background scroll
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.style.overflow = "";
+    window.scrollTo(0, scrollY);
+    // Move sidebar content back
+    sidebar.appendChild(sidebarInner);
+    if (isMobile()) fab.style.display = "flex";
+  }
+
+  fab.addEventListener("click", openMobileForm);
+  closeBtn.addEventListener("click", closeMobileForm);
+  overlay.addEventListener("click", function(e) {
+    if (e.target === overlay) closeMobileForm();
+  });
+
+  // Close bottom sheet after successful form submit
+  const form = document.getElementById("expense-form");
+  if (form) {
+    const origSubmitHandler = form.onsubmit;
+    form.addEventListener("submit", function() {
+      // Give time for the submit to process, then close
+      setTimeout(() => {
+        if (isMobile() && overlay.classList.contains("open")) {
+          closeMobileForm();
+        }
+      }, 300);
+    });
+  }
+
+  // Handle resize: if goes desktop while sheet is open, close it
+  window.addEventListener("resize", function() {
+    if (!isMobile() && overlay.classList.contains("open")) {
+      closeMobileForm();
+    }
+    // Toggle FAB visibility based on screen and active tab
+    const trackerActive = document.getElementById("tab-tracker").classList.contains("active");
+    if (isMobile() && trackerActive && !overlay.classList.contains("open")) {
+      fab.style.display = "flex";
+    } else if (!isMobile()) {
+      fab.style.display = "none";
+    }
+  });
+
+  // Only show FAB when on Tracker tab
+  const tabBtnsAll = document.querySelectorAll(".bottom-nav-btn");
+  tabBtnsAll.forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (isMobile()) {
+        fab.style.display = btn.dataset.tab === "tracker" ? "flex" : "none";
+      }
+    });
+  });
+})();
+
+
+// ===== MOBILE REPORT FILTER (Inline Search + Filter Chip → Bottom Sheet) =====
+(function() {
+  const filterOverlay = document.getElementById("mobile-report-filter-overlay");
+  const filterBody = document.getElementById("mobile-report-filter-body");
+  const filterCloseBtn = document.getElementById("mobile-report-filter-close");
+  const filtersDiv = document.getElementById("report-filters-content");
+  const filterChip = document.getElementById("mobile-report-filter-chip");
+  const mobileSearch = document.getElementById("mobile-report-search");
+  const desktopSearch = document.getElementById("report-search");
+
+  if (!filterOverlay || !filterBody || !filtersDiv || !filterChip) return;
+
+  let scrollY = 0;
+  const filtersParent = filtersDiv.parentElement;
+  const filtersNextSibling = filtersDiv.nextSibling;
+
+  function isMobile() {
+    return window.matchMedia("(max-width: 768px)").matches;
+  }
+
+  // Sync mobile search input with the desktop search input
+  if (mobileSearch && desktopSearch) {
+    mobileSearch.addEventListener("input", function() {
+      desktopSearch.value = mobileSearch.value;
+      desktopSearch.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+
+  function openFilterSheet() {
+    scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.overflow = "hidden";
+
+    // Move filters into the sheet
+    filterBody.appendChild(filtersDiv);
+    filtersDiv.style.display = "block";
+
+    filterOverlay.classList.add("open");
+  }
+
+  function closeFilterSheet() {
+    filterOverlay.classList.remove("open");
+
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.style.overflow = "";
+    window.scrollTo(0, scrollY);
+
+    // Move filters back to original position
+    if (filtersNextSibling) {
+      filtersParent.insertBefore(filtersDiv, filtersNextSibling);
+    } else {
+      filtersParent.appendChild(filtersDiv);
+    }
+    filtersDiv.style.display = "";
+  }
+
+  filterChip.addEventListener("click", openFilterSheet);
+  filterCloseBtn.addEventListener("click", closeFilterSheet);
+  filterOverlay.addEventListener("click", function(e) {
+    if (e.target === filterOverlay) closeFilterSheet();
+  });
+
+  // Handle resize
+  window.addEventListener("resize", function() {
+    if (!isMobile() && filterOverlay.classList.contains("open")) {
+      closeFilterSheet();
+    }
+  });
+})();

@@ -302,7 +302,7 @@ function getLockPage() {
   <div class="lock-modal">
     <h2>Expenses+ Locked</h2>
     <p class="subtitle">Enter your 6-digit PIN to access the app.</p>
-    <input type="password" id="pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="••••••" />
+    <input type="password" id="pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="••••••" autofocus />
     <button id="unlock-btn" type="button">Unlock</button>
     <p class="error" id="error"></p>
     <p class="recovery-link"><a id="show-recovery">Forgot PIN? Use recovery code</a></p>

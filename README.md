@@ -1,6 +1,31 @@
-# Expenses+ v3.10.0
+# Expenses+ v3.11.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.11.0
+
+### Tracker Tab — Sidebar Layout (Desktop)
+- **Add Expense in sidebar** — on desktop (≥768px), the Add Expense form now lives in a fixed sidebar on the left, always visible while you browse and search expenses in the main content area on the right
+- **Better use of horizontal space** — eliminates the stacked form-then-table layout; form and table are side-by-side
+- **Sticky sidebar** — the form stays visible as you scroll through expenses
+
+### Tracker Tab — Mobile FAB + Bottom Sheet
+- **Floating action button** — on mobile, a blue "+" FAB in the bottom-right opens the Add Expense form
+- **Bottom sheet form** — tapping the FAB slides up the form as a bottom sheet overlay (no duplicate heading)
+- **Scroll lock** — background page is locked while the bottom sheet is open; no more accidental scrolling behind the overlay
+- **Auto-close on submit** — form sheet closes automatically after adding an expense
+
+### UI Consistency
+- **Card-based design restored** — all sections use consistent card styling (border, background, shadow, radius) across all tabs
+- **Button styling unified** — Add/Cancel buttons in Settings (Categories, Currency Rates) now use consistent styling throughout
+- **Mobile card spacing** — proper margins between cards and screen edges on all screen sizes
+
+### Reports Tab — Mobile Filters
+- **Inline search + filter chip** — on mobile, the full filter panel is replaced by a compact search bar with a "Filters" pill; tapping the pill opens year/month/category/reset/CSV in a bottom sheet
+- **Table-first view** — report data visible immediately without scrolling past filter dropdowns
+
+### App Lock
+- **Auto-focus PIN field** — cursor is now in the PIN input with keyboard open when the lock screen appears
 
 ## What's New in v3.10.0
 

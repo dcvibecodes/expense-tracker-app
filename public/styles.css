@@ -220,7 +220,7 @@ button, a, input, select, textarea, [tabindex] {
 .mobile-add-fab {
   display: none;
   position: fixed;
-  bottom: 96px;
+  bottom: 110px;
   right: 20px;
   width: 44px;
   height: 44px;

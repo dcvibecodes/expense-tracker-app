@@ -3709,11 +3709,6 @@ scratchpadText.addEventListener("keydown", e => {
     formCard.style.boxShadow = "none";
     formCard.style.padding = "0";
     formCard.style.margin = "0";
-    // Force-restart slide-up animation (Safari/iOS doesn't re-trigger on display change)
-    sheet.style.animation = "none";
-    void sheet.offsetHeight;
-    sheet.style.animation = "";
-
     overlay.classList.add("open");
     fab.style.display = "none";
   }

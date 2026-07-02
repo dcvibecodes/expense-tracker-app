@@ -1,6 +1,11 @@
-# Expenses+ v3.13.0
+# Expenses+ v3.13.1
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.13.1
+
+### Bug Fix — Safari/iOS Bottom Sheet
+- **Swipe-to-dismiss fix on Safari/iOS** — after swiping down to close a bottom sheet, tapping the FAB now opens the sheet on the first tap (previously required two taps on Safari and PWA); root cause was Safari not registering the transform reset before the CSS class change; fixed with a forced reflow between operations
 
 ## What's New in v3.13.0
 

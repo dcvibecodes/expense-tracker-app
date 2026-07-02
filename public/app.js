@@ -3738,7 +3738,11 @@ scratchpadText.addEventListener("keydown", e => {
     formCard.style.margin = "";
     var heading = formCard.querySelector("h2");
     if (heading) heading.style.display = "";
-    if (isMobile()) fab.style.display = "flex";
+    if (isMobile()) {
+  setTimeout(() => {
+    fab.style.display = "flex";
+  }, 0);
+  }
   }
 
   fab.addEventListener("click", openMobileForm);

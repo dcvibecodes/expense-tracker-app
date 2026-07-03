@@ -248,8 +248,18 @@ function authMiddleware(req, res, next) {
     "/api/lock/unlock",
     "/api/lock/recovery",
     "/api/lock/setup",
-    "/api/lock/disable"
-  ];
+    "/api/lock/disable",
+    "/manifest.json",
+    "/sw.js",
+    "/favicon.svg",
+    "/favicon-32.png",
+    "/favicon-16.png",
+    "/favicon-32x32.png",
+    "/favicon-16x16.png",
+    "/apple-touch-icon.png",
+    "/icon-192.png",
+    "/icon-512.png"
+];
 
   if (openPaths.includes(req.path)) {
     return next();

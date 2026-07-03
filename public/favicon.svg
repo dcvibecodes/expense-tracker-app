@@ -1,17 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
-  <rect width="512" height="512" rx="112" fill="#000000"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   
-  <g transform="translate(0, 0)">
-    <rect x="98" y="98" width="316" height="316" rx="40" fill="#064e3b" stroke="#10b981" stroke-width="6"/>
-    <rect x="144" y="144" width="224" height="150" rx="24" fill="#10b981" fill-opacity="0.2" stroke="#34d399" stroke-width="6"/>
-    <rect x="136" y="174" width="240" height="136" rx="20" fill="#34d399" stroke="#6ee7b7" stroke-width="6"/>
-    <circle cx="256" cy="242" r="34" fill="#10b981"/>
-    <path d="M236 232h40M236 242h40M236 252h40" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
-    <circle cx="162" cy="200" r="6" fill="#6ee7b7"/>
-    <circle cx="350" cy="200" r="6" fill="#6ee7b7"/>
-    <circle cx="162" cy="284" r="6" fill="#6ee7b7"/>
-    <circle cx="350" cy="284" r="6" fill="#6ee7b7"/>
-    <circle cx="396" cy="396" r="52" fill="#3b82f6"/>
-    <path d="M396 374v44M374 396h44" stroke="#ffffff" stroke-width="10" stroke-linecap="round"/>
+  <style>
+    .bg { fill: #fff; }
+    .fg { stroke: #1a1a1a; fill: none; }
+    .fill { fill: #1a1a1a; }
+    .faint { stroke: #c8c8c8; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0a0a0a; }
+      .fg { stroke: #f5f5f5; }
+      .fill { fill: #f5f5f5; }
+      .faint { stroke: #5c5c5c; }
+    }
+  </style>
+  <rect class="bg" width="512" height="512" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect class="fg" x="118" y="142" width="276" height="228" rx="42" stroke="#1a1a1a" stroke-width="22"/>
+    <path class="faint" d="M168 206H344M168 306H344" stroke="#c8c8c8" stroke-width="10" opacity="0.52"/>
+    <circle class="fg" cx="256" cy="256" r="56" stroke="#1a1a1a" stroke-width="18"/>
+    <path class="fg" d="M276 228H248C228 228 222 256 248 256H264C290 256 284 284 262 284H236" stroke="#1a1a1a" stroke-width="16"/>
+    <path class="fg" d="M256 216V296" stroke="#1a1a1a" stroke-width="14"/>
   </g>
 </svg>

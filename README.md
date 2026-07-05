@@ -1,11 +1,12 @@
-# Expenses+ v3.13.1
+# Expenses+ v3.14.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
 
-## What's New in v3.13.1
+## What's New in v3.14.0
 
-### Bug Fix — Safari/iOS Bottom Sheet
-- **Swipe-to-dismiss fix on Safari/iOS** — after swiping down to close a bottom sheet, tapping the FAB now opens the sheet on the first tap (previously required two taps on Safari and PWA); root cause was Safari not registering the transform reset before the CSS class change; fixed with a forced reflow between operations
+### FAQs Section
+- **13 accordion-style FAQs** added to the Settings tab covering all features: Tracker vs Reports difference, adding expenses, smart suggestions, abroad mode, copy expense, edit/delete, report filters, batch updates, cash flow forecast, currency setup, category management, notifications, and the Quick Notes scratchpad
+- **Pure CSS accordion** — no JavaScript needed, works on all devices including dark mode
 
 ## What's New in v3.13.0
 

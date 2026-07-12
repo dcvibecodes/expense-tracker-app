@@ -2119,10 +2119,19 @@ function populateAbroadCurrencySelect() {
   const sel = document.getElementById("abroad-currency-select");
   if (!sel) return;
   sel.innerHTML = "";
+  // Always add placeholder
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "— Select currency —";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  sel.appendChild(placeholder);
+
   if (currencyRates.length === 0) {
     const o = document.createElement("option");
     o.value = "";
     o.textContent = "No currencies defined";
+    o.disabled = true;
     sel.appendChild(o);
   } else {
     for (const rate of currencyRates) {
@@ -2376,8 +2385,9 @@ document.querySelectorAll("#abroad-mode-toggle-row .theme-option-btn").forEach(b
     const msg = document.getElementById("abroad-message");
 
     if (isAbroad) {
-      // Show currency selector
+      // Show currency selector and reset to placeholder
       currLabel.style.display = "";
+      currSel.value = "";
       document.querySelectorAll("#abroad-mode-toggle-row .theme-option-btn").forEach(b => b.classList.remove("active"));
       this.classList.add("active");
       // Don't save yet — wait for currency selection
@@ -2647,17 +2657,20 @@ document.getElementById("notification-bell")?.addEventListener("click", async ()
   }
   panel.classList.add("open");
   notifOverlay.classList.add("open");
+  document.body.style.overflow = "hidden";
 });
 
 document.getElementById("notification-close")?.addEventListener("click", () => {
   document.getElementById("notification-panel")?.classList.remove("open");
   notifOverlay.classList.remove("open");
+  document.body.style.overflow = "";
 });
 
 notifOverlay.addEventListener("click", () => {
   document.getElementById("notification-panel")?.classList.remove("open");
   document.getElementById("scratchpad-panel")?.classList.remove("open");
   notifOverlay.classList.remove("open");
+  document.body.style.overflow = "";
 });
 
 document.addEventListener("click", async e => {
@@ -3631,8 +3644,13 @@ document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadFor
 
     scratchpadPanel.classList.add("open");
     notifOverlay.classList.add("open");
+    document.body.style.overflow = "hidden";
 
     await loadScratchpad();
+
+    // Auto-expand textarea to fit content
+    scratchpadText.style.height = "auto";
+    scratchpadText.style.height = scratchpadText.scrollHeight + "px";
 
     scratchpadText.focus();
 }
@@ -3644,6 +3662,7 @@ document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadFor
 
   scratchpadPanel.classList.remove("open");
   notifOverlay.classList.remove("open");
+  document.body.style.overflow = "";
 }
 
   async function loadScratchpad() {
@@ -3701,6 +3720,9 @@ document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadFor
 
 // Auto-save 1 second after typing stops
 scratchpadText.addEventListener("input", () => {
+  // Auto-expand textarea
+  scratchpadText.style.height = "auto";
+  scratchpadText.style.height = scratchpadText.scrollHeight + "px";
   
   clearTimeout(scratchpadSaveTimer);
 

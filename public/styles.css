@@ -195,7 +195,7 @@ button, a, input, select, textarea, [tabindex] {
 .mobile-add-fab {
   display: none;
   position: fixed;
-  bottom: 90px;
+  bottom: 100px;
   right: 16px;
   width: 40px;
   height: 40px;
@@ -1485,7 +1485,6 @@ body { overflow-x: clip; }
   overflow: hidden;
 }
 .scratchpad-textarea {
-  flex: 1;
   width: 100%;
   padding: 10px;
   border: 1px solid var(--border);
@@ -1497,7 +1496,9 @@ body { overflow-x: clip; }
   resize: none;
   line-height: 1.5;
   outline: none;
-  min-height: 180px;
+  min-height: 120px;
+  max-height: 60vh;
+  overflow-y: auto;
   transition: border-color 0.15s;
 }
 .scratchpad-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }

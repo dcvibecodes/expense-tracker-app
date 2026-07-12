@@ -1,12 +1,32 @@
-# Expenses+ v3.14.0
+# Expenses+ v3.15.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
 
-## What's New in v3.14.0
+## What's New in v3.15.0
 
-### FAQs Section
-- **13 accordion-style FAQs** added to the Settings tab covering all features: Tracker vs Reports difference, adding expenses, smart suggestions, abroad mode, copy expense, edit/delete, report filters, batch updates, cash flow forecast, currency setup, category management, notifications, and the Quick Notes scratchpad
-- **Pure CSS accordion** — no JavaScript needed, works on all devices including dark mode
+### Design Overhaul — Monochrome Design Language
+- **Complete visual redesign** — unified design language shared with Portfolio+ and other suite apps (Dictation Tool, DocuChat AI)
+- **Inter font** — switched from system fonts to Inter via Google Fonts for a tighter, more editorial feel
+- **Monochrome accent** — replaced blue (#3b82f6) with near-black (#111) in light mode, near-white (#f5f5f5) in dark mode; buttons, active states, and focus rings all use this neutral accent
+- **No shadows** — cards and surfaces rely on border hierarchy (--border-subtle / --border) instead of box-shadow
+- **Compact spacing** — reduced button heights (34px), card padding (16px), font sizes across the board
+- **Segmented navigation** — tab bar converted from colored pills to a glassmorphic segmented control with backdrop-blur (desktop) / bottom tab bar (mobile)
+- **Dark mode updated** — dark theme now uses #0a0a0a background, #141414 surfaces (matching the suite)
+- **Lock screen redesigned** — standalone lock page uses the same monochrome design with dark mode support via prefers-color-scheme
+
+### Theme Toggle
+- **Settings → Theme** — new segmented control (Auto / Light / Dark) at the top of the Settings tab
+- **Auto** follows device theme (default); Light/Dark force a specific mode
+- **Persisted in localStorage** — survives sessions without a server round-trip
+
+### Abroad Mode UX Redesign
+- **Segmented control** — replaced the toggle switch + Save button with a "Home / Abroad" segmented control (same style as the theme toggle)
+- **Auto-save** — selecting "Home" saves immediately; selecting "Abroad" shows currency dropdown, and selecting a currency auto-saves
+- **No manual save button** — one fewer click to activate/deactivate
+
+### FAQ Updates
+- Added theme toggle FAQ
+- Updated Abroad Mode FAQ to reflect new segmented control UX
 
 ## What's New in v3.13.0
 
@@ -265,7 +285,7 @@ Recurring series set up before this update will not automatically generate notif
 - **Categories** — up to 15, custom colors, rename propagates everywhere
 - **Date format** — configurable (MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD)
 - **App Lock** — 6-digit PIN with PBKDF2 hashing, recovery code, rate limiting
-- **Dark mode** — full dark theme toggle
+- **Dark mode** — theme toggle in Settings (Auto / Light / Dark); Auto follows device preference
 - **PWA** — installable, service worker for offline shell
 - **Notifications** — server-side persistent notification system for recurring expense reminders (survives browser/device switches)
 

@@ -21,8 +21,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Expenses+" />
-    <meta name="theme-color" content="#1a1a2e" />
+    <meta name="theme-color" content="#fafafa" />
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css" />
   </head> 
   <body> 
@@ -328,6 +331,16 @@
       <div id="tab-settings" class="tab-content"> 
 
         <section class="card">
+          <h2>Theme</h2>
+          <p class="settings-desc">Choose between light, dark, or automatic (follows your device setting).</p>
+          <div class="theme-toggle-row">
+            <button type="button" class="theme-option-btn active" data-theme-choice="auto">Auto</button>
+            <button type="button" class="theme-option-btn" data-theme-choice="light">Light</button>
+            <button type="button" class="theme-option-btn" data-theme-choice="dark">Dark</button>
+          </div>
+        </section>
+
+        <section class="card">
           <h2>Base Currency</h2>
           <p class="settings-desc">Set your home currency. All expenses are stored and displayed in this currency.</p>
           <div class="date-format-row">
@@ -358,19 +371,15 @@
 
         <section class="card">
           <h2>Expenses Abroad</h2>
-          <p class="settings-desc">Toggle this on when traveling. Expenses will be entered in the foreign currency and auto-converted to your base currency.</p>
-          <div class="abroad-toggle-row">
-            <label class="toggle-switch-label">
-              <span class="toggle-switch">
-                <input type="checkbox" id="abroad-toggle" />
-                <span class="toggle-slider"></span>
-              </span>
-              <span>Abroad mode</span>
-            </label>
-            <label id="abroad-currency-label" style="display:none;">Foreign Currency
+          <p class="settings-desc">Toggle this when traveling. Expenses will be entered in the foreign currency and auto-converted to your base currency.</p>
+          <div class="theme-toggle-row" id="abroad-mode-toggle-row">
+            <button type="button" class="theme-option-btn active" data-abroad="home">Home</button>
+            <button type="button" class="theme-option-btn" data-abroad="abroad">Abroad</button>
+          </div>
+          <div id="abroad-currency-label" style="display:none; margin-top: 10px;">
+            <label style="max-width:200px;">Foreign Currency
               <select id="abroad-currency-select"></select>
             </label>
-            <button id="abroad-save-btn" type="button" class="add-btn">Save</button>
           </div>
           <p id="abroad-message" class="form-msg"></p>
         </section>
@@ -437,6 +446,19 @@
 
           <div class="faq-list">
             <details class="faq-item">
+              <summary class="faq-question">How do I switch between light and dark mode?</summary>
+              <div class="faq-answer">
+                <p>In <strong>Settings → Theme</strong> (the first card), use the toggle:</p>
+                <ul>
+                  <li><strong>Auto</strong> — follows your device/OS theme (default)</li>
+                  <li><strong>Light</strong> — forces light mode</li>
+                  <li><strong>Dark</strong> — forces dark mode</li>
+                </ul>
+                <p>Your choice is saved locally and persists across sessions.</p>
+              </div>
+            </details>
+
+            <details class="faq-item">
               <summary class="faq-question">What do the Tracker and Reports tabs do?</summary>
               <div class="faq-answer">
                 <p><strong>Tracker</strong> shows your current month's expenses up to today. You can add new expenses, search within the current month, and see a summary breakdown by category.</p>
@@ -470,13 +492,13 @@
             <details class="faq-item">
               <summary class="faq-question">How do I enable Abroad Mode?</summary>
               <div class="faq-answer">
-                <p>In <strong>Settings → Expenses Abroad</strong>, toggle Abroad Mode on, select the foreign currency, and click Save. When enabled:</p>
+                <p>In <strong>Settings → Expenses Abroad</strong>, click <strong>Abroad</strong> in the toggle, then select the foreign currency from the dropdown. It auto-saves immediately. When enabled:</p>
                 <ul>
                   <li>The amount label changes to show the foreign currency symbol (e.g. $ instead of ₹).</li>
                   <li>Enter amounts in the foreign currency — they are auto-converted to your base currency using the exchange rate you defined.</li>
                   <li>The original amount and currency are stored and displayed alongside the converted amount in the table.</li>
                 </ul>
-                <p>You need to define the exchange rate first in <strong>Settings → Currency Rates</strong>.</p>
+                <p>Click <strong>Home</strong> to deactivate. You need to define the exchange rate first in <strong>Settings → Currency Rates</strong>.</p>
               </div>
             </details>
 

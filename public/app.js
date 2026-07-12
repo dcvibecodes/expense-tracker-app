@@ -153,13 +153,43 @@ function showConfirm(title, message) {
   });
 }
 
-// ===== THEME (auto-detect system preference) =====
-function applySystemTheme() {
-  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
+// ===== THEME (auto-detect system preference, with user override) =====
+function applyTheme() {
+  const saved = localStorage.getItem("theme-preference");
+  if (saved === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
+  } else if (saved === "light") {
+    document.documentElement.setAttribute("data-theme", "light");
+  } else {
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
+  }
 }
-applySystemTheme();
-window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applySystemTheme);
+applyTheme();
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  if (!localStorage.getItem("theme-preference") || localStorage.getItem("theme-preference") === "auto") applyTheme();
+});
+
+// Theme toggle buttons
+document.addEventListener("DOMContentLoaded", () => {
+  const btns = document.querySelectorAll(".theme-option-btn");
+  const saved = localStorage.getItem("theme-preference") || "auto";
+  btns.forEach(btn => {
+    if (btn.dataset.themeChoice === saved) btn.classList.add("active");
+    else btn.classList.remove("active");
+    btn.addEventListener("click", () => {
+      btns.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const choice = btn.dataset.themeChoice;
+      if (choice === "auto") {
+        localStorage.removeItem("theme-preference");
+      } else {
+        localStorage.setItem("theme-preference", choice);
+      }
+      applyTheme();
+    });
+  });
+});
 if ("scrollRestoration" in history) {
   history.scrollRestoration = "manual";
 }
@@ -517,7 +547,7 @@ function renderSummary(pieData) {
   // Total item
   const totalDiv = document.createElement("div");
   totalDiv.className = "summary-item total-item";
-  totalDiv.innerHTML = `<span class="summary-dot" style="background:#3b82f6"></span><div class="summary-info"><span class="summary-label">Total</span><span class="summary-amount">${formatAmountRounded(total)}</span></div>`;
+  totalDiv.innerHTML = `<span class="summary-dot" style="background:var(--accent)"></span><div class="summary-info"><span class="summary-label">Total</span><span class="summary-amount">${formatAmountRounded(total)}</span></div>`;
   summaryGrid.appendChild(totalDiv);
   // Category items
   for (const cat of categories) {
@@ -2301,10 +2331,16 @@ document.getElementById("currency-rates-list").addEventListener("click", async e
 
 // ===== ABROAD MODE SETTINGS =====
 function updateAbroadUI() {
-  const toggle = document.getElementById("abroad-toggle");
+  const btns = document.querySelectorAll("#abroad-mode-toggle-row .theme-option-btn");
   const currLabel = document.getElementById("abroad-currency-label");
   const currSel = document.getElementById("abroad-currency-select");
-  if (toggle) toggle.checked = abroadMode.active;
+  btns.forEach(btn => {
+    if ((abroadMode.active && btn.dataset.abroad === "abroad") || (!abroadMode.active && btn.dataset.abroad === "home")) {
+      btn.classList.add("active");
+    } else {
+      btn.classList.remove("active");
+    }
+  });
   if (currLabel) currLabel.style.display = abroadMode.active ? "" : "none";
   if (currSel && abroadMode.currency) currSel.value = abroadMode.currency;
   updateAbroadModeInfo();
@@ -2331,55 +2367,69 @@ function updateAbroadModeInfo() {
   }
 }
 
-document.getElementById("abroad-toggle").addEventListener("change", function() {
-  const currLabel = document.getElementById("abroad-currency-label");
-  currLabel.style.display = this.checked ? "" : "none";
+// Abroad mode segmented control
+document.querySelectorAll("#abroad-mode-toggle-row .theme-option-btn").forEach(btn => {
+  btn.addEventListener("click", async function() {
+    const isAbroad = this.dataset.abroad === "abroad";
+    const currLabel = document.getElementById("abroad-currency-label");
+    const currSel = document.getElementById("abroad-currency-select");
+    const msg = document.getElementById("abroad-message");
+
+    if (isAbroad) {
+      // Show currency selector
+      currLabel.style.display = "";
+      document.querySelectorAll("#abroad-mode-toggle-row .theme-option-btn").forEach(b => b.classList.remove("active"));
+      this.classList.add("active");
+      // Don't save yet — wait for currency selection
+    } else {
+      // Switching to Home — save immediately
+      document.querySelectorAll("#abroad-mode-toggle-row .theme-option-btn").forEach(b => b.classList.remove("active"));
+      this.classList.add("active");
+      currLabel.style.display = "none";
+      try {
+        await safeFetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ abroad_mode: { active: false, currency: "" } })
+        });
+        abroadMode = { active: false, currency: "" };
+        msg.textContent = "Abroad mode OFF.";
+        msg.className = "form-msg success";
+        updateAbroadModeInfo();
+        setTimeout(() => { msg.textContent = ""; msg.className = "form-msg"; }, 3000);
+      } catch {
+        msg.textContent = "Failed to save.";
+        msg.className = "form-msg error";
+      }
+    }
+  });
 });
 
-document.getElementById("abroad-save-btn").addEventListener("click", async function() {
-  const btn = this;
-  const toggle = document.getElementById("abroad-toggle");
-  const currSel = document.getElementById("abroad-currency-select");
+// Auto-save when currency is selected while in Abroad mode
+document.getElementById("abroad-currency-select").addEventListener("change", async function() {
+  const currency = this.value;
   const msg = document.getElementById("abroad-message");
-  const active = toggle.checked;
-  const currency = active ? currSel.value : "";
-
-  if (active && !currency) {
-    msg.textContent = "Please select a foreign currency.";
-    msg.className = "form-msg error";
-    return;
-  }
-  if (active && !currencyRates.find(r => r.code === currency)) {
+  if (!currency) return;
+  if (!currencyRates.find(r => r.code === currency)) {
     msg.textContent = "Selected currency has no rate defined.";
     msg.className = "form-msg error";
     return;
   }
-
-  btn.disabled = true;
-  btn.textContent = "Saving...";
   try {
-    const res = await safeFetch("/api/settings", {
+    await safeFetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ abroad_mode: { active, currency } })
+      body: JSON.stringify({ abroad_mode: { active: true, currency } })
     });
-    if (res.ok) {
-      abroadMode = { active, currency };
-      msg.textContent = active ? `Abroad mode ON (${currency}).` : "Abroad mode OFF.";
-      msg.className = "form-msg success";
-      updateAbroadUI();
-    } else {
-      const err = await res.json();
-      msg.textContent = err.error || "Failed to save.";
-      msg.className = "form-msg error";
-    }
+    abroadMode = { active: true, currency };
+    msg.textContent = `Abroad mode ON (${currency}).`;
+    msg.className = "form-msg success";
+    updateAbroadModeInfo();
+    setTimeout(() => { msg.textContent = ""; msg.className = "form-msg"; }, 3000);
   } catch {
     msg.textContent = "Failed to save.";
     msg.className = "form-msg error";
   }
-  btn.disabled = false;
-  btn.textContent = "Save";
-  setTimeout(() => { msg.textContent = ""; msg.className = "form-msg"; }, 3000);
 });
 
 // ===== LOCK SETTINGS =====

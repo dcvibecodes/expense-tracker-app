@@ -1,6 +1,14 @@
-# Expenses+ v3.15.0
+# Expenses+ v3.15.1
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.15.1
+
+### Bug Fixes
+- **Scroll lock on panels** — background page no longer scrolls when the Notifications or Quick Notes panel is open
+- **Scratchpad textarea** — default height is now 5 rows instead of full-screen; auto-expands as you type
+- **Abroad mode currency** — toggling to Abroad now shows "Select currency" placeholder; you must actively choose a currency before it activates (previously the first currency was auto-selected)
+- **FAB position** — floating action button moved higher to avoid touching the bottom nav bar on iPhone PWA
 
 ## What's New in v3.15.0
 

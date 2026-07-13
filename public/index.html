@@ -152,7 +152,7 @@
             </label>
 
             <div class="note-toggle-row" style="grid-column: 1/-1;">
-              <a href="#" id="note-toggle-link" class="note-toggle-link">📝 Add note</a>
+              <a href="#" id="note-toggle-link" class="note-toggle-link">Add note</a>
               <div id="note-field-wrap" class="note-field-wrap" style="display:none;">
                 <textarea id="note" rows="2" placeholder="Optional note..." class="note-textarea"></textarea>
               </div>
@@ -271,7 +271,7 @@
               </label> 
               <div class="report-range-btns"> 
                 <button id="report-reset" type="button" class="btn-secondary">Reset</button> 
-                <button id="report-csv-btn" type="button" class="btn-secondary">⬇ CSV</button> 
+                <button id="report-csv-btn" type="button" class="btn-secondary">↓ CSV</button> 
               </div> 
             </div> 
             <div id="report-day-links" class="report-day-links" aria-label="Filter by day of month"></div>
@@ -316,7 +316,7 @@
             </label>
             <button id="extrap-apply-btn" type="button" class="add-btn">Apply</button>
             <button id="extrap-reset-btn" type="button" class="cancel-btn">Reset</button>
-            <button id="extrap-csv-btn" type="button" class="btn-secondary">⬇ CSV</button>
+            <button id="extrap-csv-btn" type="button" class="btn-secondary">↓ CSV</button>
           </div>
         </section>
 
@@ -476,7 +476,7 @@
                   <li><strong>Details</strong> — describe the expense. Smart Suggestions will auto-fill the category and amount if you've entered this item before.</li>
                   <li><strong>Category</strong> — select or change the suggested category.</li>
                   <li><strong>Amount</strong> — enter the amount (decimals allowed).</li>
-                  <li><strong>📝 Add note</strong> — optional note for this expense.</li>
+                  <li><strong>Add note</strong> — optional note for this expense.</li>
                 </ul>
                 <p>Click <strong>+ Add</strong> to save. The app checks for duplicates and will warn you if a similar entry already exists.</p>
               </div>
@@ -506,7 +506,7 @@
             <details class="faq-item">
               <summary class="faq-question">How do I copy an expense to future months?</summary>
               <div class="faq-answer">
-                <p>Click the <strong>📋 Copy</strong> button on any expense row. A modal opens where you can:</p>
+                <p>Click the <strong>Copy</strong> button on any expense row. A modal opens where you can:</p>
                 <ul>
                   <li>Set the <strong>current occurrence date</strong> (the date of the original expense).</li>
                   <li>Enter the <strong>number of months</strong> to copy forward (max 60).</li>
@@ -520,9 +520,9 @@
               <div class="faq-answer">
                 <p>Each expense row has action buttons:</p>
                 <ul>
-                  <li><strong>✏️ Edit</strong> — opens a modal to change date, details, category, amount, or note.</li>
-                  <li><strong>🗑️ Delete</strong> — removes the expense after confirmation.</li>
-                  <li><strong>📝/🗒️ Notes</strong> — view or add a note to the expense.</li>
+                  <li><strong>Edit</strong> — opens a modal to change date, details, category, amount, or note.</li>
+                  <li><strong>Delete</strong> — removes the expense after confirmation.</li>
+                  <li><strong>Notes</strong> — view or add a note to the expense.</li>
                 </ul>
                 <p>These work both on the <strong>Tracker</strong> tab and the <strong>Reports</strong> tab.</p>
               </div>
@@ -538,7 +538,7 @@
                   <li><strong>Category</strong> — filter by a specific category.</li>
                   <li><strong>Day buttons</strong> — click a day to see only that day's expenses. Shift+click to select a range.</li>
                 </ul>
-                <p>Click <strong>Reset</strong> to clear all filters. Use <strong>⬇ CSV</strong> to download filtered results.</p>
+                <p>Click <strong>Reset</strong> to clear all filters. Use <strong>↓ CSV</strong> to download filtered results.</p>
               </div>
             </details>
 
@@ -566,7 +566,7 @@
                   <li><strong>Right-click or long-press</strong> a cell to add a note.</li>
                   <li>Click a row label to rename it, or the ✕ button to remove it.</li>
                 </ul>
-                <p>Use the <strong>Apply</strong> button to set the start month and number of months (1–24). <strong>⬇ CSV</strong> downloads the forecast.</p>
+                <p>Use the <strong>Apply</strong> button to set the start month and number of months (1–24). <strong>↓ CSV</strong> downloads the forecast.</p>
               </div>
             </details>
 
@@ -578,7 +578,7 @@
                   <li><strong>Base Currency</strong> — select your home currency (e.g. INR, USD, EUR). All expenses are stored in this currency.</li>
                   <li><strong>Currency Rates</strong> — define exchange rates for foreign currencies (e.g. 1 USD = 83 INR). These are used by Abroad Mode to auto-convert expenses.</li>
                 </ol>
-                <p>You can add, edit (✏️), or delete (🗑️) currency rates as needed.</p>
+                <p>You can add, edit, or delete currency rates as needed.</p>
               </div>
             </details>
 
@@ -590,7 +590,7 @@
                   <li><strong>Add</strong> — click "+ Add Category", enter a name and pick a color.</li>
                   <li><strong>Reorder</strong> — use the ↑ and ↓ buttons to change the order.</li>
                   <li><strong>Change color</strong> — click the color dot next to a category name.</li>
-                  <li><strong>Rename</strong> — click the ✏️ button, edit the name inline, and save.</li>
+                  <li><strong>Rename</strong> — click the edit button, edit the name inline, and save.</li>
                   <li><strong>Delete</strong> — removes the category permanently. Expenses using it will lose their category assignment, so consider renaming instead.</li>
                 </ul>
                 <p>Max 15 categories. Changes apply immediately to all existing expenses.</p>
@@ -600,7 +600,7 @@
             <details class="faq-item">
               <summary class="faq-question">What are the Notifications for?</summary>
               <div class="faq-answer">
-                <p>The <strong>Notification Bell</strong> in the header shows reminders for recurring expenses. When a copied expense series (created via the 📋 Copy button) is approaching its last occurrence, a notification appears to let you know it's ending soon.</p>
+                <p>The <strong>Notification Bell</strong> in the header shows reminders for recurring expenses. When a copied expense series (created via the Copy button) is approaching its last occurrence, a notification appears to let you know it's ending soon.</p>
                 <p>Click the bell to view notifications. Each one can be dismissed (removed from the list) or permanently deleted.</p>
               </div>
             </details>

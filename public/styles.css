@@ -479,11 +479,15 @@ td:nth-last-child(2) { text-align: right; }
 .original-amt { font-size: 0.64rem; color: var(--text-faint); white-space: nowrap; }
 tr:last-child td { border-bottom: none; }
 tbody tr:hover td { background: var(--accent-dim); }
+@media (max-width: 768px) {
+  #tab-tracker tbody tr:hover td { background: transparent; }
+}
 
 .actions-cell { white-space: nowrap; text-align: center; }
-.action-btn { background: none; border: none; cursor: pointer; padding: 3px 5px; font-size: 0.78rem; border-radius: 4px; color: inherit; transition: background 0.15s; }
+.action-btn { background: none; border: none; cursor: pointer; padding: 3px 5px; font-size: 0.78rem; border-radius: 4px; color: inherit; transition: background 0.15s; display: inline-flex; align-items: center; justify-content: center; }
 .action-btn:hover { background: var(--accent-dim); }
 .action-btn.delete { color: var(--red); }
+.action-btn svg { display: block; }
 
 /* ── Category badges ── */
 .cat-badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 0.64rem; font-weight: 600; }
@@ -738,10 +742,11 @@ tbody tr:hover td { background: var(--accent-dim); }
 .category-name { flex: 1; font-size: 0.76rem; font-weight: 500; color: var(--text); }
 .category-name-input { flex: 1; font-size: 0.76rem; border: 1px solid var(--border); border-radius: 5px; padding: 5px 8px; min-height: 30px; outline: none; background: var(--bg); color: var(--text); font-family: inherit; }
 .category-name-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
-.cat-rename-btn, .cat-delete-btn { background: none; border: none; cursor: pointer; font-size: 0.78rem; color: var(--text-faint); padding: 3px 5px; border-radius: 4px; transition: all 0.15s; }
+.cat-rename-btn, .cat-delete-btn { background: none; border: none; cursor: pointer; font-size: 0.78rem; color: var(--text-faint); padding: 3px 5px; border-radius: 4px; transition: all 0.15s; display: inline-flex; align-items: center; justify-content: center; }
 .cat-rename-btn:hover { color: var(--accent); background: var(--accent-dim); }
-.cat-delete-btn:hover { color: var(--red); background: rgba(197,48,48,0.06); }
-.cat-save-btn, .cat-cancel-btn { background: none; border: none; cursor: pointer; font-size: 0.9rem; padding: 3px 5px; border-radius: 4px; transition: all 0.15s; }
+.cat-delete-btn { color: var(--red); }
+.cat-delete-btn:hover { background: rgba(197,48,48,0.06); }
+.cat-save-btn, .cat-cancel-btn { background: none; border: none; cursor: pointer; font-size: 0.9rem; padding: 3px 5px; border-radius: 4px; transition: all 0.15s; display: inline-flex; align-items: center; justify-content: center; }
 .cat-save-btn { color: var(--green); }
 .cat-save-btn:hover { background: rgba(45,138,86,0.08); }
 .cat-cancel-btn { color: var(--red); }
@@ -1254,6 +1259,9 @@ body { overflow-x: clip; }
   opacity: 0.4;
   line-height: 1;
   transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .extrap-row-delete-btn:hover {
   opacity: 1;

@@ -1,6 +1,16 @@
 // ===== GLOBALS & CONSTANTS =====
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
+// SVG Icons (14x14, stroke-based)
+const ICON = {
+  edit: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+  delete: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  copy: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  note: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+  noteEmpty: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+  save: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+};
+
 let categories = []; // loaded from server
 let dateFormat = "MM/DD/YYYY"; // configurable date display format
 let baseCurrency = "INR"; // configurable base currency
@@ -523,8 +533,8 @@ function renderRows(rows) {
       amountDisplay += `<br><span class="original-amt">${getCurrencySymbol(row.original_currency)} ${new Intl.NumberFormat(getCurrencyLocale(row.original_currency), { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(row.original_amount)}</span>`;
     }
     const noteBtn = row.note
-      ? `<button class="action-btn btn-note" data-id="${row.id}" title="View note" aria-label="View note">📝</button>`
-      : `<button class="action-btn btn-note notes-empty" data-id="${row.id}" title="Add note" aria-label="Add note">🗒️</button>`;
+      ? `<button class="action-btn btn-note" data-id="${row.id}" title="View note" aria-label="View note">${ICON.note}</button>`
+      : `<button class="action-btn btn-note notes-empty" data-id="${row.id}" title="Add note" aria-label="Add note">${ICON.noteEmpty}</button>`;
     tr.innerHTML = `
       <td data-label="Date">${escapeHtml(formatDate(row.date))}</td>
       <td data-label="Details">${escapeHtml(row.details)}</td>
@@ -532,9 +542,9 @@ function renderRows(rows) {
       <td data-label="Amount">${amountDisplay}</td>
       <td class="actions-cell" data-label="">
         ${noteBtn}
-        <button class="action-btn btn-copy" data-id="${row.id}" title="Copy to date" aria-label="Copy expense to another date">📋</button>
-        <button class="action-btn btn-edit" data-id="${row.id}" title="Edit" aria-label="Edit expense">✏️</button>
-        <button class="action-btn delete btn-delete" data-id="${row.id}" title="Delete" aria-label="Delete expense">🗑️</button>
+        <button class="action-btn btn-copy" data-id="${row.id}" title="Copy to date" aria-label="Copy expense to another date">${ICON.copy}</button>
+        <button class="action-btn btn-edit" data-id="${row.id}" title="Edit" aria-label="Edit expense">${ICON.edit}</button>
+        <button class="action-btn delete btn-delete" data-id="${row.id}" title="Delete" aria-label="Delete expense">${ICON.delete}</button>
       </td>`;
     fragment.appendChild(tr);
   }
@@ -768,9 +778,9 @@ rowsEl.addEventListener("click", async e => {
     try {
       const res = await safeFetch(`/api/expenses/${id}`, { method: "DELETE" });
       if (res.ok) { await refreshAll(); populateDetailsList(); }
-      else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); btn.textContent = "🗑️"; btn.style.opacity = ""; }
+      else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); btn.innerHTML = ICON.delete; btn.style.opacity = ""; }
     } catch {
-      siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); btn.textContent = "🗑️"; btn.style.opacity = "";
+      siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); btn.innerHTML = ICON.delete; btn.style.opacity = "";
     }
   }
 });
@@ -878,7 +888,7 @@ expenseForm.addEventListener("submit", async e => {
       detailsInput.value = ""; amountInput.value = "";
       document.getElementById("note").value = "";
       document.getElementById("note-field-wrap").style.display = "none";
-      document.getElementById("note-toggle-link").textContent = "📝 Add note";
+      document.getElementById("note-toggle-link").textContent = "Add note";
       hideSuggestions();
       detailsAutocomplete.hide();
       await refreshAll(); populateDetailsList();
@@ -912,7 +922,7 @@ document.getElementById("clear-form-btn").addEventListener("click", () => {
   amountInput.value = "";
   document.getElementById("note").value = "";
   document.getElementById("note-field-wrap").style.display = "none";
-  document.getElementById("note-toggle-link").textContent = "📝 Add note";
+  document.getElementById("note-toggle-link").textContent = "Add note";
   if (categories.length) categoryInput.value = categories[0].name;
   detailsAutocomplete.hide();
   hideSuggestions();
@@ -936,11 +946,11 @@ document.getElementById("note-toggle-link").addEventListener("click", e => {
   const link = document.getElementById("note-toggle-link");
   if (wrap.style.display === "none") {
     wrap.style.display = "block";
-    link.textContent = "📝 Hide note";
+    link.textContent = "Hide note";
     document.getElementById("note").focus();
   } else {
     wrap.style.display = "none";
-    link.textContent = "📝 Add note";
+    link.textContent = "Add note";
   }
 });
 
@@ -1348,7 +1358,7 @@ function renderReportTable(data) {
     html += `  <span class="rpt-label">${escapeHtml(exp.details)}</span>`;
     html += `  <span class="rpt-cat"><span class="cat-badge" style="background:${getCategoryColor(exp.category)}20;color:${getCategoryColor(exp.category)}">${escapeHtml(formatCategory(exp.category))}</span></span>`;
     html += `  <span class="rpt-amt">${amountDisplay}</span>`;
-    html += `  <span class="rpt-actions">${exp.note ? `<button class="action-btn rpt-note-btn" data-id="${exp.id}" title="View note" aria-label="View note">📝</button>` : `<button class="action-btn rpt-note-btn notes-empty" data-id="${exp.id}" title="Add note" aria-label="Add note">🗒️</button>`}<button class="action-btn rpt-copy-btn" data-id="${exp.id}" title="Copy to date" aria-label="Copy expense">📋</button><button class="action-btn rpt-edit-btn" data-id="${exp.id}" title="Edit" aria-label="Edit expense">✏️</button><button class="action-btn delete rpt-delete-btn" data-id="${exp.id}" title="Delete" aria-label="Delete expense">🗑️</button></span>`;
+    html += `  <span class="rpt-actions">${exp.note ? `<button class="action-btn rpt-note-btn" data-id="${exp.id}" title="View note" aria-label="View note">${ICON.note}</button>` : `<button class="action-btn rpt-note-btn notes-empty" data-id="${exp.id}" title="Add note" aria-label="Add note">${ICON.noteEmpty}</button>`}<button class="action-btn rpt-copy-btn" data-id="${exp.id}" title="Copy to date" aria-label="Copy expense">${ICON.copy}</button><button class="action-btn rpt-edit-btn" data-id="${exp.id}" title="Edit" aria-label="Edit expense">${ICON.edit}</button><button class="action-btn delete rpt-delete-btn" data-id="${exp.id}" title="Delete" aria-label="Delete expense">${ICON.delete}</button></span>`;
     html += `</div>`;
   }
   html += `</div>`;
@@ -1476,8 +1486,8 @@ reportWrap.addEventListener("click", async e => {
     try {
       const res = await safeFetch(`/api/expenses/${id}`, { method: "DELETE" });
       if (res.ok) { await loadReports(); await refreshAll(); populateDetailsList(); }
-      else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); delBtn.textContent = "🗑️"; delBtn.style.opacity = ""; }
-    } catch { siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); delBtn.textContent = "🗑️"; delBtn.style.opacity = ""; }
+      else { alert("Failed to delete"); siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); delBtn.innerHTML = ICON.delete; delBtn.style.opacity = ""; }
+    } catch { siblings.forEach(s => { s.disabled = false; s.style.pointerEvents = ""; }); delBtn.innerHTML = ICON.delete; delBtn.style.opacity = ""; }
     return;
   }
 });
@@ -1765,8 +1775,8 @@ function renderCategoriesList() {
       </div>
       <span class="category-color-dot" style="background:${cat.color}" data-id="${cat.id}" title="Change color" role="button" tabindex="0" aria-label="Change color for ${escapeHtml(formatCategory(cat.name))}"></span>
       <span class="category-name">${escapeHtml(formatCategory(cat.name))}</span>
-      <button class="cat-rename-btn" data-id="${cat.id}" title="Rename category" aria-label="Rename ${escapeHtml(formatCategory(cat.name))}">✏️</button>
-      <button class="cat-delete-btn" data-id="${cat.id}" title="Delete category" aria-label="Delete ${escapeHtml(formatCategory(cat.name))}">🗑️</button>
+      <button class="cat-rename-btn" data-id="${cat.id}" title="Rename category" aria-label="Rename ${escapeHtml(formatCategory(cat.name))}">${ICON.edit}</button>
+      <button class="cat-delete-btn" data-id="${cat.id}" title="Delete category" aria-label="Delete ${escapeHtml(formatCategory(cat.name))}">${ICON.delete}</button>
     `;
     categoriesList.appendChild(div);
   });
@@ -1893,13 +1903,13 @@ categoriesList.addEventListener("click", async e => {
     const saveBtn = document.createElement("button");
     saveBtn.className = "cat-save-btn";
     saveBtn.title = "Save";
-    saveBtn.textContent = "✓";
+    saveBtn.innerHTML = ICON.save;
     saveBtn.setAttribute("aria-label", "Save rename");
 
     const cancelBtn = document.createElement("button");
     cancelBtn.className = "cat-cancel-btn";
     cancelBtn.title = "Cancel";
-    cancelBtn.textContent = "✕";
+    cancelBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
     cancelBtn.setAttribute("aria-label", "Cancel rename");
 
     nameSpan.replaceWith(input);
@@ -2108,8 +2118,8 @@ function renderCurrencyRatesList() {
       <span class="rate-code">${escapeHtml(rate.code)}</span>
       <span class="rate-name">${escapeHtml(rate.name)}</span>
       <span class="rate-value">${rate.rate}</span>
-      <button class="cat-rename-btn rate-edit-btn" data-code="${escapeHtml(rate.code)}" title="Edit rate" aria-label="Edit ${escapeHtml(rate.code)} rate">✏️</button>
-      <button class="cat-delete-btn rate-delete-btn" data-code="${escapeHtml(rate.code)}" title="Delete rate" aria-label="Delete ${escapeHtml(rate.code)} rate">🗑️</button>
+      <button class="cat-rename-btn rate-edit-btn" data-code="${escapeHtml(rate.code)}" title="Edit rate" aria-label="Edit ${escapeHtml(rate.code)} rate">${ICON.edit}</button>
+      <button class="cat-delete-btn rate-delete-btn" data-code="${escapeHtml(rate.code)}" title="Delete rate" aria-label="Delete ${escapeHtml(rate.code)} rate">${ICON.delete}</button>
     `;
     list.appendChild(div);
   }
@@ -2237,13 +2247,13 @@ document.getElementById("currency-rates-list").addEventListener("click", async e
     const saveBtn = document.createElement("button");
     saveBtn.className = "cat-save-btn";
     saveBtn.title = "Save";
-    saveBtn.textContent = "✓";
+    saveBtn.innerHTML = ICON.save;
     saveBtn.setAttribute("aria-label", "Save changes");
 
     const cancelBtn = document.createElement("button");
     cancelBtn.className = "cat-cancel-btn";
     cancelBtn.title = "Cancel";
-    cancelBtn.textContent = "✕";
+    cancelBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
     cancelBtn.setAttribute("aria-label", "Cancel edit");
 
     codeSpan.replaceWith(codeInput);
@@ -2764,7 +2774,7 @@ function showUpdateBanner() {
   if (!banner) {
     banner = document.createElement("div");
     banner.className = "sw-update-banner";
-    banner.innerHTML = "🔄 Update available — tap to refresh";
+    banner.innerHTML = "Update available — tap to refresh";
     banner.addEventListener("click", () => {
       if (navigator.serviceWorker.controller) {
         navigator.serviceWorker.ready.then(reg => {
@@ -3071,7 +3081,7 @@ function renderDataRow(grid, type, label, months, index, total) {
 
   const delBtn = document.createElement("button");
   delBtn.className = "extrap-row-delete-btn";
-  delBtn.textContent = "✕";
+  delBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
   delBtn.title = "Remove row";
   delBtn.addEventListener("click", async () => {
     if (!await showConfirm("Remove Row", `Remove "${label}" from all months?`)) return;

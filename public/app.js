@@ -1774,7 +1774,7 @@ function renderCategoriesList() {
         <button class="cat-move-btn cat-move-down" data-id="${cat.id}" ${index === categories.length - 1 ? "disabled" : ""} title="Move down" aria-label="Move ${escapeHtml(formatCategory(cat.name))} down">↓</button>
       </div>
       <span class="category-color-dot" style="background:${cat.color}" data-id="${cat.id}" title="Change color" role="button" tabindex="0" aria-label="Change color for ${escapeHtml(formatCategory(cat.name))}"></span>
-      <input type="color" class="category-color-input" value="${cat.color}" aria-label="Color picker for ${escapeHtml(formatCategory(cat.name))}" />
+      <input type="color" class="category-color-input" value="${cat.color}" data-id="${cat.id}" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" />
       <span class="category-name">${escapeHtml(formatCategory(cat.name))}</span>
       <button class="cat-rename-btn" data-id="${cat.id}" title="Rename category" aria-label="Rename ${escapeHtml(formatCategory(cat.name))}">${ICON.edit}</button>
       <button class="cat-delete-btn" data-id="${cat.id}" title="Delete category" aria-label="Delete ${escapeHtml(formatCategory(cat.name))}">${ICON.delete}</button>
@@ -1858,7 +1858,6 @@ categoriesList.addEventListener("click", async e => {
     const picker = item.querySelector(".category-color-input");
     if (!picker) return;
 
-    picker.value = cat.color;
     picker.addEventListener("input", () => {
       colorDot.style.background = picker.value;
     });

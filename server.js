@@ -3,6 +3,7 @@ const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
 const session = require("express-session");
+const compression = require("compression");
 const sqlite3 = require("sqlite3").verbose();
 
 const app = express();
@@ -351,6 +352,7 @@ function getLockPage() {
 }
 
 app.use(authMiddleware);
+app.use(compression());
 app.use(express.static(path.join(__dirname, "public"), {
   etag: false,
   setHeaders: (res, filePath) => {

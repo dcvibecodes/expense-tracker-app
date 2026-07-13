@@ -1774,6 +1774,7 @@ function renderCategoriesList() {
         <button class="cat-move-btn cat-move-down" data-id="${cat.id}" ${index === categories.length - 1 ? "disabled" : ""} title="Move down" aria-label="Move ${escapeHtml(formatCategory(cat.name))} down">↓</button>
       </div>
       <span class="category-color-dot" style="background:${cat.color}" data-id="${cat.id}" title="Change color" role="button" tabindex="0" aria-label="Change color for ${escapeHtml(formatCategory(cat.name))}"></span>
+      <input type="color" class="category-color-input" value="${cat.color}" aria-label="Color picker for ${escapeHtml(formatCategory(cat.name))}" />
       <span class="category-name">${escapeHtml(formatCategory(cat.name))}</span>
       <button class="cat-rename-btn" data-id="${cat.id}" title="Rename category" aria-label="Rename ${escapeHtml(formatCategory(cat.name))}">${ICON.edit}</button>
       <button class="cat-delete-btn" data-id="${cat.id}" title="Delete category" aria-label="Delete ${escapeHtml(formatCategory(cat.name))}">${ICON.delete}</button>
@@ -1853,18 +1854,16 @@ categoriesList.addEventListener("click", async e => {
     const cat = categories.find(c => c.id === id);
     if (!cat) return;
 
-    const picker = document.createElement("input");
-    picker.type = "color";
+    const item = colorDot.closest(".category-item");
+    const picker = item.querySelector(".category-color-input");
+    if (!picker) return;
+
     picker.value = cat.color;
-    picker.className = "category-color-input";
-    picker.setAttribute("aria-label", `Choose color for ${formatCategory(cat.name)}`);
-    colorDot.insertAdjacentElement("afterend", picker);
     picker.addEventListener("input", () => {
       colorDot.style.background = picker.value;
     });
     picker.addEventListener("change", async () => {
       const color = picker.value;
-      picker.remove();
       if (color === cat.color) return;
       try {
         const res = await safeFetch(`/api/categories/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: cat.name, color }) });

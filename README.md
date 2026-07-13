@@ -1,11 +1,14 @@
-# Expenses+ v3.16.1
+# Expenses+ v3.17.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
 
-## What's New in v3.16.1
+## What's New in v3.17.0
 
-### Bug Fix
-- **Color picker on Safari/iOS** — fixed category color picker not opening on Safari; the hidden `<input type="color">` is now pre-rendered in the DOM (matching the Portfolio+ approach) instead of being dynamically created and clicked, which Safari blocks
+### Skeleton Loading
+- **Shimmer placeholders on page load** — summary cards, expense table rows, and report table show animated skeleton placeholders while data loads from the server
+- **Instant perceived speed** — the page structure appears immediately instead of blank containers, reducing perceived load time on slow connections
+- **Zero impact after load** — skeletons are pure HTML that gets overwritten when real data arrives; no residual code or styling
+- **Works on mobile and desktop** — responsive skeleton shapes adapt to container width
 
 ## What's New in v3.16.0
 

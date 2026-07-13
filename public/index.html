@@ -125,7 +125,14 @@
 
         <section class="card summary-card" id="summary-panel">
           <h2 id="summary-heading">This Month Summary</h2>
-          <div class="summary-grid" id="summary-grid"></div>
+          <div class="summary-grid" id="summary-grid">
+            <div class="skeleton-summary">
+              <div class="skeleton skeleton-summary-item"></div>
+              <div class="skeleton skeleton-summary-item"></div>
+              <div class="skeleton skeleton-summary-item"></div>
+              <div class="skeleton skeleton-summary-item"></div>
+            </div>
+          </div>
         </section>
 
         <section class="card" id="add-expense-card">
@@ -190,7 +197,13 @@
               <thead><tr> 
                 <th class="col-date">Date</th><th>Details</th><th>Category</th><th class="col-amount">Amount</th><th class="col-actions">Actions</th> 
               </tr></thead> 
-              <tbody id="expense-rows"></tbody> 
+              <tbody id="expense-rows">
+                <tr><td colspan="5"><div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div></td></tr>
+                <tr><td colspan="5"><div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div></td></tr>
+                <tr><td colspan="5"><div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div></td></tr>
+                <tr><td colspan="5"><div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div></td></tr>
+                <tr><td colspan="5"><div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div></td></tr>
+              </tbody> 
             </table> 
           </div> 
         </section> 
@@ -286,7 +299,14 @@
             <button id="report-apply-details" type="button" class="btn-secondary">Rename Selected</button>
             <button id="report-clear-selection" type="button" class="btn-secondary">Clear</button>
           </div>
-          <div class="report-table-wrap" id="report-table-wrap"></div>
+          <div class="report-table-wrap" id="report-table-wrap">
+            <div style="padding:12px;">
+              <div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div>
+              <div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div>
+              <div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div>
+              <div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div>
+            </div>
+          </div>
         </section> 
 
         <!-- Mobile report filter overlay (bottom sheet) -->
@@ -356,7 +376,10 @@
         <section class="card">
           <h2>Currency Rates</h2>
           <p class="settings-desc">Define exchange rates to your base currency. These rates are used when adding expenses abroad.</p>
-          <div id="currency-rates-list" class="categories-list"></div>
+          <div id="currency-rates-list" class="categories-list">
+            <div class="category-item"><div class="skeleton skeleton-text" style="width:40px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:50px"></div></div>
+            <div class="category-item"><div class="skeleton skeleton-text" style="width:40px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:50px"></div></div>
+          </div>
           <button id="show-add-rate-btn" type="button" class="btn-secondary" style="margin-bottom:12px;">+ Add Currency Rate</button>
           <div id="rate-add-row" class="category-add-row" style="display:none;">
             <input type="text" id="new-rate-code" placeholder="VND" maxlength="5" style="text-transform:uppercase; max-width:100px;" />
@@ -388,7 +411,11 @@
         <section class="card"> 
           <h2>Categories</h2> 
           <p class="settings-desc">Manage expense categories (max 15). Changes apply to new and existing expenses.</p> 
-          <div id="categories-list" class="categories-list"></div> 
+          <div id="categories-list" class="categories-list">
+            <div class="category-item"><div class="skeleton skeleton-text" style="width:12px;height:12px;border-radius:50%;flex-shrink:0"></div><div class="skeleton skeleton-text" style="flex:1;margin-left:8px"></div></div>
+            <div class="category-item"><div class="skeleton skeleton-text" style="width:12px;height:12px;border-radius:50%;flex-shrink:0"></div><div class="skeleton skeleton-text" style="flex:1;margin-left:8px"></div></div>
+            <div class="category-item"><div class="skeleton skeleton-text" style="width:12px;height:12px;border-radius:50%;flex-shrink:0"></div><div class="skeleton skeleton-text" style="flex:1;margin-left:8px"></div></div>
+          </div> 
           <button id="show-add-category-btn" type="button" class="btn-secondary" style="margin-bottom:12px;">+ Add Category</button> 
           <div class="category-add-row" id="category-add-row" style="display:none;"> 
             <input type="text" id="new-category-name" placeholder="New category name" maxlength="30" /> 

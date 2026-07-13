@@ -1,14 +1,19 @@
-# Expenses+ v3.15.1
+# Expenses+ v3.16.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
 
-## What's New in v3.15.1
+## What's New in v3.16.0
 
-### Bug Fixes
-- **Scroll lock on panels** — background page no longer scrolls when the Notifications or Quick Notes panel is open
-- **Scratchpad textarea** — default height is now 5 rows instead of full-screen; auto-expands as you type
-- **Abroad mode currency** — toggling to Abroad now shows "Select currency" placeholder; you must actively choose a currency before it activates (previously the first currency was auto-selected)
-- **FAB position** — floating action button moved higher to avoid touching the bottom nav bar on iPhone PWA
+### Emoji Purge — SVG Icons Everywhere
+- **All action buttons now use SVG icons** — edit (pencil), delete (trash), copy (clipboard), notes (file), save (checkmark), cancel (×) are all inline SVGs that inherit `currentColor`
+- **Consistent cross-platform rendering** — no more emoji differences between Windows, Mac, iOS, and Android
+- **CSV buttons** — now show `↓ CSV` (Unicode down arrow) matching the Portfolio+ style
+- **Forecast tab** — row delete ✕ replaced with proper SVG × icon
+- **Note toggle link** — cleaned up from "📝 Add note" to plain "Add note"
+
+### UI Fixes
+- **Delete button always red** — Settings tab category/rate delete buttons are now red by default (previously only on hover), consistent with all other delete buttons
+- **Tracker tab mobile** — tapping an expense card no longer shows a background highlight (removed sticky hover state); Reports tab retains the highlight for selection mode
 
 ## What's New in v3.15.0
 

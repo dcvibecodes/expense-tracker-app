@@ -1,6 +1,11 @@
-# Expenses+ v3.16.0
+# Expenses+ v3.16.1
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.16.1
+
+### Bug Fix
+- **Color picker on Safari/iOS** — fixed category color picker not opening on Safari; the hidden `<input type="color">` is now pre-rendered in the DOM (matching the Portfolio+ approach) instead of being dynamically created and clicked, which Safari blocks
 
 ## What's New in v3.16.0
 

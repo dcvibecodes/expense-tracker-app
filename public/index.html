@@ -26,6 +26,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;700&display=swap" rel="stylesheet">
+    <script>
+      (function(){var s=localStorage.getItem('theme-preference');if(s==='dark')document.documentElement.setAttribute('data-theme','dark');else if(s==='light')document.documentElement.setAttribute('data-theme','light');else if(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)document.documentElement.setAttribute('data-theme','dark');else document.documentElement.setAttribute('data-theme','light');})();
+    </script>
     <link rel="stylesheet" href="/styles.css" />
   </head> 
   <body> 
@@ -716,7 +719,7 @@
       </div>
     </div>
 
-    <script src="/chart.min.js"></script>
-    <script src="/app.js"></script> 
+    <script src="/chart.min.js" defer></script>
+    <script src="/app.js" defer></script> 
   </body>
 </html>

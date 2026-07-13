@@ -1,6 +1,18 @@
-# Expenses+ v3.17.0
+# Expenses+ v3.18.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.18.0
+
+### Theme Flash Fix
+- **Zero-flash dark mode** — inline `<script>` in `<head>` sets the correct theme before the first paint; no more white flash on dark-mode devices
+- **CSS media query fallback** — `@media (prefers-color-scheme: dark)` applies dark variables even before JS runs, covering edge cases
+- **Applies to all theme states** — Auto (device), Light, and Dark all render correctly on first frame
+
+### Performance
+- **Gzip compression** — added `compression` middleware; ~70% reduction in transfer size for HTML/JS/CSS
+- **Deferred scripts** — `chart.min.js` and `app.js` now load with `defer`, unblocking HTML parsing and first paint
+- **Combined effect** — page structure (with skeleton placeholders) appears significantly faster on slow connections
 
 ## What's New in v3.17.0
 

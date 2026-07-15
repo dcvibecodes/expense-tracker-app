@@ -1,4 +1,4 @@
-const CACHE_NAME = "expense-tracker-v15";
+const CACHE_NAME = "expense-tracker-v16";
 const STATIC_ASSETS = [
   "/",
   "/manifest.json",
@@ -47,7 +47,7 @@ self.addEventListener("fetch", (event) => {
           if (event.request.method === "GET") {
             return caches.match(event.request);
           }
-          return new Response(JSON.stringify({ error: "Offline. Changes will sync when back online." }), {
+          return new Response(JSON.stringify({ error: "You're offline. Connect to the internet to make changes." }), {
             status: 503,
             headers: { "Content-Type": "application/json" }
           });

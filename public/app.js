@@ -839,32 +839,45 @@ expenseForm.addEventListener("submit", async e => {
     return;
   }
 
-  // Duplicate check
-  try {
-    // Use the final base-currency amount for duplicate check
-    let dupAmount = amountNum;
-    if (abroadMode.active && abroadMode.currency) {
-      const rate = currencyRates.find(r => r.code === abroadMode.currency);
-      if (rate) dupAmount = Math.round(amountNum * rate.rate * 100) / 100;
-    }
-    const dupRes = await fetch("/api/expenses/check-duplicate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, details, amount: dupAmount })
-    });
-    if (dupRes.ok) {
-      const { duplicate } = await dupRes.json();
-      if (duplicate) {
-        if (!await showConfirm("Possible Duplicate", `A similar entry already exists:\n${formatDate(date)} — ${details} — ${amount}\n\nAdd anyway?`)) {
-          isSubmitting = false;
-          addBtn.disabled = false;
-          addBtn.textContent = "+ Add";
-          return;
+  // Duplicate check (skip if offline — not critical)
+  if (navigator.onLine) {
+    try {
+      // Use the final base-currency amount for duplicate check
+      let dupAmount = amountNum;
+      if (abroadMode.active && abroadMode.currency) {
+        const rate = currencyRates.find(r => r.code === abroadMode.currency);
+        if (rate) dupAmount = Math.round(amountNum * rate.rate * 100) / 100;
+      }
+      const dupRes = await fetch("/api/expenses/check-duplicate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, details, amount: dupAmount })
+      });
+      if (dupRes.ok) {
+        const { duplicate } = await dupRes.json();
+        if (duplicate) {
+          if (!await showConfirm("Possible Duplicate", `A similar entry already exists:\n${formatDate(date)} — ${details} — ${amount}\n\nAdd anyway?`)) {
+            isSubmitting = false;
+            addBtn.disabled = false;
+            addBtn.textContent = "+ Add";
+            return;
+          }
         }
       }
-    }
-  } catch {}
+    } catch {}
+  }
 
+  // Block submission if offline
+  if (!navigator.onLine) {
+    addExpenseMsg.textContent = "You're offline. Connect to the internet to add expenses.";
+    addExpenseMsg.className = "form-msg error";
+    isSubmitting = false;
+    addBtn.disabled = false;
+    addBtn.textContent = "+ Add";
+    return;
+  }
+
+  let addSuccess = false;
   try {
     // Build request body — handle abroad mode conversion
     const body = { date, details, category, amount: amountNum };
@@ -883,6 +896,7 @@ expenseForm.addEventListener("submit", async e => {
 
     const res = await safeFetch("/api/expenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (res.ok) {
+      addSuccess = true;
       addExpenseMsg.textContent = "Expense added successfully.";
       addExpenseMsg.className = "form-msg success";
       detailsInput.value = ""; amountInput.value = "";
@@ -894,14 +908,25 @@ expenseForm.addEventListener("submit", async e => {
       await refreshAll(); populateDetailsList();
       setTimeout(() => { addExpenseMsg.textContent = ""; addExpenseMsg.className = "form-msg"; }, 3000);
     } else {
-      const err = await res.json();
-      addExpenseMsg.textContent = err.error || "Failed to add expense.";
+      const err = await res.json().catch(() => ({}));
+      addExpenseMsg.textContent = err.error || "Failed to add expense. Please try again.";
       addExpenseMsg.className = "form-msg error";
     }
-  } catch {}
+  } catch {
+    addExpenseMsg.textContent = "Could not add expense. Check your internet connection.";
+    addExpenseMsg.className = "form-msg error";
+  }
   isSubmitting = false;
   addBtn.disabled = false;
   addBtn.textContent = "+ Add";
+
+  // Close mobile form only on success
+  if (addSuccess) {
+    const mobileOverlay = document.getElementById("mobile-form-overlay");
+    if (mobileOverlay && mobileOverlay.classList.contains("open") && window.matchMedia("(max-width: 768px)").matches) {
+      document.getElementById("mobile-form-close").click();
+    }
+  }
 });
 
 let searchDebounce = null;
@@ -3827,19 +3852,7 @@ scratchpadText.addEventListener("keydown", e => {
     if (e.target === overlay) closeMobileForm();
   });
 
-  // Close bottom sheet after successful form submit
-  const form = document.getElementById("expense-form");
-  if (form) {
-    const origSubmitHandler = form.onsubmit;
-    form.addEventListener("submit", function() {
-      // Give time for the submit to process, then close
-      setTimeout(() => {
-        if (isMobile() && overlay.classList.contains("open")) {
-          closeMobileForm();
-        }
-      }, 300);
-    });
-  }
+  // Close bottom sheet is now handled by the form submit handler itself (only on success)
 
   // Handle resize: if goes desktop while sheet is open, close it
   window.addEventListener("resize", function() {

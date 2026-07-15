@@ -1,6 +1,14 @@
-# Expenses+ v3.19.0
+# Expenses+ v3.19.1
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.19.1
+
+### Remaining Emoji Cleanup
+- **Lock badge** — replaced 🔒 emoji with inline SVG padlock icon in the App Lock section
+- **Delete loading state** — replaced ⏳ hourglass emoji with inline SVG spinner icon during delete operations (Tracker and Reports tabs)
+- **Forecast drag handle** — replaced ⠿ braille character with inline SVG 6-dot grip icon for row reordering
+- **Recovery warning** — replaced ⚠ emoji with inline SVG warning triangle icon in the PIN setup recovery message
 
 ## What's New in v3.19.0
 

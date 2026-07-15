@@ -1,6 +1,16 @@
-# Expenses+ v3.18.0
+# Expenses+ v3.19.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.19.0
+
+### Offline Add Expense — Honest Error Handling
+- **No false success messages** — "Expense added successfully" now appears only after the server confirms the entry was saved; previously it could appear even when the request failed silently
+- **Offline blocked upfront** — if the device is offline, the Add button immediately shows "You're offline. Connect to the internet to add expenses." instead of attempting the request
+- **Network error feedback** — if the request fails mid-flight (server down, timeout, etc.), the form shows "Could not add expense. Check your internet connection." and keeps all entered data intact
+- **Mobile FAB drawer stays open on failure** — on mobile, the bottom sheet no longer auto-closes after tapping Add; it only closes after a confirmed successful save, so users never lose their input
+- **Removed false sync promise** — the service worker no longer says "Changes will sync when back online" (there was never any sync logic); offline write attempts now return "You're offline. Connect to the internet to make changes."
+- **Duplicate check skipped when offline** — duplicate detection gracefully skips if offline rather than failing and blocking the form
 
 ## What's New in v3.18.0
 

@@ -744,6 +744,7 @@ copyForm.addEventListener("submit", async e => {
       closeCopyModal();
       await refreshAll();
       await loadReports();
+      await refreshNotifications();
       populateDetailsList();
       let msg = `Copied to ${r.inserted} month${r.inserted > 1 ? "s" : ""}.`;
       if (r.skipped > 0) {
@@ -2577,16 +2578,6 @@ async function fetchNotifications() {
   } catch { return cachedNotifications; }
 }
 
-async function createNotification(title, desc, { dates, details, amount, type = "ending" }) {
-  try {
-    await fetch("/api/notifications", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type, title, desc, details, amount, dates })
-    });
-    await refreshNotifications();
-  } catch {}
-}
 
 async function refreshNotifications() {
   const notifs = await fetchNotifications();
@@ -2725,40 +2716,6 @@ document.addEventListener("click", async e => {
   } catch {}
 });
 
-// Hook into copy success to create notification on server
-const _origFetch = window.fetch;
-window.fetch = function(...args) {
-  return _origFetch.apply(this, args).then(async response => {
-    const url = typeof args[0] === "string" ? args[0] : args[0]?.url;
-    const method = typeof args[1] === "object" && args[1]?.method ? args[1].method : "GET";
-
-    if (url?.includes("/api/expenses/copy") && method === "POST" && response.ok) {
-      const cloned = response.clone();
-      try {
-        const body = await cloned.json();
-        if (body.inserted && body.inserted > 0) {
-          try {
-            const reqBody = typeof args[1]?.body === "string" ? JSON.parse(args[1].body) : args[1]?.body;
-            if (reqBody?.dates?.length) {
-              const dates = reqBody.dates;
-              const months = dates.length;
-              const copyInfoEl = document.getElementById("copy-info");
-              const infoText = copyInfoEl?.textContent || "";
-              const [details = "Expense", amount = ""] = infoText.split(" — ");
-              await createNotification(
-                "Recurring Expense Created",
-                `${details} — Recurring for ${months} month${months > 1 ? "s" : ""}`,
-                { dates, details, amount: amount.trim() }
-              );
-            }
-          } catch {}
-        }
-      } catch {}
-      return response;
-    }
-    return response;
-  }).catch(err => { throw err; });
-};
 
 refreshNotifications();
 

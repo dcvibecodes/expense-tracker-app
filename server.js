@@ -871,12 +871,22 @@ app.post("/api/expenses/copy", (req, res) => {
 
       const stmt = db.prepare("INSERT INTO expenses (date, details, category, amount, note) VALUES (?, ?, ?, ?, ?)");
       let inserted = 0;
+      let insertErr = null;
       for (const d of datesToInsert) {
-        stmt.run(d, row.details, row.category, row.amount, row.note);
-        inserted++;
+        stmt.run(d, row.details, row.category, row.amount, row.note, (err) => {
+          if (err) insertErr = err;
+          else inserted++;
+        });
       }
-      stmt.finalize();
-      return res.json({ success: true, inserted, skipped });
+      stmt.finalize((finalizeErr) => {
+        if (insertErr || finalizeErr) {
+          return res.status(500).json({ error: "Failed to copy expense." });
+        }
+
+        createRecurringSeriesNotification(row, datesToInsert, () => {
+          return res.json({ success: true, inserted, skipped });
+        });
+      });
     });
   });
 });
@@ -1352,6 +1362,70 @@ app.delete("/api/currency-rates/:code", (req, res) => {
 
 // --- Notifications API ---
 
+function insertNotification({ type = "ending", title, desc, details = "", amount = "", dates = [] }, cb = () => {}) {
+  if (!title || !desc || !Array.isArray(dates)) return cb(new Error("Invalid notification."));
+
+  const notifType = type || "ending";
+  const notifDetails = details || "";
+  const notifAmount = amount === null || amount === undefined ? "" : String(amount);
+  const datesJson = JSON.stringify(dates);
+
+  db.get(
+    "SELECT id FROM notifications WHERE type = ? AND details = ? AND amount = ? AND dates = ?",
+    [notifType, notifDetails, notifAmount, datesJson],
+    (dupErr, dupRow) => {
+      if (dupErr) return cb(dupErr);
+      if (dupRow) return cb(null, { id: dupRow.id, duplicate: true });
+
+      db.get("SELECT COUNT(*) AS cnt FROM notifications", (cntErr, cntRow) => {
+        if (cntErr) return cb(cntErr);
+
+        const insert = () => {
+          db.run(
+            "INSERT INTO notifications (type, title, desc, details, amount, dates) VALUES (?, ?, ?, ?, ?, ?)",
+            [notifType, title, desc, notifDetails, notifAmount, datesJson],
+            function(insertErr) {
+              if (insertErr) return cb(insertErr);
+              return cb(null, { id: this.lastID, duplicate: false });
+            }
+          );
+        };
+
+        if (cntRow && cntRow.cnt >= 50) {
+          db.run(
+            "DELETE FROM notifications WHERE id IN (SELECT id FROM notifications ORDER BY created_at ASC LIMIT ?)",
+            [cntRow.cnt - 49],
+            (deleteErr) => {
+              if (deleteErr) return cb(deleteErr);
+              insert();
+            }
+          );
+          return;
+        }
+
+        insert();
+      });
+    }
+  );
+}
+
+function createRecurringSeriesNotification(expense, dates, cb = () => {}) {
+  if (!Array.isArray(dates) || dates.length === 0) return cb();
+
+  const details = expense.details || "Expense";
+  const amount = expense.amount === null || expense.amount === undefined ? "" : String(expense.amount);
+  const months = dates.length;
+
+  insertNotification({
+    type: "ending",
+    title: "Recurring Expense Created",
+    desc: `${details} — Recurring for ${months} month${months > 1 ? "s" : ""}`,
+    details,
+    amount,
+    dates
+  }, cb);
+}
+
 app.get("/api/notifications", (req, res) => {
   db.all("SELECT * FROM notifications ORDER BY created_at DESC", (err, rows) => {
     if (err) return res.status(500).json({ error: "Failed to fetch notifications." });
@@ -1374,36 +1448,11 @@ app.post("/api/notifications", (req, res) => {
     return res.status(400).json({ error: "dates must be an array." });
   }
 
-  const notifType = type || "ending";
-  const datesJson = JSON.stringify(dates);
-
-  // Deduplication: check for existing notification with same type, details, amount, and date count
-  const dupSql = `SELECT id FROM notifications WHERE type = ? AND details = ? AND amount = ? AND json_array_length(dates) = ?`;
-  db.get(dupSql, [notifType, details || "", amount || "", dates.length], (dupErr, dupRow) => {
-    if (dupErr) {
-      // If json_array_length isn't available (older sqlite), fall back without dedup check
-      // Just insert
+  insertNotification({ type, title, desc, details, amount, dates }, (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: "Failed to create notification." });
     }
-    if (dupRow) {
-      return res.json({ id: dupRow.id, duplicate: true });
-    }
-
-    // Cap at 50 notifications
-    db.get("SELECT COUNT(*) AS cnt FROM notifications", (cntErr, cntRow) => {
-      if (!cntErr && cntRow && cntRow.cnt >= 50) {
-        // Delete oldest entries to make room
-        db.run("DELETE FROM notifications WHERE id IN (SELECT id FROM notifications ORDER BY created_at ASC LIMIT ?)", [cntRow.cnt - 49]);
-      }
-
-      db.run(
-        "INSERT INTO notifications (type, title, desc, details, amount, dates) VALUES (?, ?, ?, ?, ?, ?)",
-        [notifType, title, desc, details || "", amount || "", datesJson],
-        function(insertErr) {
-          if (insertErr) return res.status(500).json({ error: "Failed to create notification." });
-          return res.json({ id: this.lastID, duplicate: false });
-        }
-      );
-    });
+    return res.json(result);
   });
 });
 
@@ -1437,7 +1486,6 @@ function cleanupExpiredNotifications() {
     if (err) return;
     const toDelete = [];
     for (const row of rows) {
-      if (row.type === "today" || row.type === "ending-today") continue;
       const dates = JSON.parse(row.dates || "[]");
       const lastDateStr = dates[dates.length - 1];
       if (!lastDateStr) { toDelete.push(row.id); continue; }
@@ -1487,39 +1535,28 @@ function generateDailyRecurringNotifications() {
         }
       }
 
-      if (!upcomingDate) continue;
-
-      // Check if "today" notification already exists for this series + upcoming date
-      db.get(
-        "SELECT id FROM notifications WHERE type = 'today' AND details = ? AND amount = ? AND dates = ?",
-        [series.details, series.amount, JSON.stringify([upcomingDate])],
-        (err2, existing) => {
-          if (err2 || existing) return; // already exists or error
-
-          const desc = `${series.details} — A recurring expense is due on ${upcomingDate}. Review the amount and update it if needed.`;
-          db.run(
-            "INSERT INTO notifications (type, title, desc, details, amount, dates) VALUES (?, ?, ?, ?, ?, ?)",
-            ["today", "Recurring Expense Due Soon", desc, series.details, series.amount, JSON.stringify([upcomingDate])]
-          );
-        }
-      );
+      if (upcomingDate) {
+        insertNotification({
+          type: "today",
+          title: "Recurring Expense Due Soon",
+          desc: `${series.details} — A recurring expense is due on ${upcomingDate}. Review the amount and update it if needed.`,
+          details: series.details,
+          amount: series.amount,
+          dates: [upcomingDate]
+        });
+      }
 
       // Check if today is the last date in the series
       const lastDate = dates[dates.length - 1];
       if (lastDate === today) {
-        db.get(
-          "SELECT id FROM notifications WHERE type = 'ending-today' AND details = ? AND amount = ? AND dates = ?",
-          [series.details, series.amount, JSON.stringify([today])],
-          (err3, existing2) => {
-            if (err3 || existing2) return;
-
-            const desc = `${series.details} — The final recurring expense will occur on ${lastDate}. Extend the series if you want future entries to continue.`;
-            db.run(
-              "INSERT INTO notifications (type, title, desc, details, amount, dates) VALUES (?, ?, ?, ?, ?, ?)",
-              ["ending-today", "Recurring Series Ending Soon", desc, series.details, series.amount, JSON.stringify([lastDate])]
-            );
-          }
-        );
+        insertNotification({
+          type: "ending-today",
+          title: "Recurring Series Ending Today",
+          desc: `${series.details} — The final recurring expense occurs today. Extend the series if you want future entries to continue.`,
+          details: series.details,
+          amount: series.amount,
+          dates: [lastDate]
+        });
       }
     }
   });

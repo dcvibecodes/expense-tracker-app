@@ -771,7 +771,7 @@ rowsEl.addEventListener("click", async e => {
   else if (btn.classList.contains("btn-delete")) {
     if (!await showConfirm("Delete Expense", `${formatDate(row.date)} — ${row.details} — ${formatAmount(row.amount)}`)) return;
     btn.disabled = true;
-    btn.textContent = "⏳";
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>';
     btn.style.opacity = "0.5";
     btn.style.pointerEvents = "none";
     const siblings = btn.parentElement.querySelectorAll("button");
@@ -1504,7 +1504,7 @@ reportWrap.addEventListener("click", async e => {
     const id = parseInt(delBtn.dataset.id, 10);
     if (!await showConfirm("Delete Expense", "Delete this expense?")) return;
     delBtn.disabled = true;
-    delBtn.textContent = "⏳";
+    delBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>';
     delBtn.style.opacity = "0.5";
     delBtn.style.pointerEvents = "none";
     const siblings = delBtn.parentElement.querySelectorAll("button");
@@ -2509,7 +2509,7 @@ document.getElementById("settings-lock-enable").addEventListener("click", async 
       const alertSection = document.getElementById("lock-recovery-alert-section");
       alertSection.innerHTML = `<div class="recovery-alert"><div class="recovery-alert-header">✓ Lock enabled successfully</div><div class="recovery-alert-body">
 <p>Your recovery code:</p><code class="recovery-code">${escapeHtml(data.recoveryCode)}</code>
-<p class="recovery-warning">⚠ Save this code now. This is the only time it will be shown. If you forget your PIN and don't have this code, you will permanently lose access to the app.</p><p class="recovery-tips">Tips: Save it in your notes app, email it to yourself, or store it in your password manager.</p></div></div>`;
+<p class="recovery-warning"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Save this code now. This is the only time it will be shown. If you forget your PIN and don't have this code, you will permanently lose access to the app.</p><p class="recovery-tips">Tips: Save it in your notes app, email it to yourself, or store it in your password manager.</p></div></div>`;
       alertSection.style.display = "block";
       lockDisableSection.style.display = "block";
       document.getElementById("settings-disable-pin").value = "";
@@ -3078,7 +3078,7 @@ function renderDataRow(grid, type, label, months, index, total) {
   labelCell.dataset.rowType = type;
   labelCell.dataset.rowIndex = index;
   labelCell.dataset.rowLabel = label;
-  labelCell.innerHTML = `<span class="extrap-drag-handle" title="Drag to reorder">⠿</span><span class="extrap-label-text">${escapeHtml(label)}</span>`;
+  labelCell.innerHTML = `<span class="extrap-drag-handle" title="Drag to reorder"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="8" cy="4" r="2"/><circle cx="16" cy="4" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="20" r="2"/><circle cx="16" cy="20" r="2"/></svg></span><span class="extrap-label-text">${escapeHtml(label)}</span>`;
   labelCell.style.cursor = "grab";
   labelCell.title = "Drag to reorder, or click label to rename";
 

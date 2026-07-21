@@ -1,6 +1,11 @@
-# Expenses+ v3.19.1
+# Expenses+ v3.19.2
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.19.2
+
+### Dark Mode Fix
+- **Pitch black background** — dark mode `--bg` changed from `#0a0a0a` to `#000000` for a true pitch-black background, matching Scrawl's dark theme
 
 ## What's New in v3.19.1
 

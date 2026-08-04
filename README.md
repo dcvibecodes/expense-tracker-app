@@ -1,6 +1,27 @@
-# Expenses+ v3.19.2
+# Expenses+ v3.20.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.20.0
+
+### Removed Recurring Expense Notifications & Copy-to-Future-Months
+
+This release removes the recurring expense notification system and the "copy expense to future months" feature entirely.
+
+**Why these were removed:**
+
+- The recurring expense notifications were unreliable — reminders were generated server-side only when the server happened to be running on the exact day 3 days before an occurrence, and there was no catch-up logic. If the server was down that day, the reminder was permanently missed. The badge also never showed for "Recurring Expense Created" notifications until the series was nearly over, making the feature feel broken in normal use.
+- **Copy-to-future-months created inaccurate data.** It pre-populated the tracker with expenses that hadn't actually happened yet, which polluted monthly totals, charts, and reports with money you didn't actually spend. This conflicts with the tracker's core purpose of recording actual spending.
+- The habit this app encourages is simple: **add an expense when you actually spend the money.** The forecast tab already handles projecting future cash flow, so there's no gap in functionality.
+
+**What was removed:**
+- The notification bell icon and notification panel in the header
+- The `/api/notifications` endpoints, the `notifications` database table, and all server-side notification generation/cleanup jobs
+- The copy button on Tracker and Reports rows, the copy modal, and the `/api/expenses/copy` endpoint
+- The "Repeat Last Month" endpoints (which had no UI and were dead code)
+- The two related FAQ entries ("How do I copy an expense to future months?" and "What are the Notifications for?")
+
+**What's unchanged:** Your expense data, categories, settings, and the Quick Notes scratchpad are all untouched. The empty `notifications` table in existing databases is left in place (harmless) and is no longer created for new installs.
 
 ## What's New in v3.19.2
 
@@ -337,13 +358,11 @@ Recurring series set up before this update will not automatically generate notif
 - **Reports** — spending trends chart, yearly/monthly pivot table with expand/collapse, CSV export
 - **Report filters** — year, month, category, and full-text search with dynamic instant filtering; search works within selected date range or across all data via "All" toggle
 - **Batch operations** — rename details across entries, reassign categories in bulk (in Settings)
-- **Copy expense** — duplicate an expense across multiple months
 - **Categories** — up to 15, custom colors, rename propagates everywhere
 - **Date format** — configurable (MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD)
 - **App Lock** — 6-digit PIN with PBKDF2 hashing, recovery code, rate limiting
 - **Dark mode** — theme toggle in Settings (Auto / Light / Dark); Auto follows device preference
 - **PWA** — installable, service worker for offline shell
-- **Notifications** — server-side persistent notification system for recurring expense reminders (survives browser/device switches)
 
 ## Setup
 

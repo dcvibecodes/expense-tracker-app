@@ -5,7 +5,6 @@ const MONTH_NAMES = ["January","February","March","April","May","June","July","A
 const ICON = {
   edit: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
   delete: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
-  copy: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
   note: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
   noteEmpty: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
   save: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
@@ -542,7 +541,6 @@ function renderRows(rows) {
       <td data-label="Amount">${amountDisplay}</td>
       <td class="actions-cell" data-label="">
         ${noteBtn}
-        <button class="action-btn btn-copy" data-id="${row.id}" title="Copy to date" aria-label="Copy expense to another date">${ICON.copy}</button>
         <button class="action-btn btn-edit" data-id="${row.id}" title="Edit" aria-label="Edit expense">${ICON.edit}</button>
         <button class="action-btn delete btn-delete" data-id="${row.id}" title="Delete" aria-label="Delete expense">${ICON.delete}</button>
       </td>`;
@@ -671,95 +669,6 @@ function closeEditModal() {
   if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
 }
 
-// ===== COPY MODAL =====
-const copyModal = document.getElementById("copy-modal");
-const copyForm = document.getElementById("copy-form");
-const copyInfo = document.getElementById("copy-info");
-const copyDateStart = document.getElementById("copy-date-start");
-const copyMonths = document.getElementById("copy-months");
-const copyCancel = document.getElementById("copy-cancel");
-let copyExpenseId = null;
-
-function openCopyModal(row) {
-  copyExpenseId = row.id;
-  copyInfo.textContent = `${row.details} — ${formatAmount(row.amount)}`;
-  copyDateStart.value = row.date;
-  copyMonths.value = "1";
-  copyModal.classList.add("open");
-  if (activeModalTrap) activeModalTrap();
-  activeModalTrap = trapFocus(copyModal.querySelector(".modal-content"));
-}
-function closeCopyModal() {
-  copyModal.classList.remove("open");
-  copyExpenseId = null;
-  if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
-}
-
-copyCancel.addEventListener("click", closeCopyModal);
-
-copyForm.addEventListener("submit", async e => {
-  e.preventDefault();
-  if (!copyExpenseId) return;
-  const startDate = copyDateStart.value;
-  const months = parseInt(copyMonths.value, 10);
-  if (!startDate) { alert("Please select the current occurrence date."); return; }
-  if (!months || months < 1 || months > 60) { alert("Please enter a number of months between 1 and 60."); return; }
-
-  // Generate dates starting from the NEXT month after the occurrence
-  const dates = [];
-  const start = new Date(startDate + "T12:00:00"); // Use noon to avoid DST edge cases
-  const targetDay = start.getDate();
-
-  for (let i = 1; i <= months; i++) {
-    // Create a fresh date at the 1st of the target month to avoid overflow
-    let targetMonth = start.getMonth() + i;
-    let targetYear = start.getFullYear();
-    while (targetMonth > 11) { targetMonth -= 12; targetYear++; }
-    while (targetMonth < 0) { targetMonth += 12; targetYear--; }
-
-    // Get last day of target month
-    const maxDay = new Date(targetYear, targetMonth + 1, 0).getDate();
-    const clampedDay = Math.min(targetDay, maxDay);
-    const d = new Date(targetYear, targetMonth, clampedDay);
-    dates.push(localDateStr(d));
-  }
-
-  if (dates.length === 0) { alert("No valid months to copy to."); return; }
-  if (dates.length > 365) { alert("Cannot copy to more than 365 dates at once."); return; }
-
-  if (!await showConfirm("Copy Expense", `Copy this expense to ${dates.length} month${dates.length > 1 ? "s" : ""} (${dates[0]} – ${dates[dates.length-1]})?`)) return;
-
-  const copySaveBtn = copyForm.querySelector(".save-btn");
-  copySaveBtn.disabled = true;
-  copySaveBtn.textContent = "Copying...";
-
-  try {
-    const res = await safeFetch("/api/expenses/copy", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: copyExpenseId, dates })
-    });
-    if (res.ok) {
-      const r = await res.json();
-      closeCopyModal();
-      await refreshAll();
-      await loadReports();
-      await refreshNotifications();
-      populateDetailsList();
-      let msg = `Copied to ${r.inserted} month${r.inserted > 1 ? "s" : ""}.`;
-      if (r.skipped > 0) {
-        msg += `\n${r.skipped} date${r.skipped > 1 ? "s were" : " was"} skipped (duplicate already exists).`;
-      }
-      alert(msg);
-    } else {
-      const err = await res.json();
-      alert(err.error || "Failed to copy expense.");
-    }
-  } catch {}
-  copySaveBtn.disabled = false;
-  copySaveBtn.textContent = "Copy";
-});
-
 // ===== TRACKER TABLE CLICK HANDLERS =====
 rowsEl.addEventListener("click", async e => {
   const btn = e.target.closest("button"); if (!btn) return;
@@ -767,7 +676,6 @@ rowsEl.addEventListener("click", async e => {
   const row = currentRows.find(r => r.id === id); if (!row) return;
   if (btn.classList.contains("btn-note")) { openNotesModal(row); }
   else if (btn.classList.contains("btn-edit")) { openEditModal(row); }
-  else if (btn.classList.contains("btn-copy")) { openCopyModal(row); }
   else if (btn.classList.contains("btn-delete")) {
     if (!await showConfirm("Delete Expense", `${formatDate(row.date)} — ${row.details} — ${formatAmount(row.amount)}`)) return;
     btn.disabled = true;
@@ -959,7 +867,6 @@ document.getElementById("clear-form-btn").addEventListener("click", () => {
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     closeEditModal();
-    closeCopyModal();
     closeNotesModal();
     if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
   }
@@ -1384,7 +1291,7 @@ function renderReportTable(data) {
     html += `  <span class="rpt-label">${escapeHtml(exp.details)}</span>`;
     html += `  <span class="rpt-cat"><span class="cat-badge" style="background:${getCategoryColor(exp.category)}20;color:${getCategoryColor(exp.category)}">${escapeHtml(formatCategory(exp.category))}</span></span>`;
     html += `  <span class="rpt-amt">${amountDisplay}</span>`;
-    html += `  <span class="rpt-actions">${exp.note ? `<button class="action-btn rpt-note-btn" data-id="${exp.id}" title="View note" aria-label="View note">${ICON.note}</button>` : `<button class="action-btn rpt-note-btn notes-empty" data-id="${exp.id}" title="Add note" aria-label="Add note">${ICON.noteEmpty}</button>`}<button class="action-btn rpt-copy-btn" data-id="${exp.id}" title="Copy to date" aria-label="Copy expense">${ICON.copy}</button><button class="action-btn rpt-edit-btn" data-id="${exp.id}" title="Edit" aria-label="Edit expense">${ICON.edit}</button><button class="action-btn delete rpt-delete-btn" data-id="${exp.id}" title="Delete" aria-label="Delete expense">${ICON.delete}</button></span>`;
+    html += `  <span class="rpt-actions">${exp.note ? `<button class="action-btn rpt-note-btn" data-id="${exp.id}" title="View note" aria-label="View note">${ICON.note}</button>` : `<button class="action-btn rpt-note-btn notes-empty" data-id="${exp.id}" title="Add note" aria-label="Add note">${ICON.noteEmpty}</button>`}<button class="action-btn rpt-edit-btn" data-id="${exp.id}" title="Edit" aria-label="Edit expense">${ICON.edit}</button><button class="action-btn delete rpt-delete-btn" data-id="${exp.id}" title="Delete" aria-label="Delete expense">${ICON.delete}</button></span>`;
     html += `</div>`;
   }
   html += `</div>`;
@@ -1448,7 +1355,7 @@ async function batchUpdateSelected(payload, confirmMessage) {
   }
 }
 
-// Report table click handlers (select + edit/delete/copy)
+// Report table click handlers (select + edit/delete)
 reportWrap.addEventListener("click", async e => {
   // Handle note button click in report
   const noteBtn = e.target.closest(".rpt-note-btn");
@@ -1476,16 +1383,6 @@ reportWrap.addEventListener("click", async e => {
     if (check.checked) selectedReportIds.add(id);
     else selectedReportIds.delete(id);
     updateReportSelectionUI();
-    return;
-  }
-
-  const copyBtn = e.target.closest(".rpt-copy-btn");
-  if (copyBtn) {
-    const id = parseInt(copyBtn.dataset.id, 10);
-    try {
-      const res = await safeFetch(`/api/expenses/${id}`);
-      if (res.ok) { const row = await res.json(); openCopyModal(row); }
-    } catch {}
     return;
   }
 
@@ -2566,165 +2463,15 @@ async function initApp() {
 
 initApp();
 
-// ===== NOTIFICATION SYSTEM (Server-side persistent) =====
-let cachedNotifications = [];
-
-async function fetchNotifications() {
-  try {
-    const res = await fetch("/api/notifications");
-    if (!res.ok) return [];
-    cachedNotifications = await res.json();
-    return cachedNotifications;
-  } catch { return cachedNotifications; }
-}
-
-
-async function refreshNotifications() {
-  const notifs = await fetchNotifications();
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-
-  let unreadCount = 0;
-
-  for (const n of notifs) {
-    if (n.dismissed) continue;
-
-    if (n.type === "today" || n.type === "ending-today") {
-      unreadCount++;
-      continue;
-    }
-
-    const lastDateStr = n.dates[n.dates.length - 1];
-    if (!lastDateStr) continue;
-
-    const lastDate = new Date(lastDateStr + "T00:00:00");
-    const expiresAt = new Date(lastDate);
-    expiresAt.setDate(expiresAt.getDate() + 7);
-
-    if (now >= lastDate && now <= expiresAt) {
-      unreadCount++;
-    }
-  }
-
-  const badge = document.getElementById("notification-badge");
-  const bell = document.getElementById("notification-bell");
-  if (badge && bell) {
-    if (unreadCount > 0) {
-      badge.textContent = unreadCount;
-      badge.style.display = "flex";
-      bell.setAttribute("aria-label", `${unreadCount} notification${unreadCount > 1 ? "s" : ""}`);
-    } else {
-      badge.style.display = "none";
-      bell.setAttribute("aria-label", "Notifications");
-    }
-  }
-  renderNotificationPanel(notifs);
-}
-
-function renderNotificationPanel(notifs) {
-  const list = document.getElementById("notification-list");
-  if (!list) return;
-  if (!notifs) notifs = cachedNotifications;
-
-  if (!notifs.length) {
-    list.innerHTML = `<div class="notification-item" style="color:var(--text-muted);text-align:center;padding:24px;">
-      <div style="margin-bottom:8px;display:flex;justify-content:center;">
-        <svg class="header-icon" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
-          <path d="M13.73 21a2 2 0 01-3.46 0"></path>
-        </svg>
-      </div>
-      <div style="font-weight:600;margin-bottom:6px;">No notifications</div>
-      <div style="font-size:12px;line-height:1.5;">Recurring expense reminders will appear here when a copied series is approaching its last occurrence.</div>
-    </div>`;
-    return;
-  }
-
-  list.innerHTML = "";
-  for (const n of notifs) {
-    const isDismissed = n.dismissed;
-    const div = document.createElement("div");
-    div.className = `notification-item ${isDismissed ? "read" : "unread"}`;
-    const lastDate = n.dates[n.dates.length - 1] || "";
-    const formattedLast = lastDate ? formatDate(lastDate) : "";
-
-    div.innerHTML = `
-      <div class="notification-item-title">${escapeHtml(n.title)}</div>
-      <div class="notification-item-desc">${escapeHtml(n.desc)}${formattedLast ? ` (ends ${escapeHtml(formattedLast)})` : ""}</div>
-      <button class="dismiss-btn" data-nid="${n.id}">${isDismissed ? "Remove" : "Dismiss"}</button>
-    `;
-    list.appendChild(div);
-  }
-}
-
+// ===== OVERLAY (shared by Quick Notes scratchpad) =====
 const notifOverlay = document.createElement("div");
 notifOverlay.className = "notif-overlay";
 document.body.appendChild(notifOverlay);
 
-document.getElementById("notification-bell")?.addEventListener("click", async () => {
-  const panel = document.getElementById("notification-panel");
-  if (!panel) return;
-  // Close scratchpad if open
-  document.getElementById("scratchpad-panel")?.classList.remove("open");
-  // Mark all unread as dismissed on the server
-  const notifs = cachedNotifications;
-  const unread = notifs.filter(n => !n.dismissed);
-  for (const n of unread) {
-    try {
-      await fetch(`/api/notifications/${n.id}/dismiss`, { method: "PATCH" });
-    } catch {}
-  }
-  if (unread.length) {
-    await refreshNotifications();
-  }
-  panel.classList.add("open");
-  notifOverlay.classList.add("open");
-  document.body.style.overflow = "hidden";
-});
-
-document.getElementById("notification-close")?.addEventListener("click", () => {
-  document.getElementById("notification-panel")?.classList.remove("open");
-  notifOverlay.classList.remove("open");
-  document.body.style.overflow = "";
-});
-
 notifOverlay.addEventListener("click", () => {
-  document.getElementById("notification-panel")?.classList.remove("open");
   document.getElementById("scratchpad-panel")?.classList.remove("open");
   notifOverlay.classList.remove("open");
   document.body.style.overflow = "";
-});
-
-document.addEventListener("click", async e => {
-  const dismissBtn = e.target.closest(".dismiss-btn");
-  if (!dismissBtn) return;
-  const nid = parseInt(dismissBtn.dataset.nid, 10);
-  if (!nid) return;
-  const n = cachedNotifications.find(x => x.id === nid);
-  if (!n) return;
-  try {
-    if (n.dismissed) {
-      // Already dismissed — remove it entirely
-      await fetch(`/api/notifications/${nid}`, { method: "DELETE" });
-    } else {
-      // Mark as dismissed
-      await fetch(`/api/notifications/${nid}/dismiss`, { method: "PATCH" });
-    }
-    await refreshNotifications();
-  } catch {}
-});
-
-
-refreshNotifications();
-
-document.querySelectorAll(".bottom-nav-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    if (btn.dataset.tab === "tracker") {
-      refreshNotifications();
-    }
-  });
 });
 
 // ===== SERVICE WORKER REGISTRATION =====
@@ -3630,8 +3377,6 @@ document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadFor
   let scratchpadLastSaved = "";
 
   async function openScratchpad() {
-    document.getElementById("notification-panel")?.classList.remove("open");
-
     scratchpadPanel.classList.add("open");
     notifOverlay.classList.add("open");
     document.body.style.overflow = "hidden";

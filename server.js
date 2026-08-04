@@ -167,21 +167,6 @@ db.serialize(() => {
       db.run("ALTER TABLE app_lock ADD COLUMN recovery_salt TEXT NOT NULL DEFAULT ''");
     }
   });
-  // --- Notifications table (server-side persistence) ---
-  db.run(`
-    CREATE TABLE IF NOT EXISTS notifications (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type TEXT NOT NULL DEFAULT 'ending',
-      title TEXT NOT NULL,
-      desc TEXT NOT NULL,
-      details TEXT,
-      amount TEXT,
-      dates TEXT NOT NULL DEFAULT '[]',
-      dismissed INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `);
-
   // Seed default categories if table is empty
   db.get("SELECT COUNT(*) AS cnt FROM categories", (err, row) => {
     if (!err && row && row.cnt === 0) {
@@ -252,6 +237,9 @@ function authMiddleware(req, res, next) {
     "/api/lock/disable",
     "/manifest.json",
     "/sw.js",
+    "/styles.css",
+    "/app.js",
+    "/chart.min.js",
     "/favicon.svg",
     "/favicon-32.png",
     "/favicon-16.png",
@@ -684,57 +672,6 @@ app.put("/api/expenses/:id", (req, res) => {
   });
 });
 
-// --- Recurring: Copy last month's expenses ---
-app.get("/api/expenses/last-month", (req, res) => {
-  const now = new Date();
-  let month = now.getMonth(); // 0-indexed, so this is "last month"
-  let year = now.getFullYear();
-  if (month === 0) { month = 12; year--; }
-  const ym = `${year}-${String(month).padStart(2, "0")}`;
-  const sql = "SELECT date, details, category, amount FROM expenses WHERE substr(date, 1, 7) = ? ORDER BY date ASC, id ASC";
-  db.all(sql, [ym], (err, rows) => {
-    if (err) return res.status(500).json({ error: "Failed to fetch last month expenses." });
-    return res.json(rows);
-  });
-});
-
-app.post("/api/expenses/repeat-last-month", (req, res) => {
-  const now = new Date();
-  const curMonth = now.getMonth() + 1;
-  const curYear = now.getFullYear();
-  let lastMonth = curMonth - 1;
-  let lastYear = curYear;
-  if (lastMonth === 0) { lastMonth = 12; lastYear--; }
-  const ym = `${lastYear}-${String(lastMonth).padStart(2, "0")}`;
-
-  // Check if current month already has entries (prevent double-repeat)
-  const curYm = `${curYear}-${String(curMonth).padStart(2, "0")}`;
-  db.get("SELECT COUNT(*) AS cnt FROM expenses WHERE substr(date, 1, 7) = ?", [curYm], (cntErr, cntRow) => {
-    if (cntErr) return res.status(500).json({ error: "DB error." });
-    if (cntRow.cnt > 0) return res.status(400).json({ error: "Current month already has expenses. Use this only on an empty month." });
-
-    const sql = "SELECT date, details, category, amount, COALESCE(note, '') as note FROM expenses WHERE substr(date, 1, 7) = ? ORDER BY date ASC, id ASC";
-    db.all(sql, [ym], (err, rows) => {
-      if (err) return res.status(500).json({ error: "Failed to fetch last month." });
-      if (rows.length === 0) return res.status(400).json({ error: "No expenses found in last month." });
-
-      const stmt = db.prepare("INSERT INTO expenses (date, details, category, amount, note) VALUES (?, ?, ?, ?, ?)");
-      let inserted = 0;
-      for (const row of rows) {
-        // Shift date to current month, clamping day to valid range
-        const day = parseInt(row.date.split("-")[2], 10);
-        const maxDay = new Date(curYear, curMonth, 0).getDate();
-        const newDay = Math.min(day, maxDay);
-        const newDate = `${curYear}-${String(curMonth).padStart(2, "0")}-${String(newDay).padStart(2, "0")}`;
-        stmt.run(newDate, row.details, row.category, row.amount, row.note);
-        inserted++;
-      }
-      stmt.finalize();
-      return res.json({ success: true, inserted });
-    });
-  });
-});
-
 app.get("/api/expenses/:id", (req, res) => {
   const { id } = req.params;
   db.get("SELECT id, date, details, category, amount, original_amount, original_currency, exchange_rate, COALESCE(note, '') as note FROM expenses WHERE id = ?", [id], (err, row) => {
@@ -836,59 +773,6 @@ app.patch("/api/expenses/batch-selected", (req, res) => {
   } else {
     runUpdate();
   }
-});
-
-// --- Copy Expense to Date(s) ---
-app.post("/api/expenses/copy", (req, res) => {
-  const { id, dates } = req.body;
-  if (!id) return res.status(400).json({ error: "Expense id is required." });
-  if (!Array.isArray(dates) || dates.length === 0) return res.status(400).json({ error: "At least one target date is required." });
-  if (dates.length > 365) return res.status(400).json({ error: "Cannot copy to more than 365 dates at once." });
-
-  for (const d of dates) {
-    if (!isValidDate(d)) return res.status(400).json({ error: `Invalid date: ${d}` });
-  }
-
-  db.get("SELECT date, details, category, amount, COALESCE(note, '') as note FROM expenses WHERE id = ?", [id], (err, row) => {
-    if (err) return res.status(500).json({ error: "DB error." });
-    if (!row) return res.status(404).json({ error: "Expense not found." });
-
-    // Check for existing duplicates at each target date
-    const placeholders = dates.map(() => "?").join(",");
-    const dupSql = `SELECT date FROM expenses WHERE date IN (${placeholders}) AND lower(details) = ? AND amount = ?`;
-    const dupParams = [...dates, row.details.trim().toLowerCase(), row.amount];
-
-    db.all(dupSql, dupParams, (dupErr, dupRows) => {
-      if (dupErr) return res.status(500).json({ error: "DB error checking duplicates." });
-
-      const existingDates = new Set(dupRows.map(r => r.date));
-      const datesToInsert = dates.filter(d => !existingDates.has(d));
-      const skipped = dates.length - datesToInsert.length;
-
-      if (datesToInsert.length === 0) {
-        return res.json({ success: true, inserted: 0, skipped, message: "All target dates already have this expense." });
-      }
-
-      const stmt = db.prepare("INSERT INTO expenses (date, details, category, amount, note) VALUES (?, ?, ?, ?, ?)");
-      let inserted = 0;
-      let insertErr = null;
-      for (const d of datesToInsert) {
-        stmt.run(d, row.details, row.category, row.amount, row.note, (err) => {
-          if (err) insertErr = err;
-          else inserted++;
-        });
-      }
-      stmt.finalize((finalizeErr) => {
-        if (insertErr || finalizeErr) {
-          return res.status(500).json({ error: "Failed to copy expense." });
-        }
-
-        createRecurringSeriesNotification(row, datesToInsert, () => {
-          return res.json({ success: true, inserted, skipped });
-        });
-      });
-    });
-  });
 });
 
 // --- Duplicate Check ---
@@ -1359,212 +1243,6 @@ app.delete("/api/currency-rates/:code", (req, res) => {
     return res.json({ success: true });
   });
 });
-
-// --- Notifications API ---
-
-function insertNotification({ type = "ending", title, desc, details = "", amount = "", dates = [] }, cb = () => {}) {
-  if (!title || !desc || !Array.isArray(dates)) return cb(new Error("Invalid notification."));
-
-  const notifType = type || "ending";
-  const notifDetails = details || "";
-  const notifAmount = amount === null || amount === undefined ? "" : String(amount);
-  const datesJson = JSON.stringify(dates);
-
-  db.get(
-    "SELECT id FROM notifications WHERE type = ? AND details = ? AND amount = ? AND dates = ?",
-    [notifType, notifDetails, notifAmount, datesJson],
-    (dupErr, dupRow) => {
-      if (dupErr) return cb(dupErr);
-      if (dupRow) return cb(null, { id: dupRow.id, duplicate: true });
-
-      db.get("SELECT COUNT(*) AS cnt FROM notifications", (cntErr, cntRow) => {
-        if (cntErr) return cb(cntErr);
-
-        const insert = () => {
-          db.run(
-            "INSERT INTO notifications (type, title, desc, details, amount, dates) VALUES (?, ?, ?, ?, ?, ?)",
-            [notifType, title, desc, notifDetails, notifAmount, datesJson],
-            function(insertErr) {
-              if (insertErr) return cb(insertErr);
-              return cb(null, { id: this.lastID, duplicate: false });
-            }
-          );
-        };
-
-        if (cntRow && cntRow.cnt >= 50) {
-          db.run(
-            "DELETE FROM notifications WHERE id IN (SELECT id FROM notifications ORDER BY created_at ASC LIMIT ?)",
-            [cntRow.cnt - 49],
-            (deleteErr) => {
-              if (deleteErr) return cb(deleteErr);
-              insert();
-            }
-          );
-          return;
-        }
-
-        insert();
-      });
-    }
-  );
-}
-
-function createRecurringSeriesNotification(expense, dates, cb = () => {}) {
-  if (!Array.isArray(dates) || dates.length === 0) return cb();
-
-  const details = expense.details || "Expense";
-  const amount = expense.amount === null || expense.amount === undefined ? "" : String(expense.amount);
-  const months = dates.length;
-
-  insertNotification({
-    type: "ending",
-    title: "Recurring Expense Created",
-    desc: `${details} — Recurring for ${months} month${months > 1 ? "s" : ""}`,
-    details,
-    amount,
-    dates
-  }, cb);
-}
-
-app.get("/api/notifications", (req, res) => {
-  db.all("SELECT * FROM notifications ORDER BY created_at DESC", (err, rows) => {
-    if (err) return res.status(500).json({ error: "Failed to fetch notifications." });
-    // Parse dates JSON string back to array
-    const result = rows.map(r => ({
-      ...r,
-      dates: JSON.parse(r.dates || "[]"),
-      dismissed: Boolean(r.dismissed)
-    }));
-    return res.json(result);
-  });
-});
-
-app.post("/api/notifications", (req, res) => {
-  const { type, title, desc, details, amount, dates } = req.body;
-  if (!title || !desc) {
-    return res.status(400).json({ error: "title and desc are required." });
-  }
-  if (!Array.isArray(dates)) {
-    return res.status(400).json({ error: "dates must be an array." });
-  }
-
-  insertNotification({ type, title, desc, details, amount, dates }, (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: "Failed to create notification." });
-    }
-    return res.json(result);
-  });
-});
-
-app.patch("/api/notifications/:id/dismiss", (req, res) => {
-  const { id } = req.params;
-  db.run("UPDATE notifications SET dismissed = 1 WHERE id = ?", [id], function(err) {
-    if (err) return res.status(500).json({ error: "Failed to dismiss notification." });
-    if (this.changes === 0) return res.status(404).json({ error: "Notification not found." });
-    return res.json({ success: true });
-  });
-});
-
-app.delete("/api/notifications/:id", (req, res) => {
-  const { id } = req.params;
-  db.run("DELETE FROM notifications WHERE id = ?", [id], function(err) {
-    if (err) return res.status(500).json({ error: "Failed to delete notification." });
-    if (this.changes === 0) return res.status(404).json({ error: "Notification not found." });
-    return res.json({ success: true });
-  });
-});
-
-// --- Cleanup expired notifications (runs on server start and periodically) ---
-function cleanupExpiredNotifications() {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const nowIso = now.toISOString().slice(0, 10);
-
-  // For "ending" type: expire 7 days after last date
-  // We need to check each notification's last date
-  db.all("SELECT id, type, dates FROM notifications", (err, rows) => {
-    if (err) return;
-    const toDelete = [];
-    for (const row of rows) {
-      const dates = JSON.parse(row.dates || "[]");
-      const lastDateStr = dates[dates.length - 1];
-      if (!lastDateStr) { toDelete.push(row.id); continue; }
-      const lastDate = new Date(lastDateStr + "T00:00:00");
-      const expiresAt = new Date(lastDate);
-      expiresAt.setDate(expiresAt.getDate() + 7);
-      if (now > expiresAt) {
-        toDelete.push(row.id);
-      }
-    }
-    if (toDelete.length) {
-      const placeholders = toDelete.map(() => "?").join(",");
-      db.run(`DELETE FROM notifications WHERE id IN (${placeholders})`, toDelete);
-    }
-  });
-}
-
-cleanupExpiredNotifications();
-setInterval(cleanupExpiredNotifications, 6 * 60 * 60 * 1000); // every 6 hours
-
-// --- Generate daily recurring notifications server-side ---
-function generateDailyRecurringNotifications() {
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-
-  const REMINDER_DAYS = 3;
-
-  db.all("SELECT * FROM notifications WHERE type = 'ending'", (err, seriesList) => {
-    if (err) return;
-
-    for (const series of seriesList) {
-      const dates = JSON.parse(series.dates || "[]");
-
-      let upcomingDate = null;
-
-      for (const dateStr of dates) {
-        const recurrenceDate = new Date(dateStr + "T00:00:00");
-        const reminderDate = new Date(recurrenceDate);
-        reminderDate.setDate(reminderDate.getDate() - REMINDER_DAYS);
-
-        const reminderDateStr =
-          `${reminderDate.getFullYear()}-${String(reminderDate.getMonth() + 1).padStart(2, "0")}-${String(reminderDate.getDate()).padStart(2, "0")}`;
-
-        if (reminderDateStr === today) {
-          upcomingDate = dateStr;
-          break;
-        }
-      }
-
-      if (upcomingDate) {
-        insertNotification({
-          type: "today",
-          title: "Recurring Expense Due Soon",
-          desc: `${series.details} — A recurring expense is due on ${upcomingDate}. Review the amount and update it if needed.`,
-          details: series.details,
-          amount: series.amount,
-          dates: [upcomingDate]
-        });
-      }
-
-      // Check if today is the last date in the series
-      const lastDate = dates[dates.length - 1];
-      if (lastDate === today) {
-        insertNotification({
-          type: "ending-today",
-          title: "Recurring Series Ending Today",
-          desc: `${series.details} — The final recurring expense occurs today. Extend the series if you want future entries to continue.`,
-          details: series.details,
-          amount: series.amount,
-          dates: [lastDate]
-        });
-      }
-    }
-  });
-}
-
-// Run on server start and every hour
-generateDailyRecurringNotifications();
-setInterval(generateDailyRecurringNotifications, 60 * 60 * 1000);
 
 // --- Extrapolate Tables ---
 db.serialize(() => {

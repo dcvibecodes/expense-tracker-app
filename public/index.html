@@ -48,28 +48,8 @@
             <polyline points="10 9 9 9 8 9"/>
           </svg>
         </button>
-        <button id="notification-bell" class="notification-bell" type="button" title="Notifications" aria-label="Notifications">
-          <svg class="header-icon" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
-            <path d="M13.73 21a2 2 0 01-3.46 0"/>
-          </svg>
-          <span id="notification-badge" class="notification-badge" aria-hidden="true" style="display:none;">0</span>
-        </button>
       </div> 
     </header> 
-      </div> 
-    </header> 
-
-    <!-- Notification Panel --> 
-    <div id="notification-panel" class="notification-panel"> 
-      <div class="notification-panel-header"> 
-        <span>Notifications</span> 
-        <button id="notification-close" type="button">✕</button> 
-      </div> 
-      <div id="notification-list" class="notification-list"></div> 
-    </div> 
 
     <!-- Scratchpad Panel -->
     <div id="scratchpad-panel" class="notification-panel">
@@ -534,18 +514,6 @@
             </details>
 
             <details class="faq-item">
-              <summary class="faq-question">How do I copy an expense to future months?</summary>
-              <div class="faq-answer">
-                <p>Click the <strong>Copy</strong> button on any expense row. A modal opens where you can:</p>
-                <ul>
-                  <li>Set the <strong>current occurrence date</strong> (the date of the original expense).</li>
-                  <li>Enter the <strong>number of months</strong> to copy forward (max 60).</li>
-                </ul>
-                <p>The app generates dates starting from the next month, clamping to the last day if needed (e.g. copying from Jan 31 to Feb → Feb 28). Months that already have this expense are skipped. A notification is created when a recurring series is approaching its end.</p>
-              </div>
-            </details>
-
-            <details class="faq-item">
               <summary class="faq-question">How do I edit or delete an expense?</summary>
               <div class="faq-answer">
                 <p>Each expense row has action buttons:</p>
@@ -628,14 +596,6 @@
             </details>
 
             <details class="faq-item">
-              <summary class="faq-question">What are the Notifications for?</summary>
-              <div class="faq-answer">
-                <p>The <strong>Notification Bell</strong> in the header shows reminders for recurring expenses. When a copied expense series (created via the Copy button) is approaching its last occurrence, a notification appears to let you know it's ending soon.</p>
-                <p>Click the bell to view notifications. Each one can be dismissed (removed from the list) or permanently deleted.</p>
-              </div>
-            </details>
-
-            <details class="faq-item">
               <summary class="faq-question">What is the Quick Notes scratchpad for?</summary>
               <div class="faq-answer">
                 <p>The <strong>Quick Notes</strong> button (📄 icon in the header) opens a scratchpad where you can jot down anything — budget goals, reminders, things to track. Notes are saved automatically when you click the Save button.</p>
@@ -667,25 +627,6 @@
           <div class="modal-buttons"> 
             <button type="submit" class="save-btn">Save</button> 
             <button type="button" id="edit-cancel" class="cancel-btn">Cancel</button> 
-          </div> 
-        </form> 
-      </div> 
-    </div> 
-
-    <!-- Copy Expense Modal --> 
-    <div id="copy-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="copy-modal-title"> 
-      <div class="modal-content"> 
-        <h2 id="copy-modal-title">Copy Expense (Monthly)</h2> 
-        <p class="batch-desc">Copy this expense to the same day-of-month for the next N months. Months that already have this expense will be skipped.</p> 
-        <p id="copy-info" style="font-weight:600; margin-bottom:12px;"></p> 
-        <form id="copy-form" class="grid batch-grid"> 
-          <label>Current Occurrence <input type="date" id="copy-date-start" required /></label> 
-          <label>Number of Months 
-            <input type="number" id="copy-months" min="1" max="60" value="1" required /> 
-          </label> 
-          <div class="modal-buttons"> 
-            <button type="submit" class="save-btn">Copy</button> 
-            <button type="button" id="copy-cancel" class="cancel-btn">Cancel</button> 
           </div> 
         </form> 
       </div> 

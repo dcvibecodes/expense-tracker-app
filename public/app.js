@@ -549,20 +549,47 @@ function renderRows(rows) {
   rowsEl.appendChild(fragment);
 }
 
-function renderSummary(pieData) {
+function comparisonHtml(current, previous) {
+  // No previous data → "New" if there's spending now, "—" otherwise
+  if (previous <= 0) {
+    if (current > 0) return `<span class="summary-compare new">New</span>`;
+    return `<span class="summary-compare">—</span>`;
+  }
+  // No current spending but had some last month → full decrease
+  if (current <= 0) {
+    return `<span class="summary-compare down">↓ 100%</span>`;
+  }
+  const pct = Math.round(((current - previous) / previous) * 100);
+  if (pct === 0) return `<span class="summary-compare">—</span>`;
+  if (pct > 0) return `<span class="summary-compare up">↑ ${pct}%</span>`;
+  return `<span class="summary-compare down">↓ ${Math.abs(pct)}%</span>`;
+}
+
+// Renders the full comparison line: "1mo ↑ 12% · 6mo ↓ 5%"
+function comparisonLineHtml(current, prevMonth, avg6Months) {
+  const oneMo = comparisonHtml(current, prevMonth);
+  const sixMo = comparisonHtml(current, avg6Months);
+  return `<span class="summary-compare-line"><span class="summary-compare-label">1mo</span> ${oneMo}<span class="summary-compare-dot">·</span><span class="summary-compare-label">6mo</span> ${sixMo}</span>`;
+}
+
+function renderSummary(pieData, prevPieData, avg6PieData) {
   const total = Object.values(pieData).reduce((s, v) => s + (Number(v) || 0), 0);
+  const prevTotal = prevPieData ? Object.values(prevPieData).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
+  const avg6Total = avg6PieData ? Object.values(avg6PieData).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
   summaryGrid.innerHTML = "";
   // Total item
   const totalDiv = document.createElement("div");
   totalDiv.className = "summary-item total-item";
-  totalDiv.innerHTML = `<span class="summary-dot" style="background:var(--accent)"></span><div class="summary-info"><span class="summary-label">Total</span><span class="summary-amount">${formatAmountRounded(total)}</span></div>`;
+  totalDiv.innerHTML = `<span class="summary-dot" style="background:var(--accent)"></span><div class="summary-info"><span class="summary-label">Total</span><span class="summary-amount">${formatAmountRounded(total)}</span>${comparisonLineHtml(total, prevTotal, avg6Total)}</div>`;
   summaryGrid.appendChild(totalDiv);
   // Category items
   for (const cat of categories) {
     const val = pieData[cat.name] || 0;
+    const prevVal = prevPieData ? (prevPieData[cat.name] || 0) : 0;
+    const avg6Val = avg6PieData ? (avg6PieData[cat.name] || 0) : 0;
     const div = document.createElement("div");
     div.className = "summary-item";
-    div.innerHTML = `<span class="summary-dot" style="background:${cat.color}"></span><div class="summary-info"><span class="summary-label">${escapeHtml(formatCategory(cat.name))}</span><span class="summary-amount">${formatAmountRounded(val)}</span></div>`;
+    div.innerHTML = `<span class="summary-dot" style="background:${cat.color}"></span><div class="summary-info"><span class="summary-label">${escapeHtml(formatCategory(cat.name))}</span><span class="summary-amount">${formatAmountRounded(val)}</span>${comparisonLineHtml(val, prevVal, avg6Val)}</div>`;
     summaryGrid.appendChild(div);
   }
 }
@@ -572,10 +599,29 @@ async function refreshAll() {
     const now = new Date();
     const month = now.getMonth() + 1;
     const year = now.getFullYear();
+    const today = localDateStr(now);
 
-    const [rows, summaryRes] = await Promise.all([
+    // Build the list of the previous 6 months (each with same-day cutoff, clamped to month length)
+    const prevMonths = [];
+    for (let i = 1; i <= 6; i++) {
+      const d = new Date(year, month - 1 - i, 1);
+      const m = d.getMonth() + 1;
+      const y = d.getFullYear();
+      const lastDay = new Date(y, m, 0).getDate();
+      const day = Math.min(now.getDate(), lastDay);
+      prevMonths.push({
+        month: m,
+        year: y,
+        through: `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+      });
+    }
+
+    const [rows, summaryRes, ...prevRes] = await Promise.all([
       fetchExpenses(),
-      fetch(`/api/charts?month=${month}&year=${year}`).then(r => r.ok ? r.json() : null).catch(() => null)
+      fetch(`/api/charts?month=${month}&year=${year}&through=${today}`).then(r => r.ok ? r.json() : null).catch(() => null),
+      ...prevMonths.map(({ month: m, year: y, through }) =>
+        fetch(`/api/charts?month=${m}&year=${y}&through=${through}`).then(r => r.ok ? r.json() : null).catch(() => null)
+      )
     ]);
 
     renderRows(rows);
@@ -583,7 +629,24 @@ async function refreshAll() {
     if (summaryRes) {
       const mn = MONTH_NAMES[month - 1];
       summaryHeading.textContent = `${mn} ${year} Summary`;
-      renderSummary(summaryRes.pie);
+
+      // Compute the 6-month average per category (0 counts for months with no spending)
+      const avg6Pie = {};
+      let validMonths = 0;
+      for (const res of prevRes) {
+        if (!res) continue;
+        validMonths++;
+        for (const [cat, val] of Object.entries(res.pie)) {
+          avg6Pie[cat] = (avg6Pie[cat] || 0) + (Number(val) || 0);
+        }
+      }
+      if (validMonths > 0) {
+        for (const cat of Object.keys(avg6Pie)) {
+          avg6Pie[cat] = avg6Pie[cat] / validMonths;
+        }
+      }
+
+      renderSummary(summaryRes.pie, prevRes[0] ? prevRes[0].pie : null, avg6Pie);
     }
   } catch (err) {
     // Error toast already shown by safeFetch if network fails
@@ -2372,6 +2435,105 @@ document.getElementById("abroad-currency-select").addEventListener("change", asy
     msg.className = "form-msg error";
   }
 });
+
+// ===== CSV IMPORT =====
+(function() {
+  const fileInput = document.getElementById("import-csv-file");
+  const importBtn = document.getElementById("import-csv-btn");
+  const importMsg = document.getElementById("import-message");
+  const importErrors = document.getElementById("import-errors");
+  const templateBtn = document.getElementById("import-template-btn");
+
+  if (!fileInput || !importBtn || !importMsg || !importErrors) return;
+
+  // Download CSV template with the exact accepted format
+  if (templateBtn) {
+    templateBtn.addEventListener("click", () => {
+      const csv = "Date,Details,Category,Amount,Note\n2026-08-01,Example Expense,needs,100.00,Optional note\n";
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "expenses-template.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Template downloaded.", "success");
+    });
+  }
+
+  importBtn.addEventListener("click", async () => {
+    const file = fileInput.files[0];
+    if (!file) {
+      importMsg.textContent = "Choose a CSV file first.";
+      importMsg.className = "form-msg error";
+      return;
+    }
+
+    // Read file as text
+    let text;
+    try {
+      text = await file.text();
+    } catch {
+      importMsg.textContent = "Could not read the file.";
+      importMsg.className = "form-msg error";
+      return;
+    }
+
+    if (!text.trim()) {
+      importMsg.textContent = "The file is empty.";
+      importMsg.className = "form-msg error";
+      return;
+    }
+
+    importBtn.disabled = true;
+    importBtn.textContent = "Importing...";
+    importMsg.textContent = "";
+    importMsg.className = "form-msg";
+    importErrors.style.display = "none";
+    importErrors.innerHTML = "";
+
+    try {
+      const res = await safeFetch("/api/import/csv", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ csv: text })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        importMsg.textContent = data.error || "Import failed.";
+        importMsg.className = "form-msg error";
+        return;
+      }
+
+      // Success message
+      let msg = `Imported ${data.imported} expense${data.imported === 1 ? "" : "s"}.`;
+      if (data.skipped > 0) msg += ` Skipped ${data.skipped} duplicate${data.skipped === 1 ? "" : "s"}.`;
+      if (data.createdCategories > 0) msg += ` Created ${data.createdCategories} new categor${data.createdCategories === 1 ? "y" : "ies"}.`;
+      importMsg.textContent = msg;
+      importMsg.className = "form-msg success";
+
+      // Show per-row errors if any
+      if (data.errors && data.errors.length > 0) {
+        importErrors.innerHTML = data.errors.map(e => `<div>${escapeHtml(e)}</div>`).join("");
+        importErrors.style.display = "block";
+      }
+
+      // Refresh data
+      fileInput.value = "";
+      await loadCategories();
+      await refreshAll();
+      await loadReports();
+      populateDetailsList();
+    } catch {
+      importMsg.textContent = "Import failed. Check your connection.";
+      importMsg.className = "form-msg error";
+    }
+
+    importBtn.disabled = false;
+    importBtn.textContent = "Import";
+  });
+})();
 
 // ===== LOCK SETTINGS =====
 const lockSetupSection = document.getElementById("lock-setup-section");

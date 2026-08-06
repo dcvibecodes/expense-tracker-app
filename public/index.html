@@ -391,6 +391,18 @@
           <p id="abroad-message" class="form-msg"></p>
         </section>
 
+        <section class="card">
+          <h2>Import Expenses</h2>
+          <p class="settings-desc">Import expenses from a CSV file. Format matches the <strong>↓ CSV</strong> button on the Reports tab: <code>Date,Details,Category,Amount,Note</code> (dates as YYYY-MM-DD). New categories are created automatically (up to the 15-category limit). Exact duplicates are skipped.</p>
+          <div class="import-row">
+            <input type="file" id="import-csv-file" accept=".csv,text/csv" />
+            <button id="import-csv-btn" type="button" class="add-btn">Import</button>
+            <button id="import-template-btn" type="button" class="btn-secondary">↓ Template</button>
+          </div>
+          <p id="import-message" class="form-msg"></p>
+          <div id="import-errors" class="import-errors" style="display:none;"></div>
+        </section>
+
         <section class="card"> 
           <h2>Categories</h2> 
           <p class="settings-desc">Manage expense categories (max 15). Changes apply to new and existing expenses.</p> 
@@ -536,7 +548,39 @@
                   <li><strong>Category</strong> — filter by a specific category.</li>
                   <li><strong>Day buttons</strong> — click a day to see only that day's expenses. Shift+click to select a range.</li>
                 </ul>
-                <p>Click <strong>Reset</strong> to clear all filters. Use <strong>↓ CSV</strong> to download filtered results.</p>
+                <p>Click <strong>Reset</strong> to clear all filters. Use <strong>↓ CSV</strong> to download (export) the filtered results — this is the "export" that the CSV import format matches.</p>
+              </div>
+            </details>
+
+            <details class="faq-item">
+              <summary class="faq-question">What do the ↑/↓ arrows on the summary cards mean?</summary>
+              <div class="faq-answer">
+                <p>The arrows on the Tracker summary cards show how this month's spending compares to previous periods, both up to the <strong>same day</strong>:</p>
+                <ul>
+                  <li><strong>1mo</strong> — vs last month's spending up to the same day</li>
+                  <li><strong>6mo</strong> — vs the average of the last 6 months' spending up to the same day</li>
+                </ul>
+                <p>For each comparison:</p>
+                <ul>
+                  <li><strong>↑ X%</strong> (red) — you've spent more than that period</li>
+                  <li><strong>↓ X%</strong> (green) — you've spent less than that period</li>
+                  <li><strong>New</strong> — no spending in that category during the comparison period</li>
+                  <li><strong>—</strong> — no change or no data</li>
+                </ul>
+                <p>If today is the 31st but a previous month had only 28 days, that month's comparison uses its full 28 days.</p>
+              </div>
+            </details>
+
+            <details class="faq-item">
+              <summary class="faq-question">How do I import expenses from a CSV file?</summary>
+              <div class="faq-answer">
+                <p>In <strong>Settings → Import Expenses</strong>:</p>
+                <ol>
+                  <li>Click <strong>↓ Template</strong> to download a ready-to-fill CSV file with the exact accepted format.</li>
+                  <li>Fill in your expenses (keep the header row). Dates must be in <code>YYYY-MM-DD</code> format.</li>
+                  <li>Click <strong>Choose File</strong>, select your CSV, then click <strong>Import</strong>.</li>
+                </ol>
+                <p>The format matches the <strong>↓ CSV</strong> button on the Reports tab: <code>Date,Details,Category,Amount,Note</code>. New categories are created automatically (up to the 15-category limit), and exact duplicates are skipped. Any invalid rows are reported with their row numbers.</p>
               </div>
             </details>
 

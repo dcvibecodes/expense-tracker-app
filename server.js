@@ -789,11 +789,15 @@ app.post("/api/expenses/check-duplicate", (req, res) => {
 app.get("/api/charts", (req, res) => {
   const month = Number(req.query.month);
   const year = Number(req.query.year);
+  const through = req.query.through;
   if (!Number.isInteger(month) || month < 1 || month > 12) {
     return res.status(400).json({ error: "Invalid month." });
   }
   if (!Number.isInteger(year) || year < 1900 || year > 3000) {
     return res.status(400).json({ error: "Invalid year." });
+  }
+  if (through && !isValidDate(through)) {
+    return res.status(400).json({ error: "Invalid through date." });
   }
 
   const monthStr = String(month).padStart(2, "0");
@@ -803,8 +807,10 @@ app.get("/api/charts", (req, res) => {
     SELECT category, COALESCE(SUM(amount), 0) AS total
     FROM expenses
     WHERE substr(date, 1, 7) = ?
+    ${through ? "AND date <= ?" : ""}
     GROUP BY category
   `;
+  const pieParams = through ? [ym, through] : [ym];
 
   const barSql = `
     SELECT substr(date, 1, 7) AS year_month, COALESCE(SUM(amount), 0) AS total
@@ -814,7 +820,7 @@ app.get("/api/charts", (req, res) => {
     ORDER BY year_month ASC
   `;
 
-  db.all(pieSql, [ym], (pieErr, pieRows) => {
+  db.all(pieSql, pieParams, (pieErr, pieRows) => {
     if (pieErr) return res.status(500).json({ error: "Failed to fetch pie data." });
     db.all(barSql, [String(year)], (barErr, barRows) => {
       if (barErr) return res.status(500).json({ error: "Failed to fetch bar data." });
@@ -977,6 +983,227 @@ app.get("/api/export/csv", (req, res) => {
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", "attachment; filename=expenses.csv");
     return res.send(csv);
+  });
+});
+
+// --- CSV Import API ---
+
+// Simple CSV parser that handles quoted fields, commas inside quotes,
+// escaped quotes (doubled ""), and newlines inside quoted fields.
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+
+    if (inQuotes) {
+      if (ch === '"') {
+        // Check for escaped quote (doubled "")
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ",") {
+        row.push(field);
+        field = "";
+      } else if (ch === "\n" || ch === "\r") {
+        // Handle \r\n and \n line endings
+        if (ch === "\r" && text[i + 1] === "\n") i++;
+        row.push(field);
+        field = "";
+        // Skip empty rows (e.g. trailing newline)
+        if (row.length > 1 || row[0].trim() !== "") {
+          rows.push(row);
+        }
+        row = [];
+      } else {
+        field += ch;
+      }
+    }
+  }
+
+  // Last field/row (no trailing newline)
+  row.push(field);
+  if (row.length > 1 || row[0].trim() !== "") {
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+// Strip CSV injection protection prefix (leading single quote) added by export
+function stripInjectionPrefix(value) {
+  if (typeof value !== "string") return value;
+  return value.replace(/^'/, "");
+}
+
+app.post("/api/import/csv", (req, res) => {
+  const { csv } = req.body;
+  if (typeof csv !== "string" || !csv.trim()) {
+    return res.status(400).json({ error: "CSV content is required." });
+  }
+  if (csv.length > 1024 * 1024) {
+    return res.status(400).json({ error: "CSV file too large (max 1MB)." });
+  }
+
+  const rows = parseCSV(csv);
+  if (rows.length === 0) {
+    return res.status(400).json({ error: "No data found in CSV." });
+  }
+
+  // Check for header row
+  let startIndex = 0;
+  const firstRow = rows[0].map(c => c.trim().toLowerCase());
+  if (firstRow.includes("date") && firstRow.includes("details") && firstRow.includes("amount")) {
+    startIndex = 1;
+  }
+
+  const dataRows = rows.slice(startIndex);
+  if (dataRows.length === 0) {
+    return res.status(400).json({ error: "No data rows found in CSV." });
+  }
+  if (dataRows.length > 5000) {
+    return res.status(400).json({ error: "Too many rows (max 5,000)." });
+  }
+
+  // Load existing categories for case-insensitive matching
+  db.all("SELECT name FROM categories", (catErr, catRows) => {
+    if (catErr) return res.status(500).json({ error: "DB error." });
+
+    const existingCategories = new Set(catRows.map(r => r.name.toLowerCase()));
+    const categoriesToCreate = new Map(); // lowercase name -> original name
+
+    // First pass: validate all rows and collect categories to create
+    const validRows = [];
+    const errors = [];
+    let skippedDuplicates = 0;
+
+    for (let i = 0; i < dataRows.length; i++) {
+      const raw = dataRows[i];
+      const rowNum = i + 1 + startIndex;
+
+      // Skip completely empty rows
+      if (raw.every(c => !c || !c.trim())) continue;
+
+      // Pad short rows
+      while (raw.length < 4) raw.push("");
+
+      const date = (raw[0] || "").trim();
+      const details = stripInjectionPrefix((raw[1] || "").trim());
+      const categoryRaw = stripInjectionPrefix((raw[2] || "").trim());
+      const amountRaw = stripInjectionPrefix((raw[3] || "").trim());
+      const note = raw.length > 4 ? stripInjectionPrefix((raw[4] || "").trim()) : "";
+
+      // Validate date
+      if (!isValidDate(date)) {
+        errors.push(`Row ${rowNum}: invalid date "${date}" (use YYYY-MM-DD).`);
+        continue;
+      }
+
+      // Validate details
+      if (!details) {
+        errors.push(`Row ${rowNum}: details are required.`);
+        continue;
+      }
+
+      // Validate amount
+      const amount = Number(amountRaw);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        errors.push(`Row ${rowNum}: invalid amount "${amountRaw}".`);
+        continue;
+      }
+
+      // Validate category
+      if (!categoryRaw) {
+        errors.push(`Row ${rowNum}: category is required.`);
+        continue;
+      }
+      const catLower = categoryRaw.toLowerCase();
+      if (!existingCategories.has(catLower)) {
+        categoriesToCreate.set(catLower, categoryRaw);
+      }
+
+      validRows.push({ date, details, category: catLower, amount, note, rowNum });
+    }
+
+    // Check category limit
+    const totalCategoriesAfter = existingCategories.size + categoriesToCreate.size;
+    if (totalCategoriesAfter > 15) {
+      const overflow = totalCategoriesAfter - 15;
+      return res.status(400).json({
+        error: `Import would create ${categoriesToCreate.size} new categor${categoriesToCreate.size === 1 ? "y" : "ies"}, exceeding the 15-category limit by ${overflow}. Please merge or rename categories first.`
+      });
+    }
+
+    // Create missing categories
+    const createCategory = (name, callback) => {
+      db.run("INSERT INTO categories (name, color, sort_order) VALUES (?, ?, ?)", [name, "#6b7280", 0], callback);
+    };
+
+    const createAllCategories = (names, callback) => {
+      if (names.length === 0) return callback();
+      const [first, ...rest] = names;
+      createCategory(first, (err) => {
+        if (err) return callback(err);
+        createAllCategories(rest, callback);
+      });
+    };
+
+    createAllCategories([...categoriesToCreate.keys()], (createErr) => {
+      if (createErr) return res.status(500).json({ error: "Failed to create categories." });
+
+      // Insert valid rows, skipping exact duplicates
+      const insertRow = (row, callback) => {
+        db.get(
+          "SELECT COUNT(*) AS cnt FROM expenses WHERE date = ? AND lower(details) = ? AND amount = ?",
+          [row.date, row.details.toLowerCase(), row.amount],
+          (dupErr, dupRow) => {
+            if (dupErr) return callback(dupErr);
+            if (dupRow.cnt > 0) {
+              skippedDuplicates++;
+              return callback();
+            }
+            db.run(
+              "INSERT INTO expenses (date, details, category, amount, note) VALUES (?, ?, ?, ?, ?)",
+              [row.date, row.details, row.category, row.amount, row.note],
+              (insErr) => callback(insErr)
+            );
+          }
+        );
+      };
+
+      const insertAll = (rows, callback) => {
+        if (rows.length === 0) return callback();
+        const [first, ...rest] = rows;
+        insertRow(first, (err) => {
+          if (err) return callback(err);
+          insertAll(rest, callback);
+        });
+      };
+
+      insertAll(validRows, (insErr) => {
+        if (insErr) return res.status(500).json({ error: "Failed to import expenses." });
+
+        const imported = validRows.length - skippedDuplicates;
+        return res.json({
+          imported,
+          skipped: skippedDuplicates,
+          errors,
+          createdCategories: categoriesToCreate.size
+        });
+      });
+    });
   });
 });
 

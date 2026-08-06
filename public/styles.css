@@ -376,10 +376,6 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 .summary-compare.up { color: var(--red); }
 .summary-compare.down { color: var(--green); }
 .summary-compare.new { color: var(--text-faint); }
-.summary-compare-line { display: flex; align-items: center; gap: 3px; margin-top: 2px; line-height: 1.2; flex-wrap: wrap; }
-.summary-compare-label { font-size: 0.55rem; font-weight: 600; color: var(--text-faint); letter-spacing: 0.3px; }
-.summary-compare-dot { font-size: 0.55rem; color: var(--text-faint); margin: 0 1px; }
-.summary-compare-line .summary-compare { margin-top: 0; }
 
 /* ── Charts ── */
 .charts {

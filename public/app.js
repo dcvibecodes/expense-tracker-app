@@ -565,31 +565,22 @@ function comparisonHtml(current, previous) {
   return `<span class="summary-compare down">↓ ${Math.abs(pct)}%</span>`;
 }
 
-// Renders the full comparison line: "1mo ↑ 12% · 6mo ↓ 5%"
-function comparisonLineHtml(current, prevMonth, avg6Months) {
-  const oneMo = comparisonHtml(current, prevMonth);
-  const sixMo = comparisonHtml(current, avg6Months);
-  return `<span class="summary-compare-line"><span class="summary-compare-label">1mo</span> ${oneMo}<span class="summary-compare-dot">·</span><span class="summary-compare-label">6mo</span> ${sixMo}</span>`;
-}
-
-function renderSummary(pieData, prevPieData, avg6PieData) {
+function renderSummary(pieData, prevPieData) {
   const total = Object.values(pieData).reduce((s, v) => s + (Number(v) || 0), 0);
   const prevTotal = prevPieData ? Object.values(prevPieData).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
-  const avg6Total = avg6PieData ? Object.values(avg6PieData).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
   summaryGrid.innerHTML = "";
   // Total item
   const totalDiv = document.createElement("div");
   totalDiv.className = "summary-item total-item";
-  totalDiv.innerHTML = `<span class="summary-dot" style="background:var(--accent)"></span><div class="summary-info"><span class="summary-label">Total</span><span class="summary-amount">${formatAmountRounded(total)}</span>${comparisonLineHtml(total, prevTotal, avg6Total)}</div>`;
+  totalDiv.innerHTML = `<span class="summary-dot" style="background:var(--accent)"></span><div class="summary-info"><span class="summary-label">Total</span><span class="summary-amount">${formatAmountRounded(total)}</span>${comparisonHtml(total, prevTotal)}</div>`;
   summaryGrid.appendChild(totalDiv);
   // Category items
   for (const cat of categories) {
     const val = pieData[cat.name] || 0;
     const prevVal = prevPieData ? (prevPieData[cat.name] || 0) : 0;
-    const avg6Val = avg6PieData ? (avg6PieData[cat.name] || 0) : 0;
     const div = document.createElement("div");
     div.className = "summary-item";
-    div.innerHTML = `<span class="summary-dot" style="background:${cat.color}"></span><div class="summary-info"><span class="summary-label">${escapeHtml(formatCategory(cat.name))}</span><span class="summary-amount">${formatAmountRounded(val)}</span>${comparisonLineHtml(val, prevVal, avg6Val)}</div>`;
+    div.innerHTML = `<span class="summary-dot" style="background:${cat.color}"></span><div class="summary-info"><span class="summary-label">${escapeHtml(formatCategory(cat.name))}</span><span class="summary-amount">${formatAmountRounded(val)}</span>${comparisonHtml(val, prevVal)}</div>`;
     summaryGrid.appendChild(div);
   }
 }
@@ -601,27 +592,21 @@ async function refreshAll() {
     const year = now.getFullYear();
     const today = localDateStr(now);
 
-    // Build the list of the previous 6 months (each with same-day cutoff, clamped to month length)
-    const prevMonths = [];
-    for (let i = 1; i <= 6; i++) {
-      const d = new Date(year, month - 1 - i, 1);
-      const m = d.getMonth() + 1;
-      const y = d.getFullYear();
-      const lastDay = new Date(y, m, 0).getDate();
-      const day = Math.min(now.getDate(), lastDay);
-      prevMonths.push({
-        month: m,
-        year: y,
-        through: `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-      });
-    }
+    // Previous month (handles January → December of previous year)
+    const prevDate = new Date(year, month - 2, 1);
+    const prevMonth = prevDate.getMonth() + 1;
+    const prevYear = prevDate.getFullYear();
 
-    const [rows, summaryRes, ...prevRes] = await Promise.all([
+    // Same-day cutoff for previous month, clamped to month length
+    // (e.g. today is Mar 31, last month Feb has 28 days → cutoff Feb 28)
+    const lastDayPrev = new Date(prevYear, prevMonth, 0).getDate();
+    const prevDay = Math.min(now.getDate(), lastDayPrev);
+    const prevThrough = `${prevYear}-${String(prevMonth).padStart(2, "0")}-${String(prevDay).padStart(2, "0")}`;
+
+    const [rows, summaryRes, prevSummaryRes] = await Promise.all([
       fetchExpenses(),
       fetch(`/api/charts?month=${month}&year=${year}&through=${today}`).then(r => r.ok ? r.json() : null).catch(() => null),
-      ...prevMonths.map(({ month: m, year: y, through }) =>
-        fetch(`/api/charts?month=${m}&year=${y}&through=${through}`).then(r => r.ok ? r.json() : null).catch(() => null)
-      )
+      fetch(`/api/charts?month=${prevMonth}&year=${prevYear}&through=${prevThrough}`).then(r => r.ok ? r.json() : null).catch(() => null)
     ]);
 
     renderRows(rows);
@@ -629,24 +614,7 @@ async function refreshAll() {
     if (summaryRes) {
       const mn = MONTH_NAMES[month - 1];
       summaryHeading.textContent = `${mn} ${year} Summary`;
-
-      // Compute the 6-month average per category (0 counts for months with no spending)
-      const avg6Pie = {};
-      let validMonths = 0;
-      for (const res of prevRes) {
-        if (!res) continue;
-        validMonths++;
-        for (const [cat, val] of Object.entries(res.pie)) {
-          avg6Pie[cat] = (avg6Pie[cat] || 0) + (Number(val) || 0);
-        }
-      }
-      if (validMonths > 0) {
-        for (const cat of Object.keys(avg6Pie)) {
-          avg6Pie[cat] = avg6Pie[cat] / validMonths;
-        }
-      }
-
-      renderSummary(summaryRes.pie, prevRes[0] ? prevRes[0].pie : null, avg6Pie);
+      renderSummary(summaryRes.pie, prevSummaryRes ? prevSummaryRes.pie : null);
     }
   } catch (err) {
     // Error toast already shown by safeFetch if network fails

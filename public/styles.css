@@ -789,6 +789,9 @@ tbody tr:hover td { background: var(--accent-dim); }
 .import-row button { white-space: nowrap; }
 .import-errors { margin-top: 8px; max-height: 200px; overflow-y: auto; border: 1px solid var(--border-subtle); border-radius: 6px; padding: 8px 10px; font-size: 0.7rem; color: var(--red); line-height: 1.5; background: var(--bg); }
 .import-errors div { padding: 2px 0; }
+@media (max-width: 768px) {
+  .import-card { display: none !important; }
+}
 
 .lock-form-row { display: flex; gap: 10px; margin-bottom: 10px; }
 .lock-form-row label { flex: 1; display: flex; flex-direction: column; gap: 3px; font-size: 0.7rem; color: var(--text-secondary); }

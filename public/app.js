@@ -557,12 +557,12 @@ function comparisonHtml(current, previous) {
   }
   // No current spending but had some last month → full decrease
   if (current <= 0) {
-    return `<span class="summary-compare down">↓ 100%</span>`;
+    return `<span class="summary-compare down">▼ 100%</span>`;
   }
   const pct = Math.round(((current - previous) / previous) * 100);
   if (pct === 0) return `<span class="summary-compare">—</span>`;
-  if (pct > 0) return `<span class="summary-compare up">↑ ${pct}%</span>`;
-  return `<span class="summary-compare down">↓ ${Math.abs(pct)}%</span>`;
+  if (pct > 0) return `<span class="summary-compare up">▲ ${pct}%</span>`;
+  return `<span class="summary-compare down">▼ ${Math.abs(pct)}%</span>`;
 }
 
 function renderSummary(pieData, prevPieData) {

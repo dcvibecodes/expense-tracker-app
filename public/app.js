@@ -181,7 +181,7 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () 
 
 // Theme toggle buttons
 document.addEventListener("DOMContentLoaded", () => {
-  const btns = document.querySelectorAll(".theme-option-btn");
+  const btns = document.querySelectorAll("[data-theme-choice]");
   const saved = localStorage.getItem("theme-preference") || "auto";
   btns.forEach(btn => {
     if (btn.dataset.themeChoice === saved) btn.classList.add("active");

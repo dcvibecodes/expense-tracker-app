@@ -372,7 +372,7 @@ window.addEventListener("load", () => {
     window.scrollTo(0, 0);
   });
 });
-const rowsEl = document.getElementById("expense-rows");
+const rowsEl = document.getElementById("expense-list");
 const summaryGrid = document.getElementById("summary-grid");
 const summaryHeading = document.getElementById("summary-heading");
 const comparisonCtx = document.getElementById("comparison-chart");
@@ -521,31 +521,97 @@ async function fetchExpenses() {
   return res.json();
 }
 
+function buildExpenseCard(row) {
+  const card = document.createElement("div");
+  card.className = "expense-card";
+  let amountDisplay = formatAmount(row.amount);
+  if (row.original_currency && row.original_amount) {
+    amountDisplay += `<span class="original-amt">${getCurrencySymbol(row.original_currency)} ${new Intl.NumberFormat(getCurrencyLocale(row.original_currency), { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(row.original_amount)}</span>`;
+  }
+  const noteBtn = row.note
+    ? `<button class="action-btn btn-note" data-id="${row.id}" title="View note" aria-label="View note">${ICON.note}</button>`
+    : `<button class="action-btn btn-note notes-empty" data-id="${row.id}" title="Add note" aria-label="Add note">${ICON.noteEmpty}</button>`;
+  card.innerHTML = `
+    <div class="expense-card-row">
+      <span class="expense-card-label">DATE</span>
+      <span class="expense-card-value">${escapeHtml(formatDate(row.date))}</span>
+    </div>
+    <div class="expense-card-row">
+      <span class="expense-card-label">DETAILS</span>
+      <span class="expense-card-value">${escapeHtml(row.details)}</span>
+    </div>
+    <div class="expense-card-row">
+      <span class="expense-card-label">CATEGORY</span>
+      <span class="expense-card-value"><span class="cat-badge" style="background:${getCategoryColor(row.category)}20;color:${getCategoryColor(row.category)}">${escapeHtml(formatCategory(row.category))}</span></span>
+    </div>
+    <div class="expense-card-row">
+      <span class="expense-card-label">AMOUNT</span>
+      <span class="expense-card-value expense-card-amount">${amountDisplay}</span>
+    </div>
+    <div class="expense-card-actions">
+      ${noteBtn}
+      <button class="action-btn btn-edit" data-id="${row.id}" title="Edit" aria-label="Edit expense">${ICON.edit}</button>
+      <button class="action-btn delete btn-delete" data-id="${row.id}" title="Delete" aria-label="Delete expense">${ICON.delete}</button>
+    </div>`;
+  return card;
+}
+
+// Return a local "YYYY-MM-DD" offset by `days` from a base date string.
+function shiftDate(isoStr, days) {
+  const [y, m, d] = isoStr.split("-").map(Number);
+  const dt = new Date(y, m - 1, d + days);
+  return localDateStr(dt);
+}
+
+// Bucket key for a row's date (today/yesterday/lastweek/earlier).
+function dateBucket(dateStr, today) {
+  const yesterday = shiftDate(today, -1);
+  const lastWeekStart = shiftDate(today, -7);
+  if (dateStr === today) return "today";
+  if (dateStr === yesterday) return "yesterday";
+  if (dateStr >= lastWeekStart && dateStr < yesterday) return "lastweek";
+  return "earlier";
+}
+
 function renderRows(rows) {
   currentRows = rows;
   rowsEl.innerHTML = "";
   const fragment = document.createDocumentFragment();
-  for (const row of rows) {
-    const tr = document.createElement("tr");
-    let amountDisplay = formatAmount(row.amount);
-    if (row.original_currency && row.original_amount) {
-      amountDisplay += `<br><span class="original-amt">${getCurrencySymbol(row.original_currency)} ${new Intl.NumberFormat(getCurrencyLocale(row.original_currency), { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(row.original_amount)}</span>`;
-    }
-    const noteBtn = row.note
-      ? `<button class="action-btn btn-note" data-id="${row.id}" title="View note" aria-label="View note">${ICON.note}</button>`
-      : `<button class="action-btn btn-note notes-empty" data-id="${row.id}" title="Add note" aria-label="Add note">${ICON.noteEmpty}</button>`;
-    tr.innerHTML = `
-      <td data-label="Date">${escapeHtml(formatDate(row.date))}</td>
-      <td data-label="Details">${escapeHtml(row.details)}</td>
-      <td data-label="Category"><span class="cat-badge" style="background:${getCategoryColor(row.category)}20;color:${getCategoryColor(row.category)}">${escapeHtml(formatCategory(row.category))}</span></td>
-      <td data-label="Amount">${amountDisplay}</td>
-      <td class="actions-cell" data-label="">
-        ${noteBtn}
-        <button class="action-btn btn-edit" data-id="${row.id}" title="Edit" aria-label="Edit expense">${ICON.edit}</button>
-        <button class="action-btn delete btn-delete" data-id="${row.id}" title="Delete" aria-label="Delete expense">${ICON.delete}</button>
-      </td>`;
-    fragment.appendChild(tr);
+
+  // Group labels in display order; rows already arrive newest-first (date DESC).
+  const groups = [
+    { key: "today", label: "Today" },
+    { key: "yesterday", label: "Yesterday" },
+    { key: "lastweek", label: "Last Week" },
+    { key: "earlier", label: "Earlier This Month" }
+  ];
+
+  const today = localDateStr(new Date());
+  const buckets = { today: [], yesterday: [], lastweek: [], earlier: [] };
+  for (const row of rows) buckets[dateBucket(row.date, today)].push(row);
+
+  for (const group of groups) {
+    const bucket = buckets[group.key];
+    if (!bucket.length) continue;
+
+    const subtotal = bucket.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+
+    const header = document.createElement("div");
+    header.className = "group-header";
+    header.innerHTML = `
+      <span class="group-header-label">
+        <span class="group-dot" aria-hidden="true"></span>
+        ${group.label}
+      </span>
+      <span class="group-header-meta">
+        <span class="group-count">${bucket.length}</span>
+        <span class="group-subtotal">${formatAmountRounded(subtotal)}</span>
+      </span>`;
+    fragment.appendChild(header);
+
+    for (const row of bucket) fragment.appendChild(buildExpenseCard(row));
   }
+
   rowsEl.appendChild(fragment);
 }
 
@@ -3845,7 +3911,11 @@ scratchpadText.addEventListener("keydown", e => {
 
   let longPressTimer = null;
   let longPressTarget = null;
+  let longPressFired = false;
+  let longPressStartX = 0;
+  let longPressStartY = 0;
   const LONG_PRESS_DURATION = 500; // ms
+  const MOVE_THRESHOLD = 10; // px of finger movement allowed before cancel
 
   // Long-press start
   reportWrap.addEventListener("touchstart", function(e) {
@@ -3855,21 +3925,41 @@ scratchpadText.addEventListener("keydown", e => {
     // Don't trigger on button/link taps
     if (e.target.closest("button, a, input")) return;
 
+    const t = e.touches[0];
+    longPressStartX = t.clientX;
+    longPressStartY = t.clientY;
+    longPressFired = false;
     longPressTarget = row;
     longPressTimer = setTimeout(function() {
       // Trigger selection
       const id = parseInt(row.dataset.id, 10);
       if (!id) return;
+      longPressFired = true;
       toggleReportSelection(id, row);
       // Haptic feedback if available
       if (navigator.vibrate) navigator.vibrate(30);
     }, LONG_PRESS_DURATION);
   }, { passive: true });
 
-  // Cancel long-press on move or end
-  reportWrap.addEventListener("touchmove", cancelLongPress, { passive: true });
+  // Cancel long-press only if the finger moves noticeably (not tiny jitter)
+  reportWrap.addEventListener("touchmove", function(e) {
+    if (longPressTimer == null) return;
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - longPressStartX) > MOVE_THRESHOLD ||
+        Math.abs(t.clientY - longPressStartY) > MOVE_THRESHOLD) {
+      cancelLongPress();
+    }
+  }, { passive: true });
   reportWrap.addEventListener("touchend", cancelLongPress, { passive: true });
   reportWrap.addEventListener("touchcancel", cancelLongPress, { passive: true });
+
+  // Suppress the native long-press context menu (Android/iOS) on report cards
+  reportWrap.addEventListener("contextmenu", function(e) {
+    if (!isMobile()) return;
+    if (e.target.closest(".rpt-flat-row.rpt-expense")) {
+      e.preventDefault();
+    }
+  });
 
   function cancelLongPress() {
     if (longPressTimer) {
@@ -3882,6 +3972,9 @@ scratchpadText.addEventListener("keydown", e => {
   // Once in selection mode, taps toggle selection
   reportWrap.addEventListener("click", function(e) {
     if (!isMobile()) return;
+    // Suppress the synthetic click that fires right after a long-press,
+    // otherwise it would instantly toggle the selection back off.
+    if (longPressFired) { longPressFired = false; return; }
     // Only if we're already in selection mode (batch bar visible)
     if (batchBar.hidden) return;
     // Don't interfere with action buttons

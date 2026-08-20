@@ -194,7 +194,7 @@ button, a, input, select, textarea, [tabindex] {
 .tab-content.active { display: block; }
 
 /* ── Layout ── */
-.container { max-width: 1056px; margin: 0 auto; padding: 20px 20px; }
+.container { max-width: 1162px; margin: 0 auto; padding: 20px 20px; }
 
 /* ── Mobile FAB ── */
 .mobile-add-fab {

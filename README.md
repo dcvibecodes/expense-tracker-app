@@ -1,6 +1,28 @@
-# Expenses+ v3.22.0
+# Expenses+ v3.23.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.23.0
+
+### Tracker: Grouped Expense Cards
+- **Expenses grouped by time** — the tracker now groups this month's expenses into **Today**, **Yesterday**, **Last Week**, and **Earlier This Month** (only groups with data are shown)
+- **Card layout** — each expense renders as its own card (Date / Details / Category / Amount / Actions) instead of a table, on both web and mobile
+- **Group subtotals** — each group header shows the item count and a subtotal for that group
+- **Cleaner tracker** — removed the "Expenses" heading so the search bar sits right below Add Expense; the summary container is transparent so the category cards pop out against the background
+
+### Reports: Unified Card Styling
+- **Web** — the whole report table is now one white card with a shaded header row
+- **Mobile** — report expense cards match the tracker card style (borders, rounded corners, divider above actions), and the search bar + cards are full width, aligned with the chart
+
+### Forecast: Card Styling
+- The forecast table is now one white card with a shaded header row, so rounded corners are clearly visible
+
+### Settings
+- Each section is carved out as its own white card; mobile card widths now align with the tracker and reports tabs
+
+### Mobile: Long-Press to Select (Reports)
+- **Fixed long-press selection** on the mobile reports tab — long-pressing an expense card now reliably selects it for bulk actions
+- Made the long-press robust against tiny finger movement, suppressed the native context menu, and prevented the selection from being instantly toggled off
 
 ## What's New in v3.22.0
 

@@ -161,8 +161,7 @@
           <p id="abroad-mode-info" class="abroad-mode-info" style="display:none;"></p>
         </section>
 
-        <section class="card"> 
-          <h2>Expenses</h2> 
+        <section class="card expense-list-card"> 
           <div class="tracker-search-bar">
             <form autocomplete="off" onsubmit="return false;" role="search" class="search-form-wrap">
               <input
@@ -178,20 +177,13 @@
             />
             </form>
           </div>
-          <div class="table-wrap"> 
-            <table> 
-              <thead><tr> 
-                <th class="col-date">Date</th><th>Details</th><th>Category</th><th class="col-amount">Amount</th><th class="col-actions">Actions</th> 
-              </tr></thead> 
-              <tbody id="expense-rows">
-                <tr><td colspan="5"><div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div></td></tr>
-                <tr><td colspan="5"><div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div></td></tr>
-                <tr><td colspan="5"><div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div></td></tr>
-                <tr><td colspan="5"><div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div></td></tr>
-                <tr><td colspan="5"><div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div></td></tr>
-              </tbody> 
-            </table> 
-          </div> 
+          <div class="expense-list" id="expense-list">
+            <div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div>
+            <div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div>
+            <div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div>
+            <div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div>
+            <div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div>
+          </div>
         </section> 
 
         <!-- Mobile FAB to open form -->

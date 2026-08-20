@@ -549,38 +549,58 @@ function renderRows(rows) {
   rowsEl.appendChild(fragment);
 }
 
-function comparisonHtml(current, previous) {
+// Build one comparison segment: arrow + % (or New/—)
+function compareSegment(current, baseline) {
   // No previous data → "New" if there's spending now, "—" otherwise
-  if (previous <= 0) {
-    if (current > 0) return `<span class="summary-compare new">New</span>`;
-    return `<span class="summary-compare">—</span>`;
+  if (baseline <= 0) {
+    const cls = current > 0 ? "new" : "";
+    return `<span class="summary-seg ${cls}">${current > 0 ? "New" : "—"}</span>`;
   }
-  // No current spending but had some last month → full decrease
+  // No current spending but had a baseline → full decrease
   if (current <= 0) {
-    return `<span class="summary-compare down">▼ 100%</span>`;
+    return `<span class="summary-seg down">▼ 100%</span>`;
   }
-  const pct = Math.round(((current - previous) / previous) * 100);
-  if (pct === 0) return `<span class="summary-compare">—</span>`;
-  if (pct > 0) return `<span class="summary-compare up">▲ ${pct}%</span>`;
-  return `<span class="summary-compare down">▼ ${Math.abs(pct)}%</span>`;
+  const pct = Math.round(((current - baseline) / baseline) * 100);
+  if (pct === 0) return `<span class="summary-seg">—</span>`;
+  const cls = pct > 0 ? "up" : "down";
+  const arrow = pct > 0 ? "▲" : "▼";
+  return `<span class="summary-seg ${cls}">${arrow} ${Math.abs(pct)}%</span>`;
 }
 
-function renderSummary(pieData, prevPieData) {
-  const total = Object.values(pieData).reduce((s, v) => s + (Number(v) || 0), 0);
-  const prevTotal = prevPieData ? Object.values(prevPieData).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
+// Combined line: three percentages with subtle dot separators
+function comparisonLine(current, lastMonth, avg3, avg6) {
+  const segs = [
+    compareSegment(current, lastMonth),
+    compareSegment(current, avg3),
+    compareSegment(current, avg6)
+  ];
+  return `<div class="summary-compare">${segs.join('<span class="summary-sep">·</span>')}</div>`;
+}
+
+function pieTotal(pie) {
+  return pie ? Object.values(pie).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
+}
+
+function renderSummary(pieData, lastMonthPie, avg3Pie, avg6Pie) {
+  const total = pieTotal(pieData);
+  const lastMonthTotal = pieTotal(lastMonthPie);
+  const avg3Total = pieTotal(avg3Pie);
+  const avg6Total = pieTotal(avg6Pie);
   summaryGrid.innerHTML = "";
   // Total item
   const totalDiv = document.createElement("div");
   totalDiv.className = "summary-item total-item";
-  totalDiv.innerHTML = `<span class="summary-dot" style="background:var(--accent)"></span><div class="summary-info"><span class="summary-label">Total</span><span class="summary-amount">${formatAmountRounded(total)}</span>${comparisonHtml(total, prevTotal)}</div>`;
+  totalDiv.innerHTML = `<span class="summary-dot" style="background:var(--accent)"></span><div class="summary-info"><span class="summary-label">Total</span><span class="summary-amount">${formatAmountRounded(total)}</span>${comparisonLine(total, lastMonthTotal, avg3Total, avg6Total)}</div>`;
   summaryGrid.appendChild(totalDiv);
   // Category items
   for (const cat of categories) {
     const val = pieData[cat.name] || 0;
-    const prevVal = prevPieData ? (prevPieData[cat.name] || 0) : 0;
+    const lastMonthVal = lastMonthPie ? (lastMonthPie[cat.name] || 0) : 0;
+    const avg3Val = avg3Pie ? (avg3Pie[cat.name] || 0) : 0;
+    const avg6Val = avg6Pie ? (avg6Pie[cat.name] || 0) : 0;
     const div = document.createElement("div");
     div.className = "summary-item";
-    div.innerHTML = `<span class="summary-dot" style="background:${cat.color}"></span><div class="summary-info"><span class="summary-label">${escapeHtml(formatCategory(cat.name))}</span><span class="summary-amount">${formatAmountRounded(val)}</span>${comparisonHtml(val, prevVal)}</div>`;
+    div.innerHTML = `<span class="summary-dot" style="background:${cat.color}"></span><div class="summary-info"><span class="summary-label">${escapeHtml(formatCategory(cat.name))}</span><span class="summary-amount">${formatAmountRounded(val)}</span>${comparisonLine(val, lastMonthVal, avg3Val, avg6Val)}</div>`;
     summaryGrid.appendChild(div);
   }
 }
@@ -603,10 +623,10 @@ async function refreshAll() {
     const prevDay = Math.min(now.getDate(), lastDayPrev);
     const prevThrough = `${prevYear}-${String(prevMonth).padStart(2, "0")}-${String(prevDay).padStart(2, "0")}`;
 
-    const [rows, summaryRes, prevSummaryRes] = await Promise.all([
+    const [rows, summaryRes, avgRes] = await Promise.all([
       fetchExpenses(),
       fetch(`/api/charts?month=${month}&year=${year}&through=${today}`).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch(`/api/charts?month=${prevMonth}&year=${prevYear}&through=${prevThrough}`).then(r => r.ok ? r.json() : null).catch(() => null)
+      fetch(`/api/charts/average?month=${month}&year=${year}&through=${today}`).then(r => r.ok ? r.json() : null).catch(() => null)
     ]);
 
     renderRows(rows);
@@ -614,7 +634,12 @@ async function refreshAll() {
     if (summaryRes) {
       const mn = MONTH_NAMES[month - 1];
       summaryHeading.textContent = `${mn} ${year} Summary`;
-      renderSummary(summaryRes.pie, prevSummaryRes ? prevSummaryRes.pie : null);
+      renderSummary(
+        summaryRes.pie,
+        avgRes ? avgRes.lastMonth : null,
+        avgRes ? avgRes.avg3 : null,
+        avgRes ? avgRes.avg6 : null
+      );
     }
   } catch (err) {
     // Error toast already shown by safeFetch if network fails

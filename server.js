@@ -848,6 +848,95 @@ app.get("/api/charts", (req, res) => {
   });
 });
 
+// Returns per-category baseline pies for the summary comparison:
+// lastMonth (1mo), avg3 (average of last 3 months), avg6 (average of last 6 months)
+app.get("/api/charts/average", (req, res) => {
+  const year = Number(req.query.year);
+  const month = Number(req.query.month);
+  const through = req.query.through;
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    return res.status(400).json({ error: "Invalid month." });
+  }
+  if (!Number.isInteger(year) || year < 1900 || year > 3000) {
+    return res.status(400).json({ error: "Invalid year." });
+  }
+
+  // Day-of-month of "today", used for a fair same-day cutoff on past months
+  // (e.g. today is the 20th → each past month only counts up to the 20th)
+  let day = 28;
+  if (through && isValidDate(through)) {
+    day = Number(through.split("-")[2]);
+  }
+
+  // Build the 6 months immediately before the current month
+  const months = [];
+  for (let i = 1; i <= 6; i += 1) {
+    const d = new Date(year, month - 1 - i, 1);
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const ym = `${y}-${String(m).padStart(2, "0")}`;
+    const lastDay = new Date(y, m, 0).getDate();
+    const cutoff = `${ym}-${String(Math.min(day, lastDay)).padStart(2, "0")}`;
+    months.push({ ym, cutoff, pie: null, grandTotal: 0 });
+  }
+
+  const pieSql = `
+    SELECT category, COALESCE(SUM(amount), 0) AS total
+    FROM expenses
+    WHERE substr(date, 1, 7) = ?
+    AND date <= ?
+    GROUP BY category
+  `;
+
+  let pending = months.length;
+  let sent = false;
+
+  for (const mm of months) {
+    db.all(pieSql, [mm.ym, mm.cutoff], (err, rows) => {
+      if (err) {
+        if (!sent) {
+          sent = true;
+          return res.status(500).json({ error: "Failed to fetch chart data." });
+        }
+        return;
+      }
+      const pie = {};
+      for (const row of rows) pie[row.category] = Number(row.total) || 0;
+      mm.pie = pie;
+      mm.grandTotal = Object.values(pie).reduce((s, v) => s + v, 0);
+
+      pending -= 1;
+      if (pending === 0 && !sent) {
+        sent = true;
+
+        // Only months that actually had any spending count toward the average,
+        // so a brand-new account averages over what truly exists.
+        const valid = new Set(months.filter((m) => m.grandTotal > 0));
+
+        const averagePie = (count) => {
+          const included = months.slice(0, count).filter((m) => valid.has(m));
+          if (!included.length) return {};
+          const sum = {};
+          for (const m of included) {
+            for (const [cat, val] of Object.entries(m.pie)) {
+              sum[cat] = (sum[cat] || 0) + val;
+            }
+          }
+          const avg = {};
+          for (const [cat, val] of Object.entries(sum)) avg[cat] = val / included.length;
+          return avg;
+        };
+
+        return res.json({
+          lastMonth: months[0] ? months[0].pie : {},
+          avg3: averagePie(3),
+          avg6: averagePie(6)
+        });
+      }
+    });
+  }
+});
+
 // --- Reports API ---
 
 app.get("/api/reports", (req, res) => {

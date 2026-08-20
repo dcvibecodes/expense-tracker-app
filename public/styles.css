@@ -372,10 +372,34 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 .total-item { background: var(--accent-dim); border-color: rgba(0,0,0,0.08); }
 [data-theme="dark"] .total-item { border-color: rgba(255,255,255,0.1); }
 .total-item .summary-amount { color: var(--accent); }
-.summary-compare { font-size: 0.6rem; font-weight: 600; margin-top: 2px; line-height: 1.2; }
-.summary-compare.up { color: var(--red); }
-.summary-compare.down { color: var(--green); }
-.summary-compare.new { color: var(--text-faint); }
+.summary-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.summary-card-header h2 { margin-bottom: 0; }
+.summary-card-hint {
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.summary-compare {
+  font-size: 0.6rem;
+  font-weight: 600;
+  margin-top: 3px;
+  line-height: 1.2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 0.35em;
+}
+.summary-seg { color: var(--text-faint); }
+.summary-seg.up { color: var(--red); }
+.summary-seg.down { color: var(--green); }
+.summary-sep { color: var(--text-faint); opacity: 0.55; }
 
 /* ── Charts ── */
 .charts {

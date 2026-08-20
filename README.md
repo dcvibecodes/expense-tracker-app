@@ -1,6 +1,24 @@
-# Expenses+ v3.21.0
+# Expenses+ v3.22.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.22.0
+
+### Richer Summary Comparisons (1mo / 3mo / 6mo)
+- **Three comparisons per card** — each summary card (Total + every category) now shows three dot-separated percentages comparing this month's spending against:
+  - **1mo** — last month
+  - **3mo** — the average of the last 3 months
+  - **6mo** — the average of the last 6 months
+- **Compact display** — the labels were removed from each card to save space; the three values read as e.g. `▲ 25% · ▼ 5% · ▲ 3%`
+- **Header hint** — a small gray hint (`▲/▼ vs 1mo · 3mo · 6mo`) sits next to the "August 2026 Summary" heading to explain what the three percentages compare against
+- **Same-day cutoff for all windows** — each of the 1/3/6-month baselines counts spending up to the same day-of-month as today (clamped to month length), so the partial current month is compared fairly
+- **Color-coded values only** — only the arrow + percentage are colored (red = spending more, green = spending less); the dot separators are subtle gray
+
+### CSV Import
+- **Import expenses from CSV** — new "Import Expenses" card in Settings; format matches the ↓ CSV button on the Reports tab (`Date,Details,Category,Amount,Note` with dates as YYYY-MM-DD)
+- **Template download** — "↓ Template" button downloads a ready-to-fill CSV with the exact accepted format
+- **Smart handling** — new categories are auto-created (up to the 15-category limit), exact duplicates are skipped, and per-row errors are reported
+- **CSV injection protection** — strips the `'` prefix that the export adds to formula-like values
 
 ## What's New in v3.21.0
 

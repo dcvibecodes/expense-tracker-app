@@ -21,7 +21,7 @@
   --red: #c53030;
   --orange: #9a6700;
   --purple: #6b46a3;
-  --radius: 8px;
+  --radius: 14px;
   --shadow: none;
 }
 
@@ -610,7 +610,7 @@ tbody tr:hover td { background: var(--accent-dim); }
 .expense-card {
   background: var(--surface);
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
@@ -1100,7 +1100,7 @@ body { overflow-x: clip; }
   .summary-amount { font-size: 0.85rem; }
   .summary-item { min-width: 0; padding: 8px; }
 
-  .card { padding: 12px; margin-bottom: 10px; border-radius: 6px; }
+  .card { padding: 12px; margin-bottom: 10px; border-radius: 12px; }
   .card h2 { font-size: 0.78rem; margin-bottom: 8px; }
   .expense-list-card { padding: 12px 0; }
   .expense-list-card h2 { padding: 0 12px; }
@@ -1197,7 +1197,7 @@ body { overflow-x: clip; }
     display: block;
     background: var(--surface);
     border: 1px solid var(--border-subtle);
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 10px 12px;
     position: relative;
     touch-action: manipulation;

@@ -379,12 +379,14 @@ function getLockPage() {
 </html>`;
 }
 
+app.use(csrfTokenMiddleware);
+
 // CSRF token endpoint — returns the current session's CSRF token
+// Must be registered after csrfTokenMiddleware so the token is initialized
 app.get("/api/csrf-token", (req, res) => {
   return res.json({ token: req.session.csrfToken || "" });
 });
 
-app.use(csrfTokenMiddleware);
 app.use(csrfProtectionMiddleware);
 app.use(authMiddleware);
 app.use(compression());

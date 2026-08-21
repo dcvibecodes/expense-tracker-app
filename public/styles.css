@@ -66,7 +66,7 @@
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
@@ -83,14 +83,14 @@ button, a, input, select, textarea, [tabindex] {
 
 /* ── Header ── */
 .app-header {
-  background: var(--surface);
+  background: var(--bg);
   border-bottom: 1px solid var(--border-subtle);
   padding: 10px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-.app-title { font-weight: 700; font-size: 0.82rem; letter-spacing: -0.01em; }
+.app-title { font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.25rem; letter-spacing: -0.025em; }
 .header-actions { display: flex; gap: 2px; align-items: center; }
 
 .header-icon {
@@ -262,17 +262,6 @@ button, a, input, select, textarea, [tabindex] {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 14px;
-}
-.mobile-form-header::before {
-  content: "";
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 32px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--border);
 }
 .mobile-form-title {
   font-size: 0.82rem;
@@ -637,8 +626,10 @@ tbody tr:hover td { background: var(--accent-dim); }
   margin-right: 6px;
 }
 .card-details {
-  font-weight: 600;
-  font-size: 0.82rem;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.375;
   color: var(--text);
   flex: 1;
   min-width: 0;
@@ -647,8 +638,10 @@ tbody tr:hover td { background: var(--accent-dim); }
   white-space: nowrap;
 }
 .card-amount {
-  font-weight: 600;
-  font-size: 0.82rem;
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
   color: var(--text);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -656,8 +649,8 @@ tbody tr:hover td { background: var(--accent-dim); }
   margin-left: 8px;
 }
 .card-meta {
-  font-size: 0.66rem;
-  color: var(--text-faint);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
   flex: 1;
   min-width: 0;
   overflow: hidden;

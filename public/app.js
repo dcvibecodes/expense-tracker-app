@@ -3015,7 +3015,7 @@ function renderExtrapGrid() {
     grid.appendChild(h);
   }
 
-  // Starting Balance row (shows computed starting balance for each month)
+  // Starting balance row (shows computed starting balance for each month)
   renderStartingBalanceRow(grid, months);
 
   // Income section
@@ -3050,7 +3050,7 @@ function renderStartingBalanceRow(grid, months) {
   const labelCell = document.createElement("div");
   labelCell.className = "extrap-cell extrap-cell-label";
   labelCell.style.fontWeight = "600";
-  labelCell.textContent = "Starting Balance";
+  labelCell.textContent = "Starting balance";
   grid.appendChild(labelCell);
 
   // First month: editable starting balance
@@ -3456,7 +3456,7 @@ function renderBalanceRow(grid, months) {
   // Label
   const labelCell = document.createElement("div");
   labelCell.className = "extrap-cell extrap-cell-label extrap-cell-balance";
-  labelCell.textContent = "Ending Balance";
+  labelCell.textContent = "Ending balance";
   grid.appendChild(labelCell);
 
   // Running balance (starts from starting_balance)
@@ -3493,7 +3493,7 @@ function downloadForecastCSV() {
   csvRows.push(header);
 
   // Starting Balance row
-  const startBalRow = ["Starting Balance", ""];
+  const startBalRow = ["Starting balance", ""];
   for (let i = 0; i < months.length; i++) {
     startBalRow.push(balances[i]);
   }
@@ -3626,7 +3626,7 @@ document.getElementById("extrap-apply-btn")?.addEventListener("click", async () 
     if (hasPurgeData) {
       const confirmed = await showConfirm(
         "Slide Forecast Window",
-        `Moving the start to ${formatMonthLabel(startMonth)} will delete all income and expense data before that month. You will need to manually set the Starting Balance for the new first month. Continue?`
+        `Moving the start to ${formatMonthLabel(startMonth)} will delete all income and expense data before that month. You will need to manually set the Starting balance for the new first month. Continue?`
       );
       if (!confirmed) return;
       // Purge old data

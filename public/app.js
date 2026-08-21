@@ -3182,11 +3182,9 @@ function renderDataRow(grid, type, label, months, index, total) {
       cell.classList.remove("extrap-cell-income", "extrap-cell-expense");
     }
 
-    // Note indicator
+    // Note indicator — dotted underline
     if (entry && entry.note) {
-      const indicator = document.createElement("span");
-      indicator.className = "extrap-note-indicator";
-      cell.appendChild(indicator);
+      cell.classList.add("extrap-cell-has-note");
     }
 
     cell.title = entry && entry.note ? entry.note : "Click to edit, right-click for note";

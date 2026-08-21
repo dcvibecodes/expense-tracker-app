@@ -1516,15 +1516,11 @@ body { overflow-x: clip; }
   font-size: 0.76rem;
 }
 
-.extrap-note-indicator {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-top: 5px solid var(--accent);
-  pointer-events: none;
+.extrap-cell-has-note {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--accent);
 }
 
 .extrap-note-popover {

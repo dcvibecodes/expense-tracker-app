@@ -167,17 +167,20 @@
         <section class="card expense-list-card"> 
           <div class="tracker-search-bar">
             <form autocomplete="off" onsubmit="return false;" role="search" class="search-form-wrap">
-              <input
-              type="search"
-              id="expense-search"
-              name="exp-srch-q-x7k2"
-              placeholder="Search expenses..."
-              autocomplete="off"
-              autocorrect="off"
-              autocapitalize="off"
-              spellcheck="false"
-              role="searchbox"
-            />
+              <div class="search-icon-wrap">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input
+                type="search"
+                id="expense-search"
+                name="exp-srch-q-x7k2"
+                placeholder="Search expenses..."
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                role="searchbox"
+              />
+              </div>
             </form>
           </div>
           <div class="expense-list" id="expense-list">
@@ -237,7 +240,10 @@
         <section class="card report-table-card"> 
           <!-- Mobile compact search + filter chip -->
           <div class="mobile-report-search-bar" id="mobile-report-search-bar">
-            <input type="search" id="mobile-report-search" placeholder="Search by details" autocomplete="off" />
+            <span class="search-icon-wrap">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="search" id="mobile-report-search" placeholder="Search by details" autocomplete="off" />
+            </span>
             <button type="button" id="mobile-report-filter-chip" class="mobile-filter-chip">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
               Filters
@@ -247,7 +253,10 @@
             <div class="report-range"> 
               <label>Search
                 <span class="search-with-toggle">
-                  <input type="text" id="report-search" placeholder="Search by details" autocomplete="off" />
+                  <span class="search-icon-wrap">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="report-search" placeholder="Search by details" autocomplete="off" />
+                  </span>
                   <button type="button" id="report-search-all-toggle" class="search-all-toggle" title="Search across all data">All</button>
                 </span>
               </label>

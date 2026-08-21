@@ -863,7 +863,7 @@ expenseForm.addEventListener("submit", async e => {
   if (!date || !details || !category || !amount) {
     isSubmitting = false;
     addBtn.disabled = false;
-    addBtn.textContent = "+ Add";
+    addBtn.textContent = "Add expense";
     return;
   }
   const amountNum = parseFloat(amount);
@@ -872,7 +872,7 @@ expenseForm.addEventListener("submit", async e => {
     addExpenseMsg.className = "form-msg error";
     isSubmitting = false;
     addBtn.disabled = false;
-    addBtn.textContent = "+ Add";
+    addBtn.textContent = "Add expense";
     return;
   }
 
@@ -896,7 +896,7 @@ expenseForm.addEventListener("submit", async e => {
           if (!await showConfirm("Possible Duplicate", `A similar entry already exists:\n${formatDate(date)} — ${details} — ${amount}\n\nAdd anyway?`)) {
             isSubmitting = false;
             addBtn.disabled = false;
-            addBtn.textContent = "+ Add";
+            addBtn.textContent = "Add expense";
             return;
           }
         }
@@ -910,7 +910,7 @@ expenseForm.addEventListener("submit", async e => {
     addExpenseMsg.className = "form-msg error";
     isSubmitting = false;
     addBtn.disabled = false;
-    addBtn.textContent = "+ Add";
+    addBtn.textContent = "Add expense";
     return;
   }
 
@@ -955,7 +955,7 @@ expenseForm.addEventListener("submit", async e => {
   }
   isSubmitting = false;
   addBtn.disabled = false;
-  addBtn.textContent = "+ Add";
+  addBtn.textContent = "Add expense";
 
   // Close mobile form only on success
   if (addSuccess) {

@@ -2499,7 +2499,7 @@ document.querySelectorAll("#abroad-mode-toggle-row .theme-option-btn").forEach(b
         });
         abroadMode = { active: false, currency: "" };
         msg.textContent = "Abroad mode OFF.";
-        msg.className = "form-msg success";
+        msg.className = "form-msg";
         updateAbroadModeInfo();
         setTimeout(() => { msg.textContent = ""; msg.className = "form-msg"; }, 3000);
       } catch {
@@ -2528,7 +2528,7 @@ document.getElementById("abroad-currency-select").addEventListener("change", asy
     });
     abroadMode = { active: true, currency };
     msg.textContent = `Abroad mode ON (${currency}).`;
-    msg.className = "form-msg success";
+    msg.className = "form-msg";
     updateAbroadModeInfo();
     setTimeout(() => { msg.textContent = ""; msg.className = "form-msg"; }, 3000);
   } catch {
@@ -3885,13 +3885,6 @@ scratchpadText.addEventListener("keydown", e => {
     filterBody.appendChild(filtersDiv);
     filtersDiv.style.display = "block";
 
-    // Move day links after the Month field inside .report-range
-    var dayLinks = filtersDiv.querySelector("#report-day-links");
-    var monthLabel = filtersDiv.querySelector("#report-month");
-    if (dayLinks && monthLabel && monthLabel.closest("label")) {
-      monthLabel.closest("label").after(dayLinks);
-    }
-
     filterOverlay.classList.add("open");
   }
 
@@ -3906,12 +3899,6 @@ scratchpadText.addEventListener("keydown", e => {
     document.body.style.overscrollBehavior = "";
     document.documentElement.style.overscrollBehavior = "";
     window.scrollTo(0, scrollY);
-
-    // Move day links back to end of report-filters-content
-    var dayLinks = filtersDiv.querySelector("#report-day-links");
-    if (dayLinks) {
-      filtersDiv.appendChild(dayLinks);
-    }
 
     // Move filters back to original position
     if (filtersNextSibling) {

@@ -768,6 +768,9 @@ tbody tr:hover td { background: var(--accent-dim); }
   .report-range { flex-wrap: nowrap; }
   .report-range > label:first-child { flex: 1 1 240px; min-width: 0; }
   .report-range > label:not(:first-child) { flex: 0 0 auto; }
+  .search-with-toggle { flex: 1; min-width: 0; }
+  .search-with-toggle .search-icon-wrap { flex: 1; min-width: 0; }
+  .search-with-toggle .search-icon-wrap input { width: 100%; }
   .search-all-toggle { padding-left: 10px; padding-right: 10px; }
 }
 
@@ -812,6 +815,7 @@ tbody tr:hover td { background: var(--accent-dim); }
   min-width: 32px;
   min-height: 32px;
   padding: 4px 6px;
+  opacity: 0.8;
   border-radius: 999px;
   flex: 0 0 auto;
   display: inline-flex;

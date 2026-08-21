@@ -613,7 +613,7 @@ tbody tr:hover td { background: var(--accent-dim); }
   justify-content: space-between;
   gap: 8px;
   padding: 10px 4px 4px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: none;
 }
 .expense-list > .group-header:first-child { padding-top: 0; }
 .group-header-label {
@@ -756,10 +756,10 @@ tbody tr:hover td { background: var(--accent-dim); }
 .search-all-toggle.active { background: var(--accent); color: var(--surface); border-color: var(--accent); }
 
 .report-filters-content {
-  padding: 12px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
   margin-bottom: 10px;
 }
 .report-mobile-extras {
@@ -846,7 +846,7 @@ tbody tr:hover td { background: var(--accent-dim); }
   align-items: center;
   padding: 0 10px;
   min-height: 36px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: none;
   cursor: default;
 }
 .rpt-row:hover { background: var(--accent-dim); }
@@ -874,7 +874,7 @@ tbody tr:hover td { background: var(--accent-dim); }
   background: var(--surface);
   min-height: 32px;
   font-size: 0.75rem;
-  border-bottom: 2px solid var(--border);
+  border-bottom: none;
 }
 .rpt-header:hover { background: var(--surface); }
 
@@ -916,7 +916,7 @@ tbody tr:hover td { background: var(--accent-dim); }
   align-items: center;
   flex-wrap: wrap;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: none;
   background: var(--bg);
 }
 .report-batch-bar[hidden] { display: none; }
@@ -970,7 +970,7 @@ tbody tr:hover td { background: var(--accent-dim); }
 }
 
 .report-totals-bar {
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: none;
   padding: 8px 16px;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -1766,7 +1766,7 @@ body { overflow-x: clip; }
   gap: 6px;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: none;
 }
 .mobile-report-search-bar .search-icon-wrap {
   flex: 1;

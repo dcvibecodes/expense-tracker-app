@@ -285,6 +285,11 @@ function authMiddleware(req, res, next) {
     "/icon-512.png"
 ];
 
+  // CSRF token endpoint is always open (before auth)
+  if (req.path === "/api/csrf-token") {
+    return next();
+  }
+
   if (openPaths.includes(req.path)) {
     return next();
   }

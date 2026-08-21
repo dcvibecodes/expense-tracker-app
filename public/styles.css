@@ -203,7 +203,7 @@ button, a, input, select, textarea, [tabindex] {
 .tab-content.active { display: block; }
 
 /* ── Layout ── */
-.container { max-width: 1074px; margin: 0 auto; padding: 20px 20px; }
+.container { max-width: 913px; margin: 0 auto; padding: 20px 20px; }
 
 /* ── Mobile FAB ── */
 .mobile-add-fab {
@@ -773,6 +773,14 @@ tbody tr:hover td { background: var(--accent-dim); }
   .search-with-toggle .search-icon-wrap { flex: 1; min-width: 0; }
   .search-with-toggle .search-icon-wrap input { width: 100%; }
   .search-all-toggle { padding-left: 10px; padding-right: 10px; }
+
+  /* Category cards: 3 per row, auto-fit (1=full, 2=50/50, 3=33.33%, 4=3+1, 5=3+2, 6=3+3, 7=3+3+1) */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 10px;
+  }
+  .summary-item { min-width: 0; }
 }
 
 .report-filters-content {

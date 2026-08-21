@@ -1177,6 +1177,11 @@ body { overflow-x: clip; }
     margin-left: 12px;
     margin-right: 12px;
   }
+  .summary-card,
+  .charts-card {
+    margin-left: 12px;
+    margin-right: 12px;
+  }
 
   .grid, .add-grid, .edit-grid, .batch-grid { grid-template-columns: 1fr; }
 
@@ -1284,6 +1289,11 @@ body { overflow-x: clip; }
   .card { padding: 10px; margin-bottom: 8px; }
   #tab-settings .card,
   #tab-forecast .card {
+    margin-left: 10px;
+    margin-right: 10px;
+  }
+  .summary-card,
+  .charts-card {
     margin-left: 10px;
     margin-right: 10px;
   }

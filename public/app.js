@@ -613,7 +613,6 @@ function renderRows(rows) {
     header.className = "group-header";
     header.innerHTML = `
       <span class="group-header-label">
-        <span class="group-dot" aria-hidden="true"></span>
         ${group.label}
       </span>
       <span class="group-header-meta">

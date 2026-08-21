@@ -290,17 +290,13 @@ button, a, input, select, textarea, [tabindex] {
 
 /* Cards that hold a list of floating cards stay transparent */
 .report-table-card,
-.expense-list-card,
-.summary-card,
-.charts-card {
+.expense-list-card {
   background: transparent;
   border: none;
   border-radius: 0;
   padding: 16px 0;
 }
-.expense-list-card h2,
-.summary-card .summary-card-header,
-.charts-card h2 {
+.expense-list-card h2 {
   padding: 0 16px;
 }
 
@@ -407,6 +403,14 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 .summary-sep { color: var(--text-faint); opacity: 0.55; }
 
 /* ── Charts ── */
+.charts-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.charts-header-row h2 { margin-bottom: 0; }
 .charts {
   display: grid;
   grid-template-columns: 1fr;
@@ -417,13 +421,11 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
   display: flex;
   flex-direction: column;
   padding: 12px;
-  border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
   background: var(--surface);
 }
 
 .chart-panel h3 {
-  font-family: 'Fraunces', serif;
   margin-bottom: 8px;
   flex-shrink: 0;
   font-size: 0.68rem;
@@ -446,7 +448,6 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 .chart-view-toggle {
   display: flex;
   gap: 2px;
-  margin-bottom: 12px;
   background: var(--accent-dim);
   border-radius: 6px;
   padding: 2px;
@@ -1123,10 +1124,6 @@ body { overflow-x: clip; }
   .card h2 { font-size: 0.78rem; margin-bottom: 8px; }
   .expense-list-card { padding: 12px 0; }
   .expense-list-card h2 { padding: 0 12px; }
-  .summary-card { padding: 12px 0; }
-  .summary-card .summary-card-header { padding: 0 12px; }
-  .charts-card { padding: 12px 0; }
-  .charts-card h2 { padding: 0 12px; }
   #tab-settings .card,
   #tab-forecast .card {
     margin-left: 12px;

@@ -270,6 +270,7 @@ function authMiddleware(req, res, next) {
     "/api/lock/recovery",
     "/api/lock/setup",
     "/api/lock/disable",
+    "/api/csrf-token",
     "/manifest.json",
     "/sw.js",
     "/styles.css",
@@ -284,11 +285,6 @@ function authMiddleware(req, res, next) {
     "/icon-192.png",
     "/icon-512.png"
 ];
-
-  // CSRF token endpoint is always open (before auth)
-  if (req.path === "/api/csrf-token") {
-    return next();
-  }
 
   if (openPaths.includes(req.path)) {
     return next();

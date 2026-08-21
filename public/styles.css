@@ -202,9 +202,11 @@ button, a, input, select, textarea, [tabindex] {
   position: fixed;
   bottom: 100px;
   right: 16px;
-  width: 40px;
+  width: auto;
   height: 40px;
-  border-radius: 50%;
+  padding: 0 16px;
+  border-radius: 20px;
+  gap: 6px;
   background: var(--accent);
   color: var(--surface);
   border: none;
@@ -213,11 +215,15 @@ button, a, input, select, textarea, [tabindex] {
   z-index: 95;
   align-items: center;
   justify-content: center;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  font-family: inherit;
   transition: transform 0.15s, opacity 0.15s;
 }
 .mobile-add-fab:hover { transform: scale(1.05); }
 .mobile-add-fab:active { transform: scale(0.92); }
 .mobile-add-fab svg { width: 18px; height: 18px; }
+.mobile-add-fab span { white-space: nowrap; }
 
 /* ── Mobile form overlay (bottom sheet) ── */
 .mobile-form-overlay {
@@ -346,6 +352,13 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 }
 .add-btn:hover { opacity: 0.85; }
 .add-btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+.add-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 10px;
+}
+.add-form-actions .add-btn { flex: 1; }
+.add-form-actions .cancel-btn { flex: 0 0 auto; padding-left: 20px; padding-right: 20px; }
 
 .save-btn { padding: 6px 14px; background: var(--accent); color: var(--surface); border: none; border-radius: 5px; font-weight: 550; cursor: pointer; min-height: 34px; font-family: inherit; font-size: 0.875rem; }
 .save-btn:hover { opacity: 0.85; }
@@ -1300,6 +1313,10 @@ body { overflow-x: clip; }
   }
 
   .add-btn, .save-btn, .cancel-btn, .btn-secondary { font-size: 0.74rem; padding: 8px 12px; width: 100%; }
+  .add-form-actions .add-btn,
+  .add-form-actions .cancel-btn { width: auto; }
+  .add-form-actions .add-btn { flex: 1; }
+  .add-form-actions .cancel-btn { flex: 0 0 auto; }
   .modal-buttons { flex-direction: column; }
   .modal-buttons button { flex: none; }
 

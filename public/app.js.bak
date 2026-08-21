@@ -546,24 +546,34 @@ async function fetchExpenses() {
 function buildExpenseCard(row) {
   const card = document.createElement("div");
   card.className = "expense-card";
-
+  let amountDisplay = formatAmount(row.amount);
+  if (row.original_currency && row.original_amount) {
+    amountDisplay += `<span class="original-amt">${getCurrencySymbol(row.original_currency)} ${new Intl.NumberFormat(getCurrencyLocale(row.original_currency), { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(row.original_amount)}</span>`;
+  }
   const noteBtn = row.note
     ? `<button class="action-btn btn-note" data-id="${row.id}" title="View note" aria-label="View note">${ICON.note}</button>`
     : `<button class="action-btn btn-note notes-empty" data-id="${row.id}" title="Add note" aria-label="Add note">${ICON.noteEmpty}</button>`;
-
-  const abroadMeta = (row.original_currency && row.original_amount)
-    ? ` · ${getCurrencySymbol(row.original_currency)} ${new Intl.NumberFormat(getCurrencyLocale(row.original_currency), { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(row.original_amount)}`
-    : '';
-
   card.innerHTML = `
-    <div class="expense-card-row compact-row">
-      <span class="card-dot" style="background:${getCategoryColor(row.category)}"></span>
-      <span class="card-details">${escapeHtml(row.details)}</span>
-      <span class="card-amount">${formatAmount(row.amount)}</span>
+    <div class="expense-card-row">
+      <span class="expense-card-label">DATE</span>
+      <span class="expense-card-value">${escapeHtml(formatDate(row.date))}</span>
     </div>
-    <div class="expense-card-row compact-row">
-      <span class="card-meta">${escapeHtml(formatCategory(row.category))} · ${escapeHtml(formatDate(row.date))}${abroadMeta}</span>
-      <span class="card-actions">${noteBtn}<button class="action-btn btn-edit" data-id="${row.id}" title="Edit" aria-label="Edit expense">${ICON.edit}</button><button class="action-btn delete btn-delete" data-id="${row.id}" title="Delete" aria-label="Delete expense">${ICON.delete}</button></span>
+    <div class="expense-card-row">
+      <span class="expense-card-label">DETAILS</span>
+      <span class="expense-card-value">${escapeHtml(row.details)}</span>
+    </div>
+    <div class="expense-card-row">
+      <span class="expense-card-label">CATEGORY</span>
+      <span class="expense-card-value"><span class="cat-badge" style="background:${getCategoryColor(row.category)}20;color:${getCategoryColor(row.category)}">${escapeHtml(formatCategory(row.category))}</span></span>
+    </div>
+    <div class="expense-card-row">
+      <span class="expense-card-label">AMOUNT</span>
+      <span class="expense-card-value expense-card-amount">${amountDisplay}</span>
+    </div>
+    <div class="expense-card-actions">
+      ${noteBtn}
+      <button class="action-btn btn-edit" data-id="${row.id}" title="Edit" aria-label="Edit expense">${ICON.edit}</button>
+      <button class="action-btn delete btn-delete" data-id="${row.id}" title="Delete" aria-label="Delete expense">${ICON.delete}</button>
     </div>`;
   return card;
 }
@@ -1389,28 +1399,6 @@ html += ` | Total: ${formatAmountRounded(grandTotal)}`;
   totalsBar.innerHTML = html;
 }
 
-function buildCompactReportCardHTML(exp) {
-  const noteBtn = exp.note
-    ? `<button class="action-btn rpt-note-btn" data-id="${exp.id}" title="View note" aria-label="View note">${ICON.note}</button>`
-    : `<button class="action-btn rpt-note-btn notes-empty" data-id="${exp.id}" title="Add note" aria-label="Add note">${ICON.noteEmpty}</button>`;
-
-  const abroadMeta = (exp.original_currency && exp.original_amount)
-    ? ` · ${getCurrencySymbol(exp.original_currency)} ${new Intl.NumberFormat(getCurrencyLocale(exp.original_currency), { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(exp.original_amount)}`
-    : '';
-
-  return `<div class="rpt-compact-card" data-id="${exp.id}">
-    <div class="compact-row">
-      <span class="card-dot" style="background:${getCategoryColor(exp.category)}"></span>
-      <span class="card-details">${escapeHtml(exp.details)}</span>
-      <span class="card-amount">${formatAmount(exp.amount)}</span>
-    </div>
-    <div class="compact-row">
-      <span class="card-meta">${escapeHtml(formatCategory(exp.category))} · ${escapeHtml(formatDate(exp.date))}${abroadMeta}</span>
-      <span class="card-actions">${noteBtn}<button class="action-btn rpt-edit-btn" data-id="${exp.id}" title="Edit" aria-label="Edit expense">${ICON.edit}</button><button class="action-btn delete rpt-delete-btn" data-id="${exp.id}" title="Delete" aria-label="Delete expense">${ICON.delete}</button></span>
-    </div>
-  </div>`;
-}
-
 function renderReportTable(data) {
   reportRows = data;
   selectedReportIds = new Set([...selectedReportIds].filter(id => data.some(row => row.id === id)));
@@ -1426,8 +1414,7 @@ function renderReportTable(data) {
   return;
 }
 
-  let html = `<div class="report-desktop-view">`;
-  html += `<div class="rpt">`;
+  let html = `<div class="rpt">`;
   html += `<div class="rpt-row rpt-header rpt-flat-row">
     <span class="rpt-select"><input type="checkbox" id="report-select-all" aria-label="Select all visible expenses"></span>
     <span class="rpt-date">Date</span>
@@ -1450,13 +1437,6 @@ function renderReportTable(data) {
     html += `  <span class="rpt-amt">${amountDisplay}</span>`;
     html += `  <span class="rpt-actions">${exp.note ? `<button class="action-btn rpt-note-btn" data-id="${exp.id}" title="View note" aria-label="View note">${ICON.note}</button>` : `<button class="action-btn rpt-note-btn notes-empty" data-id="${exp.id}" title="Add note" aria-label="Add note">${ICON.noteEmpty}</button>`}<button class="action-btn rpt-edit-btn" data-id="${exp.id}" title="Edit" aria-label="Edit expense">${ICON.edit}</button><button class="action-btn delete rpt-delete-btn" data-id="${exp.id}" title="Delete" aria-label="Delete expense">${ICON.delete}</button></span>`;
     html += `</div>`;
-  }
-  html += `</div></div>`;
-
-  // Mobile compact cards
-  html += `<div class="report-mobile-cards">`;
-  for (const exp of data) {
-    html += buildCompactReportCardHTML(exp);
   }
   html += `</div>`;
   reportWrap.innerHTML = html;

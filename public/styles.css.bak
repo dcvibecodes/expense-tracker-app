@@ -606,78 +606,55 @@ tbody tr:hover td { background: var(--accent-dim); }
   color: var(--text-secondary);
 }
 
-/* ── Expense card (compact) ── */
+/* ── Expense card ── */
 .expense-card {
   background: var(--surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
-  padding: 8px 12px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   transition: border-color 0.15s;
 }
 .expense-card:hover { border-color: var(--border); }
 .expense-card-row {
   display: flex;
-  align-items: center;
-  gap: 0;
+  align-items: baseline;
+  gap: 8px;
 }
-.compact-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0;
-}
-.card-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  margin-right: 6px;
-}
-.card-details {
+.expense-card-label {
+  flex: 0 0 76px;
+  font-size: 0.62rem;
   font-weight: 600;
-  font-size: 0.82rem;
-  color: var(--text);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.card-amount {
-  font-weight: 600;
-  font-size: 0.82rem;
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  flex-shrink: 0;
-  margin-left: 8px;
-}
-.card-meta {
-  font-size: 0.66rem;
   color: var(--text-faint);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
-.card-actions {
+.expense-card-value {
+  font-size: 0.78rem;
+  color: var(--text);
+  word-break: break-word;
+  white-space: normal;
+}
+.expense-card-amount { font-weight: 600; font-variant-numeric: tabular-nums; }
+.expense-card-value .original-amt {
+  display: block;
+  font-size: 0.64rem;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+.expense-card-actions {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
-  gap: 1px;
-  flex-shrink: 0;
-  margin-left: 8px;
+  gap: 2px;
+  padding-top: 6px;
+  margin-top: 2px;
+  border-top: 1px solid var(--border-subtle);
 }
-.card-actions .action-btn {
-  color: var(--text-secondary);
-  padding: 2px 4px;
-}
-.card-actions .action-btn.delete { color: var(--red); }
-.card-actions .btn-note.notes-empty { opacity: 0.3; }
-.card-actions .btn-note.notes-empty:hover { opacity: 0.7; }
+.expense-card-actions .action-btn { color: var(--text-secondary); }
+.expense-card-actions .action-btn.delete { color: var(--red); }
 
 /* ── Modals ── */
 .modal-overlay { display: none; position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; }
@@ -757,8 +734,6 @@ tbody tr:hover td { background: var(--accent-dim); }
 /* ── Report Pivot ── */
 .report-table-card { padding: 0; overflow: hidden; }
 .report-table-wrap { overflow-x: auto; }
-.report-desktop-view { display: block; }
-.report-mobile-cards { display: none; }
 @media (min-width: 769px) {
   .report-table-wrap {
     background: var(--surface);
@@ -1211,23 +1186,78 @@ body { overflow-x: clip; }
 
   .new-txn-toggle-btn { width: 100%; justify-content: center; }
 
-  /* ── MOBILE REPORT: Compact Card Layout ── */
+  /* ── MOBILE REPORT: Card Layout ── */
   .report-table-wrap { overflow-x: visible; }
-  .report-desktop-view { display: none; }
-  .report-mobile-cards { display: flex; flex-direction: column; gap: 8px; }
+  .rpt { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 
-  .rpt-compact-card {
+  .rpt-flat-row.rpt-header { display: none; }
+  .rpt-flat-row .rpt-select { display: none; }
+
+  .rpt-flat-row.rpt-expense {
+    display: block;
     background: var(--surface);
     border: 1px solid var(--border-subtle);
     border-radius: 12px;
-    padding: 8px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    padding: 10px 12px;
+    position: relative;
     touch-action: manipulation;
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
+  }
+  .rpt-flat-row.rpt-expense:last-child { border-bottom: none; }
+
+  .rpt-flat-row.rpt-expense .rpt-date,
+  .rpt-flat-row.rpt-expense .rpt-label,
+  .rpt-flat-row.rpt-expense .rpt-cat,
+  .rpt-flat-row.rpt-expense .rpt-amt {
+    display: block;
+    padding: 2px 0;
+    text-align: left !important;
+    font-weight: normal;
+    white-space: normal;
+    overflow: visible;
+  }
+  .rpt-flat-row.rpt-expense .rpt-date::before { content: "DATE"; }
+  .rpt-flat-row.rpt-expense .rpt-label::before { content: "DETAILS"; }
+  .rpt-flat-row.rpt-expense .rpt-cat::before { content: "CATEGORY"; }
+  .rpt-flat-row.rpt-expense .rpt-amt::before { content: "AMOUNT"; }
+
+  .rpt-flat-row.rpt-expense .rpt-date::before,
+  .rpt-flat-row.rpt-expense .rpt-label::before,
+  .rpt-flat-row.rpt-expense .rpt-cat::before,
+  .rpt-flat-row.rpt-expense .rpt-amt::before {
+    font-weight: 600;
+    font-size: 0.62rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-right: 6px;
+    min-width: 60px;
+    display: inline-block;
+  }
+
+  .rpt-flat-row.rpt-expense .rpt-amt {
+    padding-right: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rpt-flat-row.rpt-expense .rpt-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 2px;
+    padding-top: 6px;
+    margin-top: 4px;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .rpt-flat-row.rpt-expense .rpt-actions .rpt-edit-btn,
+  .rpt-flat-row.rpt-expense .rpt-actions .rpt-note-btn { color: var(--text-secondary); }
+  .rpt-flat-row.rpt-expense .rpt-actions .rpt-delete-btn { color: var(--red); }
+
+  .rpt-flat-row.rpt-expense.rpt-selected {
+    background: var(--accent-dim);
+    border-color: var(--accent);
   }
 
   .report-batch-bar select,

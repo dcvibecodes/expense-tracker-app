@@ -194,7 +194,7 @@ button, a, input, select, textarea, [tabindex] {
 .tab-content.active { display: block; }
 
 /* ── Layout ── */
-.container { max-width: 1162px; margin: 0 auto; padding: 20px 20px; }
+.container { max-width: 1074px; margin: 0 auto; padding: 20px 20px; }
 
 /* ── Mobile FAB ── */
 .mobile-add-fab {
@@ -427,10 +427,10 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 
 .chart-panel h3 {
   margin-bottom: 8px;
+  margin-left: -12px;
   flex-shrink: 0;
   font-size: 0.875rem;
   font-weight: 600;
-  text-transform: uppercase;
   color: var(--text-faint);
   letter-spacing: 0.5px;
 }

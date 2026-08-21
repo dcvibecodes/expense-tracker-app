@@ -476,8 +476,8 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 }
 
 .chart-toggle-btn.active {
-  background: var(--surface);
-  color: var(--accent);
+  background: var(--accent);
+  color: var(--surface);
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
@@ -704,49 +704,67 @@ tbody tr:hover td { background: var(--accent-dim); }
   border-radius: var(--radius);
   margin-bottom: 10px;
 }
+.report-mobile-extras {
+  display: block;
+  margin: 0 0 14px;
+}
+.report-action-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.report-action-row .btn-secondary {
+  flex: 1;
+}
 .report-day-links {
   display: flex;
-  flex-wrap: wrap;
-  gap: 3px 6px;
-  margin-top: 8px;
-  padding-top: 2px;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 2px 0;
 }
+.report-day-links::-webkit-scrollbar { display: none; }
 .report-day-link {
   appearance: none;
-  border: 0;
-  background: transparent;
-  color: var(--text-faint);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
   cursor: pointer;
   font: inherit;
   font-size: 0.75rem;
   line-height: 1;
-  min-height: 18px;
-  padding: 3px 4px;
-  opacity: 0.7;
-  border-radius: 3px;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 4px 6px;
+  opacity: 0.8;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
 }
 .report-day-link:hover,
 .report-day-link.active {
   color: var(--accent);
   opacity: 1;
+  border-color: var(--accent);
 }
 .report-day-link.active {
   font-weight: 700;
-  text-decoration-thickness: 2px;
 }
 .report-day-link.in-range {
   background: var(--accent-dim);
   color: var(--accent);
   opacity: 1;
-  text-decoration: none;
+  border-color: var(--accent);
 }
 .report-day-link.in-range.active {
-  background: rgba(0,0,0,0.08);
-}
-[data-theme="dark"] .report-day-link.in-range.active {
-  background: rgba(255,255,255,0.12);
+  background: var(--accent);
+  color: var(--surface);
+  border-color: var(--accent);
 }
 
 /* ── Report Pivot ── */
@@ -1819,8 +1837,8 @@ body { overflow-x: clip; }
   color: var(--text);
 }
 .theme-option-btn.active {
-  background: var(--surface);
-  color: var(--accent);
+  background: var(--accent);
+  color: var(--surface);
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 

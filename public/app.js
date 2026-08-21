@@ -3345,7 +3345,7 @@ function renderAddRowButton(grid, type, numMonths) {
   addCell.style.borderBottom = "none";
   const addBtn = document.createElement("button");
   addBtn.className = "extrap-add-row-btn";
-  addBtn.textContent = `+ Add ${type === "income" ? "income" : "expense"}`;
+  addBtn.textContent = `+ Add ${type === "income" ? "income" : "expense"} row`;
   addBtn.addEventListener("click", () => {
     const input = document.createElement("input");
     input.type = "text";
@@ -3403,7 +3403,7 @@ function renderBalanceRow(grid, months) {
   // Label
   const labelCell = document.createElement("div");
   labelCell.className = "extrap-cell extrap-cell-label extrap-cell-balance";
-  labelCell.textContent = "Balance";
+  labelCell.textContent = "Ending Balance";
   grid.appendChild(labelCell);
 
   // Running balance (starts from starting_balance)

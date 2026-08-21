@@ -396,7 +396,8 @@ window.addEventListener("load", () => {
 });
 const rowsEl = document.getElementById("expense-list");
 const summaryGrid = document.getElementById("summary-grid");
-const summaryHeading = document.getElementById("summary-heading");
+const summaryMonthLabel = document.getElementById("summary-month-label");
+const summaryTotalAmount = document.getElementById("summary-total-amount");
 const comparisonCtx = document.getElementById("comparison-chart");
 const detailsList = document.getElementById("details-list");
 
@@ -661,15 +662,8 @@ function pieTotal(pie) {
 
 function renderSummary(pieData, lastMonthPie, avg3Pie, avg6Pie) {
   const total = pieTotal(pieData);
-  const lastMonthTotal = pieTotal(lastMonthPie);
-  const avg3Total = pieTotal(avg3Pie);
-  const avg6Total = pieTotal(avg6Pie);
+  summaryTotalAmount.textContent = formatAmountRounded(total);
   summaryGrid.innerHTML = "";
-  // Total item
-  const totalDiv = document.createElement("div");
-  totalDiv.className = "summary-item total-item";
-  totalDiv.innerHTML = `<span class="summary-dot" style="background:var(--accent)"></span><div class="summary-info"><span class="summary-label">Total</span><span class="summary-amount">${formatAmountRounded(total)}</span>${comparisonLine(total, lastMonthTotal, avg3Total, avg6Total)}</div>`;
-  summaryGrid.appendChild(totalDiv);
   // Category items
   for (const cat of categories) {
     const val = pieData[cat.name] || 0;
@@ -711,7 +705,7 @@ async function refreshAll() {
 
     if (summaryRes) {
       const mn = MONTH_NAMES[month - 1];
-      summaryHeading.textContent = `${mn} ${year} Summary`;
+      summaryMonthLabel.textContent = `${mn} ${year}`.toUpperCase();
       renderSummary(
         summaryRes.pie,
         avgRes ? avgRes.lastMonth : null,
@@ -2457,7 +2451,7 @@ function updateAbroadModeInfo() {
   if (abroadMode.active && abroadMode.currency) {
     const rate = currencyRates.find(r => r.code === abroadMode.currency);
     if (rate) {
-      infoEl.textContent = `Abroad mode is on. Amounts entered in ${abroadMode.currency} will be converted to ${baseCurrency} at the rate of ${rate.rate} set in your currency settings.`;
+      infoEl.textContent = `Abroad mode · ${getCurrencySymbol(abroadMode.currency)} converts at ${rate.rate} to ${getCurrencySymbol(baseCurrency)}`;
       infoEl.style.display = "block";
       if (amountLabel) amountLabel.textContent = `Amount (${getCurrencySymbol(abroadMode.currency)})`;
     } else {

@@ -523,7 +523,7 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 .batch-desc { font-size: 0.72rem; color: var(--text-secondary); margin: -6px 0 12px; }
 .batch-grid { grid-template-columns: 1fr; }
 .form-msg { margin-top: 6px; font-size: 0.74rem; }
-.form-msg.success { color: var(--green); }
+.form-msg.success { color: var(--text-secondary); }
 .form-msg.error { color: var(--red); }
 
 /* ── Table ── */
@@ -1001,6 +1001,8 @@ tbody tr:hover td { background: var(--accent-dim); }
 .date-format-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
 .date-format-row label { flex: 1; min-width: 140px; }
 .date-format-row button { white-space: nowrap; }
+.date-format-row select,
+.date-format-row button { height: 34px; }
 .color-swatches { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
 .color-swatch { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: transform 0.15s, border-color 0.15s; }
 .color-swatch:hover { transform: scale(1.2); }
@@ -1322,6 +1324,9 @@ body { overflow-x: clip; }
 .extrap-config-row input[type="number"] {
   max-width: 70px;
 }
+.extrap-config-row select,
+.extrap-config-row input[type="number"],
+.extrap-config-row button { height: 34px; }
 
 .extrap-grid-card {
   padding: 0;

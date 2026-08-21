@@ -1,6 +1,39 @@
-# Expenses+ v3.24.0
+# Expenses+ v3.25.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+
+## What's New in v3.25.0
+
+### Hero Summary Card
+- **Month + big total** — the summary card now leads with the month/year label (e.g. "AUGUST 2026") and a large serif total amount on the left, with the "vs 1mo · 3mo · 6mo" hint on the right
+- **Category cards auto-fit** — the category cards now use a responsive grid that fits **3 per row** on desktop; fewer cards stretch to fill (1 = full width, 2 = 50/50, 3 = 33.33%), and any remainder wraps to the next row and fills it
+
+### Three-Layer Color System
+- **Layered surfaces** — introduced a third, brighter "elevated" layer (closer to white) for category cards and text-input fields, distinct from the page background and the main card surface
+- **Subtle shadows** — main/expense cards and the elevated items each get a very light shadow for depth
+- **Tuned tones** — the surface color was pulled slightly toward the background, and the elevated color is a soft off-white
+
+### Search Bars
+- **Search icons** — binocular search icons added to the Tracker, Reports, and mobile Reports search bars
+- **Consistent heights** — search bars and the "All" button now match the height of the input fields (date, details, category, amount)
+- **Full-width filters** — on web, the Reports filters row (search + All + Year + Month + Category) fills the card width, with the search bar expanding to fill the remaining space
+
+### Reports Tab
+- **Two main cards** — the filters/actions/summary now live in one padded card, and the table in a separate card below
+- **Day chips** — day-of-month chips use the elevated color with visible borders, and scroll within the card on mobile
+
+### Spending Trends Chart
+- **Legends removed** — the chart legend is gone for a cleaner look
+- **Custom hover tooltip** — hovering a bar shows the month (e.g. "MAR '26"), each category with its amount, and the total
+- **Short month labels** — 3-letter month abbreviations (e.g. "SEP '26") so all 12 fit horizontally on web; mobile skips alternate months to avoid overlap
+
+### Tracker & Forecast Polish
+- **Group headers** — removed the dot before "Today / Last Week / Earlier This Month" and made the labels unbold
+- **Add Expense actions** — "Add expense" + "Clear" now fill the card width (Clear stays small); the mobile FAB reads "Add expense"
+- **Forecast** — "Starting/Ending balance" labels lowercased, and the in-between data (row labels, amounts, section headers) unbolded while the balance rows stay bold
+
+### Layout
+- **Narrower desktop** — the overall container width was reduced by 15% on web (mobile unchanged)
 
 ## What's New in v3.24.0
 

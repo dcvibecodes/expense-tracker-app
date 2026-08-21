@@ -290,8 +290,30 @@ function populateCategorySelect(sel, includeAll) {
   if (current && [...sel.options].some(o => o.value === current)) sel.value = current;
 }
 
+// ===== CSRF TOKEN =====
+let csrfToken = null;
+
+async function getCsrfToken() {
+  try {
+    const res = await fetch("/api/csrf-token");
+    if (res.ok) {
+      const data = await res.json();
+      csrfToken = data.token;
+    }
+  } catch {}
+}
+
+// Fetch CSRF token on load
+getCsrfToken();
+
 // ===== SAFE FETCH WRAPPER =====
 async function safeFetch(url, options) {
+  options = options || {};
+  // Auto-include CSRF token on state-changing requests
+  if (csrfToken && options.method && ["POST", "PUT", "PATCH", "DELETE"].includes(options.method.toUpperCase())) {
+    options.headers = options.headers || {};
+    options.headers["X-CSRF-Token"] = csrfToken;
+  }
   try {
     const res = await fetch(url, options);
     if (!res.ok && res.status === 429) {
@@ -879,7 +901,7 @@ expenseForm.addEventListener("submit", async e => {
         const rate = currencyRates.find(r => r.code === abroadMode.currency);
         if (rate) dupAmount = Math.round(amountNum * rate.rate * 100) / 100;
       }
-      const dupRes = await fetch("/api/expenses/check-duplicate", {
+      const dupRes = await safeFetch("/api/expenses/check-duplicate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date, details, amount: dupAmount })
@@ -3644,7 +3666,7 @@ document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadFor
     scratchpadStatus.textContent = "Saving...";
     scratchpadStatus.className = "scratchpad-status";
     try {
-      const res = await fetch("/api/scratchpad", {
+      const res = await safeFetch("/api/scratchpad", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text })

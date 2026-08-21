@@ -223,10 +223,45 @@ app.use(session({
   cookie: {
     httpOnly: true,
     secure: false,
-    sameSite: "lax",
+    sameSite: "strict",
     maxAge: 7 * 24 * 60 * 60 * 1000 // 1 week
   }
 }));
+
+// --- CSRF Protection ---
+// Exempt paths that need to work before auth or before the frontend has a token
+const CSRF_EXEMPT_PATHS = [
+  "/api/lock/status",
+  "/api/lock/unlock",
+  "/api/lock/recovery",
+  "/api/lock/setup",
+  "/api/lock/disable",
+  "/api/csrf-token"
+];
+
+// Ensure every session has a CSRF token
+function csrfTokenMiddleware(req, res, next) {
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = crypto.randomBytes(32).toString("hex");
+  }
+  next();
+}
+
+// Validate CSRF token on state-changing requests
+function csrfProtectionMiddleware(req, res, next) {
+  // Only check POST, PUT, PATCH, DELETE
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();
+
+  // Exempt certain paths
+  if (CSRF_EXEMPT_PATHS.includes(req.path)) return next();
+
+  // For requests with Content-Type: application/json, check X-CSRF-Token header
+  const token = req.headers["x-csrf-token"];
+  if (!token || token !== req.session.csrfToken) {
+    return res.status(403).json({ error: "Invalid CSRF token. Please refresh and try again." });
+  }
+  next();
+}
 
 function authMiddleware(req, res, next) {
   const openPaths = [
@@ -339,6 +374,13 @@ function getLockPage() {
 </html>`;
 }
 
+// CSRF token endpoint — returns the current session's CSRF token
+app.get("/api/csrf-token", (req, res) => {
+  return res.json({ token: req.session.csrfToken || "" });
+});
+
+app.use(csrfTokenMiddleware);
+app.use(csrfProtectionMiddleware);
 app.use(authMiddleware);
 app.use(compression());
 app.use(express.static(path.join(__dirname, "public"), {

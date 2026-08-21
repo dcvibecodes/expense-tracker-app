@@ -305,7 +305,6 @@ button, a, input, select, textarea, [tabindex] {
 .card h2 { font-family: 'Fraunces', serif; font-size: 1.125rem; font-weight: 600; margin-bottom: 12px; color: var(--text); letter-spacing: -0.01em; }
 
 /* Cards that hold a list of floating cards stay transparent */
-.report-table-card,
 .expense-list-card {
   background: transparent;
   border: none;
@@ -314,6 +313,14 @@ button, a, input, select, textarea, [tabindex] {
 }
 .expense-list-card h2 {
   padding: 0 16px;
+}
+.report-filters-card,
+.report-table-card {
+  padding: 20px;
+}
+.report-table-card {
+  padding: 0;
+  overflow: hidden;
 }
 
 /* ── Forms ── */
@@ -755,6 +762,13 @@ tbody tr:hover td { background: var(--accent-dim); }
 .search-all-toggle:hover { border-color: var(--accent); color: var(--accent); }
 .search-all-toggle.active { background: var(--accent); color: var(--surface); border-color: var(--accent); }
 
+@media (min-width: 769px) {
+  /* Reports filters row fills full width on desktop */
+  .report-range > label:first-child { flex: 1 1 200px; }
+  .report-range > label:not(:first-child) { flex: 0 0 auto; }
+  .search-all-toggle { padding-left: 10px; padding-right: 10px; }
+}
+
 .report-filters-content {
   padding: 0;
   background: transparent;
@@ -830,13 +844,6 @@ tbody tr:hover td { background: var(--accent-dim); }
 .report-table-wrap { overflow-x: auto; }
 .report-desktop-view { display: block; }
 .report-mobile-cards { display: none; }
-@media (min-width: 769px) {
-  .report-table-wrap {
-    background: var(--surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius);
-  }
-}
 .report-empty { padding: 32px; color: var(--text-faint); text-align: center; font-size: 0.76rem; }
 
 .rpt { min-width: 600px; }
@@ -1209,7 +1216,9 @@ body { overflow-x: clip; }
     margin-right: 12px;
   }
   .summary-card,
-  .charts-card {
+  .charts-card,
+  .report-filters-card,
+  .report-table-card {
     margin-left: 12px;
     margin-right: 12px;
   }
@@ -1310,7 +1319,7 @@ body { overflow-x: clip; }
     width: 100%;
   }
 
-  .report-table-card > .report-filters-content { display: none !important; }
+  .report-filters-card > .report-filters-content { display: none !important; }
   .mobile-report-search-bar { display: flex !important; }
   .report-totals-bar { padding-left: 12px; padding-right: 12px; }
 }
@@ -1324,7 +1333,9 @@ body { overflow-x: clip; }
     margin-right: 10px;
   }
   .summary-card,
-  .charts-card {
+  .charts-card,
+  .report-filters-card,
+  .report-table-card {
     margin-left: 10px;
     margin-right: 10px;
   }

@@ -90,7 +90,7 @@ button, a, input, select, textarea, [tabindex] {
   align-items: center;
   justify-content: space-between;
 }
-.app-title { font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.25rem; letter-spacing: -0.025em; }
+.app-title { font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.375rem; letter-spacing: -0.025em; }
 .header-actions { display: flex; gap: 2px; align-items: center; }
 
 .header-icon {
@@ -179,7 +179,7 @@ button, a, input, select, textarea, [tabindex] {
 
 .bottom-nav-btn {
   display: flex; align-items: center; gap: 5px; background: transparent;
-  border: none; padding: 6px 14px; font-size: 0.72rem;
+  border: none; padding: 6px 14px; font-size: 0.8125rem;
   font-weight: 550; color: var(--text-secondary); cursor: pointer; border-radius: 5px;
   white-space: nowrap; transition: all 0.15s; font-family: inherit;
 }
@@ -286,7 +286,7 @@ button, a, input, select, textarea, [tabindex] {
   padding: 16px;
   margin-bottom: 14px;
 }
-.card h2 { font-family: 'Fraunces', serif; font-size: 0.82rem; font-weight: 600; margin-bottom: 12px; color: var(--text); letter-spacing: -0.01em; }
+.card h2 { font-family: 'Fraunces', serif; font-size: 1.125rem; font-weight: 600; margin-bottom: 12px; color: var(--text); letter-spacing: -0.01em; }
 
 /* Cards that hold a list of floating cards stay transparent */
 .report-table-card,
@@ -305,11 +305,11 @@ button, a, input, select, textarea, [tabindex] {
 .add-grid { grid-template-columns: auto 1fr auto auto; }
 .add-grid > div { grid-column: 1 / -1; }
 
-label { display: flex; flex-direction: column; gap: 3px; font-size: 0.7rem; font-weight: 500; color: var(--text-secondary); }
+label { display: flex; flex-direction: column; gap: 3px; font-size: 0.8125rem; font-weight: 500; color: var(--text-secondary); }
 
 input, select {
   padding: 7px 10px; border: 1px solid var(--border); border-radius: 5px;
-  font-size: 0.8rem; background: var(--bg); color: var(--text); min-height: 34px;
+  font-size: 0.9375rem; background: var(--bg); color: var(--text); min-height: 34px;
   outline: none; line-height: 1.4; font-family: inherit; transition: border-color 0.15s;
 }
 input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
@@ -341,25 +341,25 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 /* ── Buttons ── */
 .add-btn {
   padding: 6px 12px; background: var(--accent); color: var(--surface); border: none;
-  border-radius: 5px; font-weight: 550; cursor: pointer; font-size: 0.74rem;
+  border-radius: 5px; font-weight: 550; cursor: pointer; font-size: 0.875rem;
   white-space: nowrap; min-height: 34px; font-family: inherit; transition: opacity 0.15s;
 }
 .add-btn:hover { opacity: 0.85; }
 .add-btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
 
-.save-btn { padding: 6px 14px; background: var(--accent); color: var(--surface); border: none; border-radius: 5px; font-weight: 550; cursor: pointer; min-height: 34px; font-family: inherit; font-size: 0.74rem; }
+.save-btn { padding: 6px 14px; background: var(--accent); color: var(--surface); border: none; border-radius: 5px; font-weight: 550; cursor: pointer; min-height: 34px; font-family: inherit; font-size: 0.875rem; }
 .save-btn:hover { opacity: 0.85; }
 
-.cancel-btn { padding: 6px 14px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; min-height: 34px; font-family: inherit; font-size: 0.74rem; transition: all 0.15s; }
+.cancel-btn { padding: 6px 14px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; min-height: 34px; font-family: inherit; font-size: 0.875rem; transition: all 0.15s; }
 .cancel-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
 
-.btn-secondary { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 5px; padding: 6px 12px; font-size: 0.72rem; font-weight: 550; cursor: pointer; min-height: 34px; font-family: inherit; transition: all 0.15s; }
+.btn-secondary { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 5px; padding: 6px 12px; font-size: 0.8125rem; font-weight: 550; cursor: pointer; min-height: 34px; font-family: inherit; transition: all 0.15s; }
 .btn-secondary:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
 
 /* ── Date with Today button ── */
 .date-with-today { display: flex; gap: 5px; align-items: stretch; }
 .date-with-today input[type="date"] { flex: 1; }
-.today-btn { padding: 0 8px; font-size: 0.66rem; font-weight: 600; min-height: 34px; white-space: nowrap; background: transparent; color: var(--text-faint); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; transition: all 0.15s; }
+.today-btn { padding: 0 8px; font-size: 0.75rem; font-weight: 600; min-height: 34px; white-space: nowrap; background: transparent; color: var(--text-faint); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; transition: all 0.15s; }
 .today-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
 
 /* ── Summary ── */
@@ -368,8 +368,8 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 .summary-item { flex: 1 1 0; min-width: 120px; background: var(--surface); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 10px; display: flex; align-items: center; gap: 8px; }
 .summary-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .summary-info { display: flex; flex-direction: column; }
-.summary-label { font-size: 0.62rem; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; }
-.summary-amount { font-family: 'Fraunces', serif; font-size: 0.92rem; font-weight: 700; color: var(--text); line-height: 1.3; word-break: break-word; font-variant-numeric: tabular-nums; }
+.summary-label { font-size: 0.72rem; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; }
+.summary-amount { font-family: 'Fraunces', serif; font-size: 1.25rem; font-weight: 700; color: var(--text); line-height: 1.3; word-break: break-word; font-variant-numeric: tabular-nums; }
 .total-item { background: var(--accent-dim); border-color: rgba(0,0,0,0.08); }
 [data-theme="dark"] .total-item { border-color: rgba(255,255,255,0.1); }
 .total-item .summary-amount { color: var(--accent); }
@@ -428,7 +428,7 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 .chart-panel h3 {
   margin-bottom: 8px;
   flex-shrink: 0;
-  font-size: 0.68rem;
+  font-size: 0.875rem;
   font-weight: 600;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -462,7 +462,7 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
   background: transparent;
   border: none;
   border-radius: 4px;
-  font-size: 0.72rem;
+  font-size: 0.8125rem;
   font-weight: 550;
   font-family: inherit;
   color: var(--text-secondary);
@@ -514,10 +514,10 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 
 /* ── Table ── */
 .table-wrap { overflow-x: hidden; -webkit-overflow-scrolling: touch; }
-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; table-layout: fixed; }
+table { width: 100%; border-collapse: collapse; font-size: 0.875rem; table-layout: fixed; }
 thead { background: var(--bg); }
 th, td { padding: 7px 8px; text-align: left; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; font-variant-numeric: tabular-nums; }
-th { font-weight: 600; font-size: 0.66rem; text-transform: uppercase; color: var(--text-faint); letter-spacing: 0.4px; }
+th { font-weight: 600; font-size: 0.75rem; text-transform: uppercase; color: var(--text-faint); letter-spacing: 0.4px; }
 th.col-date { width: 90px; }
 th.col-amount { width: 100px; text-align: right; }
 th.col-actions { width: 130px; text-align: center; }
@@ -526,7 +526,7 @@ th:nth-child(3) { width: 90px; }
 td:nth-child(2) { white-space: normal; word-break: break-word; overflow: hidden; text-overflow: ellipsis; }
 td:last-child { text-align: center; }
 td:nth-last-child(2) { text-align: right; }
-.original-amt { font-size: 0.64rem; color: var(--text-faint); white-space: nowrap; }
+.original-amt { font-size: 0.75rem; color: var(--text-faint); white-space: nowrap; }
 tr:last-child td { border-bottom: none; }
 tbody tr:hover td { background: var(--accent-dim); }
 @media (max-width: 768px) {
@@ -540,7 +540,7 @@ tbody tr:hover td { background: var(--accent-dim); }
 .action-btn svg { display: block; }
 
 /* ── Category badges ── */
-.cat-badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 0.64rem; font-weight: 600; }
+.cat-badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
 
 /* ── Expense list (card layout) ── */
 .expense-list {
@@ -563,7 +563,7 @@ tbody tr:hover td { background: var(--accent-dim); }
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 0.7rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.4px;
   text-transform: uppercase;
@@ -583,7 +583,7 @@ tbody tr:hover td { background: var(--accent-dim); }
   font-variant-numeric: tabular-nums;
 }
 .group-count {
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-faint);
   background: var(--accent-dim);
@@ -592,7 +592,7 @@ tbody tr:hover td { background: var(--accent-dim); }
   line-height: 1.5;
 }
 .group-subtotal {
-  font-size: 0.72rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -630,7 +630,7 @@ tbody tr:hover td { background: var(--accent-dim); }
 .card-details {
   font-family: 'Outfit', sans-serif;
   font-weight: 500;
-  font-size: 0.875rem;
+  font-size: 1rem;
   line-height: 1.375;
   color: var(--text);
   flex: 1;
@@ -642,7 +642,7 @@ tbody tr:hover td { background: var(--accent-dim); }
 .card-amount {
   font-family: 'Fraunces', serif;
   font-weight: 500;
-  font-size: 1rem;
+  font-size: 1.125rem;
   letter-spacing: -0.02em;
   color: var(--text);
   font-variant-numeric: tabular-nums;
@@ -651,7 +651,7 @@ tbody tr:hover td { background: var(--accent-dim); }
   margin-left: 8px;
 }
 .card-meta {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--text-secondary);
   flex: 1;
   min-width: 0;
@@ -718,7 +718,7 @@ tbody tr:hover td { background: var(--accent-dim); }
   color: var(--text-faint);
   cursor: pointer;
   font: inherit;
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   line-height: 1;
   min-height: 18px;
   padding: 3px 4px;
@@ -775,7 +775,7 @@ tbody tr:hover td { background: var(--accent-dim); }
 }
 .rpt-row:hover { background: var(--accent-dim); }
 
-.rpt-expense { min-height: 34px; font-size: 0.78rem; }
+.rpt-expense { min-height: 34px; font-size: 0.875rem; }
 .rpt-expense:last-child { border-bottom: none; }
 .rpt-flat-row.rpt-expense { background: var(--surface); }
 
@@ -797,7 +797,7 @@ tbody tr:hover td { background: var(--accent-dim); }
 .rpt-header {
   background: var(--surface);
   min-height: 32px;
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   border-bottom: 2px solid var(--border);
 }
 .rpt-header:hover { background: var(--surface); }
@@ -805,7 +805,7 @@ tbody tr:hover td { background: var(--accent-dim); }
 .rpt-flat-row.rpt-header > span {
   display: flex;
   align-items: center;
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.4px;
@@ -896,7 +896,7 @@ tbody tr:hover td { background: var(--accent-dim); }
 .report-totals-bar {
   border-bottom: 1px solid var(--border-subtle);
   padding: 8px 16px;
-  font-size: 0.68rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--text-faint);
   line-height: 1.5;
@@ -909,7 +909,7 @@ tbody tr:hover td { background: var(--accent-dim); }
 }
 
 /* ── Settings ── */
-.settings-desc { font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.5; }
+.settings-desc { font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.5; }
 .categories-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
 .category-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--surface); flex-wrap: wrap; transition: border-color 0.15s; }
 .category-item:hover { border-color: var(--border); }
@@ -938,7 +938,7 @@ tbody tr:hover td { background: var(--accent-dim); }
   pointer-events: none;
 }
 .color-picker-inline { display: flex; gap: 4px; flex-wrap: wrap; padding: 6px 0 3px; align-items: center; width: 100%; order: 99; }
-.category-name { flex: 1; font-size: 0.76rem; font-weight: 500; color: var(--text); }
+.category-name { flex: 1; font-size: 0.875rem; font-weight: 500; color: var(--text); }
 .category-name-input { flex: 1; font-size: 0.76rem; border: 1px solid var(--border); border-radius: 5px; padding: 5px 8px; min-height: 30px; outline: none; background: var(--bg); color: var(--text); font-family: inherit; }
 .category-name-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
 .cat-rename-btn, .cat-delete-btn { background: none; border: none; cursor: pointer; font-size: 0.78rem; color: var(--text-faint); padding: 3px 5px; border-radius: 4px; transition: all 0.15s; display: inline-flex; align-items: center; justify-content: center; }
@@ -1093,7 +1093,7 @@ body { overflow-x: clip; }
     flex-direction: column;
     gap: 2px;
     padding: 5px 8px;
-    font-size: 0.6rem;
+    font-size: 0.6875rem;
     border: none;
     background: transparent;
     border-radius: 6px;
@@ -1117,11 +1117,11 @@ body { overflow-x: clip; }
 
   #add-expense-card { display: none; }
 
-  .summary-amount { font-size: 0.85rem; }
+  .summary-amount { font-size: 1.125rem; }
   .summary-item { min-width: 0; padding: 8px; }
 
   .card { padding: 12px; margin-bottom: 10px; border-radius: 12px; }
-  .card h2 { font-size: 0.78rem; margin-bottom: 8px; }
+  .card h2 { font-size: 1rem; margin-bottom: 8px; }
   .expense-list-card { padding: 12px 0; }
   .expense-list-card h2 { padding: 0 12px; }
   #tab-settings .card,
@@ -1167,7 +1167,7 @@ body { overflow-x: clip; }
     padding: 4px 6px;
     border: 1px solid transparent;
     border-radius: 999px;
-    font-size: 0.66rem;
+    font-size: 0.75rem;
     text-decoration: none;
   }
   .report-day-link.in-range {
@@ -1194,7 +1194,7 @@ body { overflow-x: clip; }
   .edit-grid { grid-template-columns: 1fr; }
 
   .app-header { padding: 8px 12px; }
-  .app-title { font-size: 0.78rem; }
+  .app-title { font-size: 1.125rem; }
 
   .pivot-header { flex-direction: column; align-items: flex-start; gap: 6px; }
 
@@ -1302,7 +1302,7 @@ body { overflow-x: clip; }
 .extrap-grid {
   display: grid;
   width: 100%;
-  font-size: 0.74rem;
+  font-size: 0.875rem;
 }
 
 .extrap-grid .extrap-row {
@@ -1326,12 +1326,12 @@ body { overflow-x: clip; }
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 0.74rem;
+  font-size: 0.875rem;
 }
 
 .extrap-grid .extrap-cell-header {
   font-weight: 600;
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   color: var(--text-faint);

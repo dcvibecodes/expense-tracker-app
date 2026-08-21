@@ -1190,7 +1190,7 @@ function renderCharts(chartData) {
   .filter(name => categoriesSet.has(name));
 
 const labels = months.map(
-  m => `${MONTH_NAMES[m.month - 1]} ${m.year}`
+  m => `${MONTH_NAMES[m.month - 1].slice(0, 3)} '${String(m.year).slice(-2)}`
 );
 
 let datasets;
@@ -1235,6 +1235,28 @@ if (chartView === "amounts") {
     comparisonChart.destroy();
   }
 
+  // Create/update a custom tooltip element for the chart
+  let chartTooltipEl = document.getElementById("chart-tooltip");
+  if (!chartTooltipEl) {
+    chartTooltipEl = document.createElement("div");
+    chartTooltipEl.id = "chart-tooltip";
+    chartTooltipEl.style.position = "fixed";
+    chartTooltipEl.style.pointerEvents = "none";
+    chartTooltipEl.style.background = "var(--surface)";
+    chartTooltipEl.style.border = "1px solid var(--border)";
+    chartTooltipEl.style.borderRadius = "8px";
+    chartTooltipEl.style.padding = "8px 12px";
+    chartTooltipEl.style.fontSize = "0.75rem";
+    chartTooltipEl.style.fontFamily = "inherit";
+    chartTooltipEl.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+    chartTooltipEl.style.zIndex = "1200";
+    chartTooltipEl.style.opacity = "0";
+    chartTooltipEl.style.transition = "opacity 0.15s";
+    chartTooltipEl.style.maxWidth = "240px";
+    chartTooltipEl.style.color = "var(--text)";
+    document.body.appendChild(chartTooltipEl);
+  }
+
   comparisonChart = new Chart(comparisonCtx, {
     type: chartView === "amounts" ? "bar" : "line",
     data: {
@@ -1251,32 +1273,72 @@ if (chartView === "amounts") {
     }
   },
   plugins: {
-  legend: {
-    display: true
-  },
-  tooltip: {
-  callbacks: {
-    label: ctx => {
-      const monthIndex = ctx.dataIndex;
-      const category = ctx.dataset.label.toLowerCase();
+    legend: {
+      display: false
+    },
+    tooltip: {
+      enabled: false,
+      external: function(context) {
+        const { chart, tooltip } = context;
+        const el = document.getElementById("chart-tooltip");
+        if (!el) return;
+        if (tooltip.opacity === 0 || !tooltip.dataPoints || !tooltip.dataPoints.length) {
+          el.style.opacity = "0";
+          return;
+        }
+        const dataIndex = tooltip.dataPoints[0].dataIndex;
+        const m = months[dataIndex];
+        const shortLabel = `${MONTH_NAMES[m.month - 1].slice(0, 3).toUpperCase()} '${String(m.year).slice(-2)}`;
 
-      const actualAmount =
-        data[monthIndex][category] || 0;
+        let total = 0;
+        let rows = "";
+        for (let i = 0; i < chart.data.datasets.length; i++) {
+          const ds = chart.data.datasets[i];
+          const value = Number(ds.data[dataIndex]) || 0;
+          if (value <= 0) continue;
+          total += value;
+          rows += `<div style="display:flex;justify-content:space-between;align-items:center;gap:16px;">
+              <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ds.backgroundColor};margin-right:6px;"></span><span style="color:var(--text-secondary);">${ds.label}</span></span>
+              <span style="font-weight:600;">${formatAmountRounded(value)}</span>
+            </div>`;
+        }
 
-      if (chartView === "percentages") {
-        const percentage = ctx.parsed.y || 0;
+        el.innerHTML = `
+          <div style="font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:5px;">${shortLabel}</div>
+          ${rows}
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;border-top:1px solid var(--border-subtle);margin-top:6px;padding-top:5px;">
+            <span style="color:var(--text-secondary);">Total</span>
+            <span style="font-weight:700;">${formatAmountRounded(total)}</span>
+          </div>`;
 
-        return `${ctx.dataset.label}: ${formatAmount(actualAmount)} (${percentage.toFixed(1)}%)`;
+        el.style.opacity = "1";
+        const pos = chart.canvas.getBoundingClientRect();
+        const elW = el.offsetWidth;
+        const elH = el.offsetHeight;
+        let left = pos.left + tooltip.caretX + 12;
+        let top = pos.top + tooltip.caretY + 8;
+        if (left + elW > window.innerWidth - 8) left = pos.left + tooltip.caretX - elW - 12;
+        if (top + elH > window.innerHeight - 8) top = pos.top + tooltip.caretY - elH - 8;
+        el.style.left = left + "px";
+        el.style.top = top + "px";
       }
-
-      return `${ctx.dataset.label}: ${formatAmount(actualAmount)}`;
     }
-  }
-}
-},
+  },
 scales: {
   x: {
-    stacked: chartView === "amounts"
+    stacked: chartView === "amounts",
+    ticks: {
+      autoSkip: false,
+      maxRotation: 0,
+      callback: function(value, index) {
+        if (window.innerWidth <= 480) {
+          if (index % 3 !== 0) return "";
+        } else if (window.innerWidth <= 768) {
+          if (index % 2 !== 0) return "";
+        }
+        return labels[index];
+      }
+    }
   },
   y: {
     stacked: chartView === "amounts",

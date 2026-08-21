@@ -289,7 +289,7 @@ button, a, input, select, textarea, [tabindex] {
   background: var(--surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
-  padding: 16px;
+  padding: 20px;
   margin-bottom: 14px;
 }
 .card h2 { font-family: 'Fraunces', serif; font-size: 1.125rem; font-weight: 600; margin-bottom: 12px; color: var(--text); letter-spacing: -0.01em; }
@@ -1168,7 +1168,7 @@ body { overflow-x: clip; }
   .summary-hero-amount { font-size: 1.875rem; }
   .summary-item { min-width: 0; padding: 8px; }
 
-  .card { padding: 12px; margin-bottom: 10px; border-radius: 12px; }
+  .card { padding: 16px; margin-bottom: 10px; border-radius: 12px; }
   .card h2 { font-size: 1rem; margin-bottom: 8px; }
   .expense-list-card { padding: 12px 0; }
   .expense-list-card h2 { padding: 0 12px; }
@@ -1286,7 +1286,7 @@ body { overflow-x: clip; }
 
 @media (max-width: 480px) {
   .container { padding: 8px 6px; }
-  .card { padding: 10px; margin-bottom: 8px; }
+  .card { padding: 14px; margin-bottom: 8px; }
   #tab-settings .card,
   #tab-forecast .card {
     margin-left: 10px;

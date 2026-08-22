@@ -1327,6 +1327,12 @@ body { overflow-x: clip; }
     -webkit-touch-callout: none;
   }
 
+  .rpt-compact-card.rpt-selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+    background: var(--accent-dim);
+  }
+
   .report-batch-bar select,
   .report-batch-bar input {
     width: 100%;
@@ -1782,7 +1788,7 @@ body { overflow-x: clip; }
   font-size: 0.68rem;
   color: var(--text-faint);
 }
-.scratchpad-status.saved { color: var(--green); }
+.scratchpad-status.saved { color: var(--text-secondary); }
 
 /* ── Mobile Report Search Bar + Filter Chip ── */
 .mobile-report-search-bar {

@@ -5,12 +5,12 @@ const sharp = require('sharp');
 const OUTPUT_DIR = path.join(__dirname, 'public');
 
 function svg() {
+  // Enhanced ledger-paper icon (scaled from the 32x32 reference to 512x512)
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#0a0a0a"/>
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="118" y="142" width="276" height="228" rx="42" stroke="#34d399" stroke-width="22"/>
-    <path d="M168 206H344M168 306H344" stroke="#236c52" stroke-width="10" opacity="0.78"/>
-  </g>
+  <rect width="512" height="512" rx="128" fill="#12110F"/>
+  <rect x="112" y="136" width="288" height="38.4" rx="19.2" fill="#E8E4D9"/>
+  <rect x="112" y="236.8" width="192" height="38.4" rx="19.2" fill="#E8E4D9"/>
+  <rect x="112" y="337.6" width="240" height="38.4" rx="19.2" fill="#8FAF98"/>
 </svg>`;
 }
 

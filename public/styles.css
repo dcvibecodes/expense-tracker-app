@@ -194,8 +194,8 @@ button, a, input, select, textarea, [tabindex] {
 }
 .bottom-nav-btn .nav-icon { width: 13px; height: 13px; }
 .bottom-nav-btn:hover { color: var(--text); }
-.bottom-nav-btn.active { background: var(--surface); color: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-.bottom-nav-btn.active .nav-icon { stroke: var(--accent); }
+.bottom-nav-btn.active { background: var(--accent); color: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.bottom-nav-btn.active .nav-icon { stroke: var(--surface); }
 .nav-icon { width: 13px; height: 13px; }
 
 /* ── Tab Content ── */
@@ -1201,11 +1201,11 @@ body { overflow-x: clip; }
   }
   .bottom-nav-btn:hover { background: transparent; }
   .bottom-nav-btn.active {
-    background: var(--accent-dim);
-    color: var(--accent);
+    background: var(--accent);
+    color: var(--surface);
     box-shadow: none;
   }
-  .bottom-nav-btn.active .nav-icon { stroke: var(--accent); }
+  .bottom-nav-btn.active .nav-icon { stroke: var(--surface); }
   .bottom-nav-btn .nav-icon { width: 18px; height: 18px; }
 
   body { padding-bottom: 64px; }
@@ -1332,12 +1332,6 @@ body { overflow-x: clip; }
     box-shadow: 0 0 0 1px var(--accent);
     background: var(--accent-dim);
   }
-
-  .report-batch-bar select,
-  .report-batch-bar input {
-    width: 100%;
-  }
-
   .report-filters-card > .report-filters-content { display: none !important; }
   .mobile-report-search-bar { display: flex !important; }
   .report-totals-bar { padding-left: 12px; padding-right: 12px; }

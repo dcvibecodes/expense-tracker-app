@@ -788,11 +788,13 @@ function openEditModal(row) {
   editAmount.value = row.amount;
   document.getElementById("edit-note").value = row.note || "";
   editModal.classList.add("open");
+  document.body.style.overflow = "hidden";
   if (activeModalTrap) activeModalTrap();
   activeModalTrap = trapFocus(editModal.querySelector(".modal-content"));
 }
 function closeEditModal() {
   editModal.classList.remove("open");
+  document.body.style.overflow = "";
   if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
 }
 
@@ -1023,6 +1025,7 @@ function openNotesModal(row) {
   document.getElementById("notes-modal-text").value = row.note || "";
   const modal = document.getElementById("notes-modal");
   modal.classList.add("open");
+  document.body.style.overflow = "hidden";
   if (activeModalTrap) activeModalTrap();
   activeModalTrap = trapFocus(modal.querySelector(".modal-content"));
   document.getElementById("notes-modal-text").focus();
@@ -1030,6 +1033,7 @@ function openNotesModal(row) {
 
 function closeNotesModal() {
   document.getElementById("notes-modal").classList.remove("open");
+  document.body.style.overflow = "";
   notesCurrentExpenseId = null;
   if (activeModalTrap) { activeModalTrap(); activeModalTrap = null; }
 }
@@ -1290,6 +1294,10 @@ if (chartView === "amounts") {
         const m = months[dataIndex];
         const shortLabel = `${MONTH_NAMES[m.month - 1].slice(0, 3).toUpperCase()} '${String(m.year).slice(-2)}`;
 
+        // In percentages view the dataset values are already 0–100, so show them with a % sign.
+        const isPctView = chartView === "percentages";
+        const fmtTooltipVal = (v) => isPctView ? (Math.round(v) + "%") : formatAmountRounded(v);
+
         let total = 0;
         let rows = "";
         for (let i = 0; i < chart.data.datasets.length; i++) {
@@ -1299,7 +1307,7 @@ if (chartView === "amounts") {
           total += value;
           rows += `<div style="display:flex;justify-content:space-between;align-items:center;gap:16px;">
               <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ds.backgroundColor};margin-right:6px;"></span><span style="color:var(--text-secondary);">${ds.label}</span></span>
-              <span style="font-weight:600;">${formatAmountRounded(value)}</span>
+              <span style="font-weight:600;">${fmtTooltipVal(value)}</span>
             </div>`;
         }
 
@@ -1308,7 +1316,7 @@ if (chartView === "amounts") {
           ${rows}
           <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;border-top:1px solid var(--border-subtle);margin-top:6px;padding-top:5px;">
             <span style="color:var(--text-secondary);">Total</span>
-            <span style="font-weight:700;">${formatAmountRounded(total)}</span>
+            <span style="font-weight:700;">${fmtTooltipVal(total)}</span>
           </div>`;
 
         el.style.opacity = "1";
@@ -1543,8 +1551,8 @@ function updateReportSelectionUI() {
 function clearReportSelection() {
   selectedReportIds.clear();
   updateReportSelectionUI();
-  // Remove mobile selected highlighting
-  document.querySelectorAll(".rpt-flat-row.rpt-selected").forEach(function(row) {
+  // Remove mobile selected highlighting (desktop rows + compact cards)
+  document.querySelectorAll(".rpt-flat-row.rpt-selected, .rpt-compact-card.rpt-selected").forEach(function(row) {
     row.classList.remove("rpt-selected");
   });
 }
@@ -3999,10 +4007,12 @@ scratchpadText.addEventListener("keydown", e => {
   const LONG_PRESS_DURATION = 500; // ms
   const MOVE_THRESHOLD = 10; // px of finger movement allowed before cancel
 
+  const REPORT_ROW_SELECTOR = ".rpt-flat-row.rpt-expense, .rpt-compact-card";
+
   // Long-press start
   reportWrap.addEventListener("touchstart", function(e) {
     if (!isMobile()) return;
-    const row = e.target.closest(".rpt-flat-row.rpt-expense");
+    const row = e.target.closest(REPORT_ROW_SELECTOR);
     if (!row) return;
     // Don't trigger on button/link taps
     if (e.target.closest("button, a, input")) return;
@@ -4038,7 +4048,7 @@ scratchpadText.addEventListener("keydown", e => {
   // Suppress the native long-press context menu (Android/iOS) on report cards
   reportWrap.addEventListener("contextmenu", function(e) {
     if (!isMobile()) return;
-    if (e.target.closest(".rpt-flat-row.rpt-expense")) {
+    if (e.target.closest(REPORT_ROW_SELECTOR)) {
       e.preventDefault();
     }
   });
@@ -4062,7 +4072,7 @@ scratchpadText.addEventListener("keydown", e => {
     // Don't interfere with action buttons
     if (e.target.closest("button, a, input")) return;
 
-    const row = e.target.closest(".rpt-flat-row.rpt-expense");
+    const row = e.target.closest(REPORT_ROW_SELECTOR);
     if (!row) return;
 
     const id = parseInt(row.dataset.id, 10);
@@ -4086,7 +4096,7 @@ scratchpadText.addEventListener("keydown", e => {
 
   function updateMobileSelectedClasses() {
     if (!isMobile()) return;
-    reportWrap.querySelectorAll(".rpt-flat-row.rpt-expense").forEach(function(row) {
+    reportWrap.querySelectorAll(REPORT_ROW_SELECTOR).forEach(function(row) {
       const id = parseInt(row.dataset.id, 10);
       if (selectedReportIds.has(id)) {
         row.classList.add("rpt-selected");

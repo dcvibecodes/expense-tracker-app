@@ -3,7 +3,7 @@
   <head> 
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Expenses+</title>
+    <title>Spend Less</title>
 
     <!-- Favicon -->
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
@@ -20,7 +20,7 @@
     <!-- iOS PWA meta tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Expenses+" />
+    <meta name="apple-mobile-web-app-title" content="Spend Less" />
     <meta name="theme-color" content="#f5efe6" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,7 +35,7 @@
 
     <!-- App Header --> 
     <header class="app-header"> 
-      <span class="app-title">Expenses+</span> 
+      <span class="app-title">Spend Less</span> 
       <div class="header-actions">
         <button id="scratchpad-btn" class="notification-bell" type="button" title="Quick Notes" aria-label="Quick Notes">
           <svg class="header-icon" viewBox="0 0 24 24" fill="none"
@@ -165,24 +165,6 @@
         </section>
 
         <section class="card expense-list-card"> 
-          <div class="tracker-search-bar">
-            <form autocomplete="off" onsubmit="return false;" role="search" class="search-form-wrap">
-              <div class="search-icon-wrap">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input
-                type="search"
-                id="expense-search"
-                name="exp-srch-q-x7k2"
-                placeholder="Search expenses..."
-                autocomplete="off"
-                autocorrect="off"
-                autocapitalize="off"
-                spellcheck="false"
-                role="searchbox"
-              />
-              </div>
-            </form>
-          </div>
           <div class="expense-list" id="expense-list">
             <div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div>
             <div class="skeleton-row"><div class="skeleton skeleton-text" style="width:70px"></div><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:60px"></div><div class="skeleton skeleton-text" style="width:50px"></div></div>
@@ -242,7 +224,7 @@
           <div class="mobile-report-search-bar" id="mobile-report-search-bar">
             <span class="search-icon-wrap">
               <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="search" id="mobile-report-search" placeholder="Search by details" autocomplete="off" />
+              <input type="search" id="mobile-report-search" placeholder="Search expenses..." autocomplete="off" />
             </span>
             <button type="button" id="mobile-report-filter-chip" class="mobile-filter-chip">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
@@ -255,7 +237,7 @@
                 <span class="search-with-toggle">
                   <span class="search-icon-wrap">
                     <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" id="report-search" placeholder="Search by details" autocomplete="off" />
+                    <input type="text" id="report-search" placeholder="Search expenses..." autocomplete="off" />
                   </span>
                   <button type="button" id="report-search-all-toggle" class="search-all-toggle" title="Search across all data">All</button>
                 </span>

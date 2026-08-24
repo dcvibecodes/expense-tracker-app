@@ -385,10 +385,7 @@ const dateInput = document.getElementById("date");
 const detailsInput = document.getElementById("details");
 const categoryInput = document.getElementById("category");
 const amountInput = document.getElementById("amount");
-const searchInput = document.getElementById("expense-search");
 window.addEventListener("load", () => {
-  // Clear any browser-autofilled value in the search box
-  if (searchInput) searchInput.value = "";
   document.activeElement?.blur();
   requestAnimationFrame(() => {
     window.scrollTo(0, 0);
@@ -521,23 +518,17 @@ if (detailsList) {
 }
 
 async function fetchExpenses() {
-  const search = searchInput.value.trim();
   const params = new URLSearchParams();
 
-  if (search) {
-    // Leave search behavior unchanged
-    params.set("search", search);
-  } else {
-    // Default Tracker view: current month up to today only
-    const now = new Date();
+  // Default Tracker view: current month up to today only
+  const now = new Date();
 
-    params.set("year", now.getFullYear());
-    params.set("month", now.getMonth() + 1);
-    const today =
+  params.set("year", now.getFullYear());
+  params.set("month", now.getMonth() + 1);
+  const today =
   `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-    params.set("through", today);
-  }
+  params.set("through", today);
 
   const res = await safeFetch(`/api/expenses?${params}`);
   if (!res.ok) throw new Error("Failed to fetch expenses");
@@ -965,14 +956,6 @@ expenseForm.addEventListener("submit", async e => {
       document.getElementById("mobile-form-close").click();
     }
   }
-});
-
-let searchDebounce = null;
-searchInput.addEventListener("input", () => {
-  clearTimeout(searchDebounce);
-  const q = searchInput.value.trim();
-  if (q.length === 1) return; // wait for at least 2 chars
-  searchDebounce = setTimeout(refreshAll, 400);
 });
 
 document.getElementById("date-today-btn").addEventListener("click", () => {

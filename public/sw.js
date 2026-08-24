@@ -1,4 +1,4 @@
-const CACHE_NAME = "expense-tracker-v19";
+const CACHE_NAME = "spend-less-v1";
 const STATIC_ASSETS = [
   "/",
   "/manifest.json",

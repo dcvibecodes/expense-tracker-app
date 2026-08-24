@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   Expenses+ — Monochrome Design Language
+   Spend Less — Monochrome Design Language
    Inspired by Dictation Tool / DocuChat AI design system
    ═══════════════════════════════════════════════════════════ */
 
@@ -536,8 +536,6 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
 .filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; align-items: end; }
 .filters label { display: flex; flex-direction: column; gap: 3px; font-size: 0.7rem; color: var(--text-secondary); }
 .filters input, .filters select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.8rem; background: var(--bg); color: var(--text); min-height: 32px; font-family: inherit; }
-.tracker-search-bar { margin-bottom: 12px; }
-.tracker-search-bar .search-form-wrap { margin: 0; padding: 0; border: none; background: none; }
 .search-icon-wrap { position: relative; }
 .search-icon-wrap input {
   padding-left: 30px;
@@ -552,20 +550,6 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
   color: var(--text-faint);
   pointer-events: none;
 }
-.tracker-search-bar input {
-  width: 100%;
-  padding: 7px 10px;
-  padding-left: 30px;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  font-size: 0.76rem;
-  background: var(--elevated);
-  color: var(--text);
-  min-height: 35px;
-  font-family: inherit;
-  transition: border-color 0.15s;
-}
-.tracker-search-bar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
 .batch-operations-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .buttons { display: flex; gap: 5px; align-items: end; }
 .buttons button { flex: 1; white-space: nowrap; padding: 6px 10px; font-size: 0.72rem; }
@@ -1254,6 +1238,9 @@ body { overflow-x: clip; }
   .buttons { flex-wrap: wrap; }
   .report-range { flex-direction: column; align-items: stretch; }
   .report-range label { min-width: 100%; }
+  .search-with-toggle { width: 100%; }
+  .search-with-toggle .search-icon-wrap { flex: 1; min-width: 0; }
+  .search-with-toggle .search-icon-wrap input { width: 100%; }
   .report-range-btns { flex-wrap: wrap; display: flex; gap: 6px; }
   .report-range-btns button { flex: 1; min-width: 0; }
   .report-day-links {

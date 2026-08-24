@@ -1,6 +1,6 @@
-# Expenses+ v3.25.0
+# Spend Less v3.25.0
 
-Personal expense tracking PWA with SQLite database. Part of a unified suite with Portfolio+.
+Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
 
 ## What's New in v3.25.0
 
@@ -168,7 +168,7 @@ This release removes the recurring expense notification system and the "copy exp
 ### Emoji Purge — SVG Icons Everywhere
 - **All action buttons now use SVG icons** — edit (pencil), delete (trash), copy (clipboard), notes (file), save (checkmark), cancel (×) are all inline SVGs that inherit `currentColor`
 - **Consistent cross-platform rendering** — no more emoji differences between Windows, Mac, iOS, and Android
-- **CSV buttons** — now show `↓ CSV` (Unicode down arrow) matching the Portfolio+ style
+- **CSV buttons** — now show `↓ CSV` (Unicode down arrow) matching the Invest More style
 - **Forecast tab** — row delete ✕ replaced with proper SVG × icon
 - **Note toggle link** — cleaned up from "📝 Add note" to plain "Add note"
 
@@ -179,7 +179,7 @@ This release removes the recurring expense notification system and the "copy exp
 ## What's New in v3.15.0
 
 ### Design Overhaul — Monochrome Design Language
-- **Complete visual redesign** — unified design language shared with Portfolio+ and other suite apps (Dictation Tool, DocuChat AI)
+- **Complete visual redesign** — unified design language shared with Invest More and other suite apps (Dictation Tool, DocuChat AI)
 - **Inter font** — switched from system fonts to Inter via Google Fonts for a tighter, more editorial feel
 - **Monochrome accent** — replaced blue (#3b82f6) with near-black (#111) in light mode, near-white (#f5f5f5) in dark mode; buttons, active states, and focus rings all use this neutral accent
 - **No shadows** — cards and surfaces rely on border hierarchy (--border-subtle / --border) instead of box-shadow
@@ -236,7 +236,7 @@ This release removes the recurring expense notification system and the "copy exp
 - **All bottom sheets** — swipe down from the header or when scrolled to top to dismiss; drag handle (gray bar) shown at the top as affordance
 - **Instant dismiss** — no snap-back flash; sheet disappears immediately when threshold is crossed
 
-### Font & Style Consistency (with Portfolio+)
+### Font & Style Consistency (with Invest More)
 - **Summary card values** — PT matched to ET at `1.1rem`
 - **Chart headings (h3)** — PT matched to ET: `0.75rem`, uppercase, letter-spacing
 - **Toast weight** — PT toasts now `font-weight: 600` matching ET
@@ -434,14 +434,14 @@ Recurring series set up before this update will not automatically generate notif
 - **Safe area support** — bottom nav respects iPhone home indicator via `env(safe-area-inset-bottom)`
 - **Bottom-sheet modals** — modals slide up from bottom on small screens
 
-### Design Unification (with Portfolio+)
+### Design Unification (with Invest More)
 - **Toast system** — replaced single error toast with stacking toast notifications (success/error/info, bottom-right)
 - **Custom confirm modal** — all native `confirm()` dialogs replaced with styled modal (consistent cross-platform)
 - **Badge radius** — standardized to `border-radius: 12px`
 - **Summary gap** — unified to 16px
 - **Chart.js** — pinned to v4.4.7, loaded at end of body (was unpinned in head)
 - **Autocomplete** — dropdown restyled: 6px border-radius, accent-bg hover, matching z-index
-- **Focus-visible** — already present (Portfolio+ added to match)
+- **Focus-visible** — already present (Invest More added to match)
 
 ## Features
 

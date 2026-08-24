@@ -1,6 +1,18 @@
-# Spend Less v3.25.0
+# Spend Less v4.0.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.0.0
+
+### Rebrand — "Spend Less"
+- **New name** — the app is now called **Spend Less** (was "Expenses+") everywhere: browser tab title, header, PWA install name, iOS home-screen title, lock screen, and server startup log
+- **New icons** — all icons (favicon, PWA icons, apple-touch-icon) redesigned as a **Fraunces wordmark** — the same serif as the header title — with "Spend" and "Less" stacked on two rows in sepia on a dark rounded square, baked as vector paths so they render identically on every platform
+- **Same app, new look** — no data or functionality changed; only branding and icons
+
+### Tracker & Reports Search
+- **Tracker search removed** — the search bar is gone from the Tracker tab; the tracker now always shows the current month (full search with the "All" toggle lives on the Reports tab)
+- **Reports placeholders** — both Reports search bars now read "Search expenses..."
+- **Mobile filters popover** — the search bar + "All" button now fill the full width of the filters bottom sheet on mobile
 
 ## What's New in v3.25.0
 

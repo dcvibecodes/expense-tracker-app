@@ -1365,6 +1365,7 @@ body { overflow-x: clip; }
   }
 
   .add-btn, .save-btn, .cancel-btn, .btn-secondary { font-size: 0.74rem; padding: 8px 12px; width: 100%; }
+  .report-batch-bar select { width: 100%; }
   .add-form-actions .add-btn,
   .add-form-actions .cancel-btn { width: auto; }
   .add-form-actions .add-btn { flex: 1; }

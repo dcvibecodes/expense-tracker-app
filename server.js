@@ -1075,7 +1075,14 @@ app.get("/api/reports/cumulative", (req, res) => {
       running += daily;
       points.push({ date: iso, daily, cumulative: running });
     }
-    return res.json({ year, points });
+    let futureTotal = 0;
+    let fullYearTotal = running;
+    if (isCurrentYear) {
+      fullYearTotal = Object.values(dailyMap).reduce((a,b)=>a+b,0);
+      futureTotal = fullYearTotal - running;
+      if (futureTotal < 0.005) futureTotal = 0;
+    }
+    return res.json({ year, points, fullYearTotal, futureTotal, isCurrentYear });
   });
 });
 

@@ -1,6 +1,13 @@
-# Spend Less v4.1.0
+# Spend Less v4.2.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.2.0
+
+### Cumulative Spend Caption & Padding
+
+- **Caption now `Showing Jan 1 → Aug 30 (future-dated ₹1,71,582 not yet plotted)`** when current year has future-dated entries; clean `Showing Jan 1 → Aug 30` when none, hidden for past years. No `table total is...` suffix. Backend now returns `fullYearTotal/futureTotal` for the gap.
+- **Even padding** — Cumulative Spend card `padding-bottom:12px` + caption `margin-top:10px, line-height:1.3` so chart→caption and caption→border gaps look even (was 8 vs 20).
 
 ## What's New in v4.1.0
 

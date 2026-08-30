@@ -1472,17 +1472,17 @@ function renderCumulativeChart(payload) {
     });
     totals.sort((a,b) => b.total - a.total);
     const orderedCats = totals.map(t => t.c);
-    datasets = orderedCats.map(cat => {
+    datasets = orderedCats.map((cat, idx) => {
       const data = payload.perCategoryCumulative[cat] || [];
       const col = getCategoryColor(cat);
       return {
         label: formatCategory(cat),
         data,
-        borderColor: col,
+        borderColor: hexToRgba(col, 0.8),
         backgroundColor: hexToRgba(col, 0.8),
-        fill: true,
+        fill: idx === 0 ? "origin" : "-1",
         tension: 0.35,
-        borderWidth: 1.5,
+        borderWidth: 0,
         pointRadius: 0,
         pointHoverRadius: 3,
         stack: "cum",

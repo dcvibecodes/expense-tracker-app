@@ -1,6 +1,13 @@
-# Spend Less v4.3.0
+# Spend Less v4.4.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.4.0
+
+### Stacked Mountain Fix — True Adjacent Fill
+
+- **Grid lines now show through all layers** — each stacked area now `fill:"origin"` for bottom + `fill:"-1"` for others (was `fill:true` to zero for all, causing 4× `0.8` overlap → darkening, hiding grid). Now bricks, not glasses.
+- **Opacity matched to bars** — mountain layers now `borderWidth:0` + `backgroundColor/borderColor` both `hexToRgba(...,0.8)` (was solid border 1.5px), so perceived hue matches `Category Breakdown` bars exactly.
 
 ## What's New in v4.3.0
 

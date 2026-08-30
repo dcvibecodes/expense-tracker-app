@@ -1064,25 +1064,57 @@ app.get("/api/reports/cumulative", (req, res) => {
     if (err) return res.status(500).json({ error: "Failed to fetch cumulative data." });
     const dailyMap = {};
     for (const r of rows) dailyMap[r.date] = Number(r.daily) || 0;
-    const isCurrentYear = year === now.getFullYear();
-    const endDate = isCurrentYear ? new Date(now.getFullYear(), now.getMonth(), now.getDate()) : new Date(year, 11, 31);
-    const startDate = new Date(year, 0, 1);
-    const points = [];
-    let running = 0;
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      const daily = dailyMap[iso] || 0;
-      running += daily;
-      points.push({ date: iso, daily, cumulative: running });
-    }
-    let futureTotal = 0;
-    let fullYearTotal = running;
-    if (isCurrentYear) {
-      fullYearTotal = Object.values(dailyMap).reduce((a,b)=>a+b,0);
-      futureTotal = fullYearTotal - running;
-      if (futureTotal < 0.005) futureTotal = 0;
-    }
-    return res.json({ year, points, fullYearTotal, futureTotal, isCurrentYear });
+    // For stacked mountain: also fetch per-category daily
+    const catSql = `
+      SELECT date, category, COALESCE(SUM(amount), 0) AS daily
+      FROM expenses
+      WHERE substr(date, 1, 4) = ?
+      GROUP BY date, category
+      ORDER BY date ASC
+    `;
+    db.all(catSql, [String(year)], (catErr, catRows) => {
+      if (catErr) return res.status(500).json({ error: "Failed to fetch category cumulative." });
+      const catDailyMap = {}; // date -> category -> daily
+      const catSet = new Set();
+      for (const r of catRows) {
+        const c = r.category;
+        catSet.add(c);
+        if (!catDailyMap[r.date]) catDailyMap[r.date] = {};
+        catDailyMap[r.date][c] = Number(r.daily) || 0;
+      }
+      const categories = Array.from(catSet);
+      // Need category colors ordering from categories table? Use as-is; frontend will map via getCategoryColor
+      const isCurrentYear = year === now.getFullYear();
+      const endDate = isCurrentYear ? new Date(now.getFullYear(), now.getMonth(), now.getDate()) : new Date(year, 11, 31);
+      const startDate = new Date(year, 0, 1);
+      const points = [];
+      const perCategoryCumulative = {};
+      for (const c of categories) perCategoryCumulative[c] = [];
+      const perCategoryRunning = {};
+      for (const c of categories) perCategoryRunning[c] = 0;
+      let running = 0;
+      const dates = [];
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const daily = dailyMap[iso] || 0;
+        running += daily;
+        points.push({ date: iso, daily, cumulative: running });
+        dates.push(iso);
+        const dayCats = catDailyMap[iso] || {};
+        for (const c of categories) {
+          perCategoryRunning[c] += dayCats[c] || 0;
+          perCategoryCumulative[c].push(perCategoryRunning[c]);
+        }
+      }
+      let futureTotal = 0;
+      let fullYearTotal = running;
+      if (isCurrentYear) {
+        fullYearTotal = Object.values(dailyMap).reduce((a,b)=>a+b,0);
+        futureTotal = fullYearTotal - running;
+        if (futureTotal < 0.005) futureTotal = 0;
+      }
+      return res.json({ year, points, dates, categories, perCategoryCumulative, fullYearTotal, futureTotal, isCurrentYear });
+    });
   });
 });
 

@@ -1464,28 +1464,55 @@ function renderCumulativeChart(payload) {
     }
   }
   const labels = points.map(p => p.date);
-  const data = points.map(p => p.cumulative);
-  const ctx = cumulativeCtx.getContext("2d");
-  const grad = ctx.createLinearGradient(0, 0, 0, 220);
-  grad.addColorStop(0, "rgba(16, 185, 129, 0.35)");
-  grad.addColorStop(1, "rgba(16, 185, 129, 0.02)");
+  let datasets;
+  if (payload.perCategoryCumulative && payload.categories && payload.categories.length) {
+    const totals = payload.categories.map(c => {
+      const arr = payload.perCategoryCumulative[c] || [];
+      return { c, total: arr.length ? arr[arr.length-1] : 0 };
+    });
+    totals.sort((a,b) => b.total - a.total);
+    const orderedCats = totals.map(t => t.c);
+    datasets = orderedCats.map(cat => {
+      const data = payload.perCategoryCumulative[cat] || [];
+      const col = getCategoryColor(cat);
+      return {
+        label: formatCategory(cat),
+        data,
+        borderColor: col,
+        backgroundColor: hexToRgba(col, 0.8),
+        fill: true,
+        tension: 0.35,
+        borderWidth: 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 3,
+        stack: "cum",
+      };
+    });
+  } else {
+    const data = points.map(p => p.cumulative);
+    const ctx = cumulativeCtx.getContext("2d");
+    const grad = ctx.createLinearGradient(0, 0, 0, 220);
+    grad.addColorStop(0, "rgba(16, 185, 129, 0.35)");
+    grad.addColorStop(1, "rgba(16, 185, 129, 0.02)");
+    datasets = [{
+      label: "Cumulative",
+      data,
+      borderColor: "#10b981",
+      backgroundColor: grad,
+      fill: true,
+      tension: 0.35,
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      pointHoverBackgroundColor: "#10b981",
+    }];
+  }
   if (cumulativeChart) cumulativeChart.destroy();
   cumulativeChart = new Chart(cumulativeCtx, {
     type: "line",
     data: {
       labels,
-      datasets: [{
-        label: "Cumulative",
-        data,
-        borderColor: "#10b981",
-        backgroundColor: grad,
-        fill: true,
-        tension: 0.35,
-        borderWidth: 2,
-        pointRadius: 0,
-        pointHoverRadius: 4,
-        pointHoverBackgroundColor: "#10b981",
-      }]
+      datasets
     },
     options: {
       responsive: true,
@@ -1508,12 +1535,29 @@ function renderCumulativeChart(payload) {
             if (!pt) return;
             const d = new Date(pt.date + "T12:00:00");
             const dateLabel = d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
-            const dailyStr = formatAmount(pt.daily);
-            const cumStr = formatAmount(pt.cumulative);
-            el.innerHTML = `
+            // Stacked: show per-category cumulatives
+            if (payload.perCategoryCumulative && payload.categories && payload.categories.length) {
+              let rows = "";
+              let total = 0;
+              // Use same order as datasets (largest first)
+              const totals = payload.categories.map(c => ({ c, total: (payload.perCategoryCumulative[c]||[])[payload.perCategoryCumulative[c].length-1] || 0 }));
+              totals.sort((a,b)=>b.total-a.total);
+              for (const {c} of totals) {
+                const val = (payload.perCategoryCumulative[c]||[])[idx] || 0;
+                if (val <= 0 && idx > 10) continue; // hide zero early? keep if >0
+                total += val;
+                const col = getCategoryColor(c);
+                rows += `<div style="display:flex;justify-content:space-between;gap:16px;"><span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:6px;"></span><span style="color:var(--text-secondary);">${escapeHtml(formatCategory(c))}</span></span><span style="font-weight:600;">${escapeHtml(formatAmount(val))}</span></div>`;
+              }
+              el.innerHTML = `<div style="font-weight:600;margin-bottom:4px;">${escapeHtml(dateLabel)}</div>${rows}<div style="display:flex;justify-content:space-between;gap:16px;border-top:1px solid var(--border-subtle);margin-top:6px;padding-top:5px;"><span style="color:var(--text-secondary);">Total</span><span style="font-weight:700;">${escapeHtml(formatAmount(total))}</span></div>`;
+            } else {
+              const dailyStr = formatAmount(pt.daily);
+              const cumStr = formatAmount(pt.cumulative);
+              el.innerHTML = `
               <div style="font-weight:600;margin-bottom:4px;">${escapeHtml(dateLabel)}</div>
               <div style="display:flex;justify-content:space-between;gap:16px;"><span style="color:var(--text-secondary);">Today</span><span style="font-weight:600;">${escapeHtml(dailyStr)}</span></div>
               <div style="display:flex;justify-content:space-between;gap:16px;"><span style="color:var(--text-secondary);">Total</span><span style="font-weight:700;">${escapeHtml(cumStr)}</span></div>`;
+            }
             el.style.opacity = "1";
             const pos = chart.canvas.getBoundingClientRect();
             const elW = el.offsetWidth;
@@ -1528,7 +1572,9 @@ function renderCumulativeChart(payload) {
         }
       },
       scales: {
+        y: { beginAtZero: true, stacked: !!(payload.perCategoryCumulative && payload.categories && payload.categories.length), ticks: { callback: value => formatAmount(value) } },
         x: {
+          stacked: !!(payload.perCategoryCumulative && payload.categories && payload.categories.length),
           grid: { display: false },
           ticks: {
             autoSkip: false,
@@ -1542,10 +1588,6 @@ function renderCumulativeChart(payload) {
               return "";
             }
           }
-        },
-        y: {
-          beginAtZero: true,
-          ticks: { callback: value => formatAmount(value) }
         }
       }
     }

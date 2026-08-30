@@ -1,6 +1,13 @@
-# Spend Less v4.2.0
+# Spend Less v4.3.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.3.0
+
+### Stacked Cumulative Mountain
+
+- **Stacked by category** — mountain is now layered per category (needs/wants/other/travel) with `stack:"cum"`, each area `hexToRgba(color,0.8)` + `tension:0.35`, sorted largest-at-bottom so spikes show composition. Legend hidden (tooltip on hover/touch shows all categories + total, reclaiming space).
+- **Backend** — `GET /api/reports/cumulative` now also returns `categories` + `perCategoryCumulative` (cumulative per category) built from `GROUP BY date, category`; totals verified sum to total (e.g. 2026 needs 2,53,481 + wants 1,18,889 + other 75,902 + travel 42,245 = 4,90,517 at Aug 30).
 
 ## What's New in v4.2.0
 

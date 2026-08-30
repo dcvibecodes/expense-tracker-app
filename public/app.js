@@ -1447,6 +1447,22 @@ function renderCumulativeChart(payload) {
   const year = payload.year;
   // title no longer shows year - chip indicates it
   syncCumulativeYearToggle(document.getElementById("report-year")?.value || String(year));
+  // Caption for current year: show future-dated gap so table total matches expectation
+  const cap = document.getElementById("cumulative-caption");
+  if (cap) {
+    if (payload.isCurrentYear && payload.futureTotal > 0.005) {
+      const endLabel = new Date(payload.points[payload.points.length-1]?.date + "T12:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" });
+      cap.textContent = `Showing Jan 1 → ${endLabel} (future-dated ${formatAmount(payload.futureTotal)} not yet plotted)`;
+      cap.style.display = "block";
+    } else if (payload.isCurrentYear) {
+      const endLabel = new Date(payload.points[payload.points.length-1]?.date + "T12:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" });
+      cap.textContent = `Showing Jan 1 → ${endLabel}`;
+      cap.style.display = "block";
+    } else {
+      cap.style.display = "none";
+      cap.textContent = "";
+    }
+  }
   const labels = points.map(p => p.date);
   const data = points.map(p => p.cumulative);
   const ctx = cumulativeCtx.getContext("2d");

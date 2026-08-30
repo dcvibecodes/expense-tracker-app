@@ -1373,21 +1373,6 @@ function syncCumulativeYearToggle(activeYear) {
       }, 50);
     }
   });
-  updateChipArrows();
-}
-function updateChipArrows() {
-  const wrap = document.getElementById("cumulative-year-toggle");
-  const left = document.getElementById("cumulative-year-left");
-  const right = document.getElementById("cumulative-year-right");
-  if (!wrap || !left || !right) return;
-  const canLeft = wrap.scrollLeft > 5;
-  const canRight = wrap.scrollLeft + wrap.clientWidth < wrap.scrollWidth - 5;
-  left.style.opacity = canLeft ? "1" : "0.35";
-  right.style.opacity = canRight ? "1" : "0.35";
-  left.disabled = !canLeft;
-  right.disabled = !canRight;
-  // Fade indicators via box-shadow on wrap edges
-  wrap.style.boxShadow = `${canLeft ? "inset 8px 0 8px -8px rgba(0,0,0,0.15)" : ""}${canLeft && canRight ? ", " : ""}${canRight ? "inset -8px 0 8px -8px rgba(0,0,0,0.15)" : ""}`;
 }
 function populateCumulativeYearToggle() {
   const wrap = document.getElementById("cumulative-year-toggle");
@@ -1415,16 +1400,9 @@ function populateCumulativeYearToggle() {
     });
     wrap.appendChild(btn);
   });
-  // Arrow clicks
-  const left = document.getElementById("cumulative-year-left");
-  const right = document.getElementById("cumulative-year-right");
-  if (left) left.onclick = () => { wrap.scrollBy({ left: -90, behavior: "smooth" }); setTimeout(updateChipArrows, 300); };
-  if (right) right.onclick = () => { wrap.scrollBy({ left: 90, behavior: "smooth" }); setTimeout(updateChipArrows, 300); };
-  wrap.addEventListener("scroll", () => { clearTimeout(wrap._t); wrap._t = setTimeout(updateChipArrows, 80); });
   // sel -> wrap sync
   sel.addEventListener("change", () => syncCumulativeYearToggle(sel.value));
   syncCumulativeYearToggle(sel.value || String(new Date().getFullYear()));
-  setTimeout(updateChipArrows, 100);
 }
 async function fetchCumulative(year) {
   try {

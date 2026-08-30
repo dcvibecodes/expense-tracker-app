@@ -274,6 +274,12 @@ function getCategoryColor(name) {
   const cat = categories.find(c => c.name === name);
   return cat ? cat.color : "#6b7280";
 }
+function hexToRgba(hex, alpha) {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!m) return hex;
+  const r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 function populateCategorySelect(sel, includeAll) {
   const current = sel.value;
   sel.innerHTML = "";
@@ -396,6 +402,7 @@ const summaryGrid = document.getElementById("summary-grid");
 const summaryMonthLabel = document.getElementById("summary-month-label");
 const summaryTotalAmount = document.getElementById("summary-total-amount");
 const comparisonCtx = document.getElementById("comparison-chart");
+const cumulativeCtx = document.getElementById("cumulative-chart");
 const detailsList = document.getElementById("details-list");
 
 const editModal = document.getElementById("edit-modal");
@@ -409,6 +416,7 @@ const editCancel = document.getElementById("edit-cancel");
 
 let currentRows = [];
 let comparisonChart;
+let cumulativeChart;
 let chartView = "amounts";
 let allDetails = [];
 
@@ -1082,6 +1090,8 @@ let selectedReportStartDay = "";
 let selectedReportEndDay = "";
 
 populateGenericYearPicker(reportYear, true);
+// Build cumulative year chips after picker is ready
+setTimeout(() => { try { populateCumulativeYearToggle(); } catch(e){} }, 100);
 setReportDefaults();
 renderReportDayLinks();
 
@@ -1189,7 +1199,7 @@ if (chartView === "amounts") {
     data: months.map((_, monthIndex) =>
       data[monthIndex][category] || 0
     ),
-    backgroundColor: getCategoryColor(category),
+    backgroundColor: hexToRgba(getCategoryColor(category), 0.8),
     borderRadius: 0
   }));
 
@@ -1350,6 +1360,182 @@ scales: {
 
 }
 
+function syncCumulativeYearToggle(activeYear) {
+  const wrap = document.getElementById("cumulative-year-toggle");
+  if (!wrap) return;
+  wrap.querySelectorAll(".chart-toggle-btn").forEach(btn => {
+    const isActive = btn.dataset.year === String(activeYear);
+    btn.classList.toggle("active", isActive);
+    if (isActive) {
+      // Center active chip in view (3 visible ~180px)
+      setTimeout(() => {
+        try { btn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" }); } catch(e) { wrap.scrollLeft = btn.offsetLeft - wrap.offsetWidth/2 + btn.offsetWidth/2; }
+      }, 50);
+    }
+  });
+  updateChipArrows();
+}
+function updateChipArrows() {
+  const wrap = document.getElementById("cumulative-year-toggle");
+  const left = document.getElementById("cumulative-year-left");
+  const right = document.getElementById("cumulative-year-right");
+  if (!wrap || !left || !right) return;
+  const canLeft = wrap.scrollLeft > 5;
+  const canRight = wrap.scrollLeft + wrap.clientWidth < wrap.scrollWidth - 5;
+  left.style.opacity = canLeft ? "1" : "0.35";
+  right.style.opacity = canRight ? "1" : "0.35";
+  left.disabled = !canLeft;
+  right.disabled = !canRight;
+  // Fade indicators via box-shadow on wrap edges
+  wrap.style.boxShadow = `${canLeft ? "inset 8px 0 8px -8px rgba(0,0,0,0.15)" : ""}${canLeft && canRight ? ", " : ""}${canRight ? "inset -8px 0 8px -8px rgba(0,0,0,0.15)" : ""}`;
+}
+function populateCumulativeYearToggle() {
+  const wrap = document.getElementById("cumulative-year-toggle");
+  const sel = document.getElementById("report-year");
+  if (!wrap || !sel) return;
+  wrap.innerHTML = "";
+  wrap.style.scrollbarWidth = "none";
+  // Build chips from report-year options (All + 2020..), but show ~3 at a time via max-width 180px (~60px per chip)
+  [...sel.options].forEach(opt => {
+    const btn = document.createElement("button");
+    btn.className = "chart-toggle-btn";
+    btn.dataset.year = opt.value;
+    btn.textContent = opt.value === "all" ? "All" : opt.value;
+    btn.style.flexShrink = "0";
+    btn.addEventListener("click", () => {
+      if (opt.value === "all") {
+        sel.value = "all";
+        sel.dispatchEvent(new Event("change", { bubbles: true }));
+        fetchCumulative("all").then(cum => { if(cum) renderCumulativeChart(cum); });
+        syncCumulativeYearToggle("all");
+      } else {
+        sel.value = opt.value;
+        sel.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+    wrap.appendChild(btn);
+  });
+  // Arrow clicks
+  const left = document.getElementById("cumulative-year-left");
+  const right = document.getElementById("cumulative-year-right");
+  if (left) left.onclick = () => { wrap.scrollBy({ left: -90, behavior: "smooth" }); setTimeout(updateChipArrows, 300); };
+  if (right) right.onclick = () => { wrap.scrollBy({ left: 90, behavior: "smooth" }); setTimeout(updateChipArrows, 300); };
+  wrap.addEventListener("scroll", () => { clearTimeout(wrap._t); wrap._t = setTimeout(updateChipArrows, 80); });
+  // sel -> wrap sync
+  sel.addEventListener("change", () => syncCumulativeYearToggle(sel.value));
+  syncCumulativeYearToggle(sel.value || String(new Date().getFullYear()));
+  setTimeout(updateChipArrows, 100);
+}
+async function fetchCumulative(year) {
+  try {
+    const y = (year && year !== "all") ? year : new Date().getFullYear();
+    const res = await fetch(`/api/reports/cumulative?year=${encodeURIComponent(y)}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error("fetchCumulative error:", err);
+    return null;
+  }
+}
+function renderCumulativeChart(payload) {
+  if (typeof Chart === "undefined" || !cumulativeCtx) return;
+  if (!payload || !payload.points || !payload.points.length) {
+    if (cumulativeChart) { cumulativeChart.destroy(); cumulativeChart = null; }
+    return;
+  }
+  const points = payload.points;
+  const year = payload.year;
+  // title no longer shows year - chip indicates it
+  syncCumulativeYearToggle(document.getElementById("report-year")?.value || String(year));
+  const labels = points.map(p => p.date);
+  const data = points.map(p => p.cumulative);
+  const ctx = cumulativeCtx.getContext("2d");
+  const grad = ctx.createLinearGradient(0, 0, 0, 220);
+  grad.addColorStop(0, "rgba(16, 185, 129, 0.35)");
+  grad.addColorStop(1, "rgba(16, 185, 129, 0.02)");
+  if (cumulativeChart) cumulativeChart.destroy();
+  cumulativeChart = new Chart(cumulativeCtx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "Cumulative",
+        data,
+        borderColor: "#10b981",
+        backgroundColor: grad,
+        fill: true,
+        tension: 0.35,
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        pointHoverBackgroundColor: "#10b981",
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: false,
+          external: function(context) {
+            const { chart, tooltip } = context;
+            let el = document.getElementById("chart-tooltip");
+            if (!el) return;
+            if (tooltip.opacity === 0 || !tooltip.dataPoints || !tooltip.dataPoints.length) {
+              el.style.opacity = "0";
+              return;
+            }
+            const idx = tooltip.dataPoints[0].dataIndex;
+            const pt = points[idx];
+            if (!pt) return;
+            const d = new Date(pt.date + "T12:00:00");
+            const dateLabel = d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+            const dailyStr = formatAmount(pt.daily);
+            const cumStr = formatAmount(pt.cumulative);
+            el.innerHTML = `
+              <div style="font-weight:600;margin-bottom:4px;">${escapeHtml(dateLabel)}</div>
+              <div style="display:flex;justify-content:space-between;gap:16px;"><span style="color:var(--text-secondary);">Today</span><span style="font-weight:600;">${escapeHtml(dailyStr)}</span></div>
+              <div style="display:flex;justify-content:space-between;gap:16px;"><span style="color:var(--text-secondary);">Total</span><span style="font-weight:700;">${escapeHtml(cumStr)}</span></div>`;
+            el.style.opacity = "1";
+            const pos = chart.canvas.getBoundingClientRect();
+            const elW = el.offsetWidth;
+            const elH = el.offsetHeight;
+            let left = pos.left + tooltip.caretX + 12;
+            let top = pos.top + tooltip.caretY + 8;
+            if (left + elW > window.innerWidth - 8) left = pos.left + tooltip.caretX - elW - 12;
+            if (top + elH > window.innerHeight - 8) top = pos.top + tooltip.caretY - elH - 8;
+            el.style.left = left + "px";
+            el.style.top = top + "px";
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            autoSkip: false,
+            maxRotation: 0,
+            callback: function(value, index) {
+              const iso = labels[index];
+              if (!iso) return "";
+              const day = iso.slice(8,10);
+              const month = parseInt(iso.slice(5,7), 10);
+              if (day === "01") return MONTH_NAMES[month-1].slice(0,3);
+              return "";
+            }
+          }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { callback: value => formatAmount(value) }
+        }
+      }
+    }
+  });
+}
+
 async function loadReports() {
   const params = new URLSearchParams();
   const search = reportSearch.value.trim();
@@ -1382,13 +1568,23 @@ async function loadReports() {
     const data = await res.json();
     renderReportTable(data);
 
-    // Don't update chart when searching — chart shows broad trends
+    // Don't update charts when searching — charts show broad trends
     if (!search) {
       try {
         const charts = await fetchCharts();
         if (charts) renderCharts(charts);
       } catch (chartErr) {
         console.error("Chart loading failed:", chartErr);
+      }
+      try {
+        const cumYear = reportYear.value || String(new Date().getFullYear());
+        const cum = await fetchCumulative(cumYear);
+        if (cum) renderCumulativeChart(cum);
+        // Ensure year chip exists (first load)
+        if (!document.getElementById("cumulative-year-toggle")?.hasChildNodes()) populateCumulativeYearToggle();
+        else syncCumulativeYearToggle(reportYear.value || String(new Date().getFullYear()));
+      } catch (cumErr) {
+        console.error("Cumulative chart failed:", cumErr);
       }
     }
   } catch {

@@ -1,6 +1,15 @@
-# Spend Less v4.0.0
+# Spend Less v4.1.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.1.0
+
+### Cumulative Spend Mountain
+
+- **New separate card above Spending Trends** — **Cumulative Spend** mountain graph on Reports tab, day-by-day (Jan 1 → today for current year, Jan 1 → Dec 31 for past years) with soft gradient fill (`rgba(16,185,129,0.35→0.02)`, `tension:0.35`). Stops at today so future never flat-lines; steep slope = spike.
+- **Year chips with arrows** — header shows `Cumulative Spend` + `‹ ›` scrollable year chips (3 visible at a time, active year centered via `scrollIntoView`, arrow fade + inset shadow indicates more). Chips cloned from main `Report Year` picker (All + 2020→currentYear+2) and **synced both ways** with the Filters dropdown — tapping a chip updates the main filter and mountain + table together.
+- **Backend** — new `GET /api/reports/cumulative?year=2026` (one `GROUP BY date` query, builds 242 points for 2026 now, 365/366 for past years, `All` maps to current year). Ignores category/search (like Spending Trends).
+- **Bar transparency** — Category Breakdown stacked bars now `hexToRgba(color, 0.8)` (20% transparent, airy) via helper `hexToRgba()`.
 
 ## What's New in v4.0.0
 

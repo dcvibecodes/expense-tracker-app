@@ -1043,6 +1043,42 @@ ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY date DESC, id DES
   });
 });
 
+// --- Cumulative Spend API (mountain graph) ---
+app.get("/api/reports/cumulative", (req, res) => {
+  let year = parseInt(req.query.year, 10);
+  const now = new Date();
+  if (!Number.isInteger(year) || req.query.year === "all") {
+    year = now.getFullYear();
+  }
+  if (year < 1900 || year > 3000) {
+    return res.status(400).json({ error: "Invalid year." });
+  }
+  const sql = `
+    SELECT date, COALESCE(SUM(amount), 0) AS daily
+    FROM expenses
+    WHERE substr(date, 1, 4) = ?
+    GROUP BY date
+    ORDER BY date ASC
+  `;
+  db.all(sql, [String(year)], (err, rows) => {
+    if (err) return res.status(500).json({ error: "Failed to fetch cumulative data." });
+    const dailyMap = {};
+    for (const r of rows) dailyMap[r.date] = Number(r.daily) || 0;
+    const isCurrentYear = year === now.getFullYear();
+    const endDate = isCurrentYear ? new Date(now.getFullYear(), now.getMonth(), now.getDate()) : new Date(year, 11, 31);
+    const startDate = new Date(year, 0, 1);
+    const points = [];
+    let running = 0;
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const daily = dailyMap[iso] || 0;
+      running += daily;
+      points.push({ date: iso, daily, cumulative: running });
+    }
+    return res.json({ year, points });
+  });
+});
+
 // --- CSV Export API ---
 
 app.get("/api/export/csv", (req, res) => {

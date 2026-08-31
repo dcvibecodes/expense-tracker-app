@@ -1,6 +1,13 @@
-# Spend Less v4.4.0
+# Spend Less v4.5.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.5.0
+
+### Reports — Side-by-Side Charts with Adaptive Labels
+
+- **Cumulative Spend + Spending Trends side-by-side** — Reports tab now shows the two charts in a `1fr 1fr` grid on desktop (`>768px`), stacked single-column on mobile; cards are equal-height (flex `100%`, `240px` chart height desktop / `220px` mobile, `gap:12px` matching the app grid). Code: `public/index.html` `#cumulative-card` + `#charts-panel` wrapped in `.reports-charts-row`, `public/styles.css`.
+- **Adaptive month labels — no overlap** — Spending Trends x-axis now checks `this.chart.width` at desktop half-width: `<520px` skips every 2nd month, `<380px` every 3rd (in addition to existing mobile `≤768→2`, `≤480→3`). Cumulative mountain does the same for `monthIdx %2/%3` when narrow, keeping labels horizontal (`maxRotation:0`). Code: `public/app.js` (`comparisonChart` + `cumulativeChart` ticks callbacks).
 
 ## What's New in v4.4.0
 

@@ -1332,11 +1332,18 @@ scales: {
       autoSkip: false,
       maxRotation: 0,
       callback: function(value, index) {
-        if (window.innerWidth <= 480) {
-          if (index % 3 !== 0) return "";
-        } else if (window.innerWidth <= 768) {
-          if (index % 2 !== 0) return "";
+        // Mobile: keep existing skipping. Desktop side-by-side halves width,
+        // so also skip when the chart itself is narrow to avoid overlap.
+        const w = window.innerWidth;
+        const chartW = this.chart ? this.chart.width : w;
+        let step = 1;
+        if (w <= 480) step = 3;
+        else if (w <= 768) step = 2;
+        else if (w > 768) {
+          if (chartW < 380) step = 3;
+          else if (chartW < 520) step = 2;
         }
+        if (index % step !== 0) return "";
         return labels[index];
       }
     }
@@ -1561,9 +1568,18 @@ function renderCumulativeChart(payload) {
               const iso = labels[index];
               if (!iso) return "";
               const day = iso.slice(8,10);
+              if (day !== "01") return "";
+              // Side-by-side on desktop halves the width — skip every other
+              // month when the chart is narrow to avoid overlap (same as spending trends)
+              const w = window.innerWidth;
+              if (w > 768) {
+                const chartW = this.chart ? this.chart.width : w;
+                const monthIdx = parseInt(iso.slice(5,7), 10) - 1;
+                if (chartW < 380 && (monthIdx % 3) !== 0) return "";
+                if (chartW < 520 && (monthIdx % 2) !== 0) return "";
+              }
               const month = parseInt(iso.slice(5,7), 10);
-              if (day === "01") return MONTH_NAMES[month-1].slice(0,3);
-              return "";
+              return MONTH_NAMES[month-1].slice(0,3);
             }
           }
         }

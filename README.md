@@ -1,6 +1,14 @@
-# Spend Less v4.6.0
+# Spend Less v4.7.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.7.0
+
+### Reports — Search Defaults to All Data
+
+- **Typing searches everything** — entering a term in the Reports search now automatically searches the entire history (the "All" toggle lights up on its own); no more opening Filters to tap All first — this fixes mobile especially. Code: `public/app.js` (search input handler auto-enables `reportSearchAll` on the empty → non-empty transition; no backend change).
+- **Picking a filter re-scopes** — selecting a year/month/category while searching turns All off and searches within that range; category still narrows a global search.
+- **Manual override sticks** — tapping All off mid-typing keeps the search scoped while text remains; clearing + retyping re-arms auto-All. CSV export follows the same flag, so it exports what you see.
 
 ## What's New in v4.6.0
 
@@ -509,7 +517,7 @@ Recurring series set up before this update will not automatically generate notif
 - **Monthly summary** — color-coded category totals with rounded amounts at a glance
 - **Inline search** — search expenses as you type from the Tracker tab; searches across all data
 - **Reports** — spending trends chart, yearly/monthly pivot table with expand/collapse, CSV export
-- **Report filters** — year, month, category, and full-text search with dynamic instant filtering; search works within selected date range or across all data via "All" toggle
+- **Report filters** — year, month, category, and full-text search with dynamic instant filtering; typing a search term automatically searches across all data (the "All" toggle lights up on its own), while picking a specific year/month/category scopes the search to that range; category still narrows a global search
 - **Batch operations** — rename details across entries, reassign categories in bulk (in Settings)
 - **Categories** — up to 15, custom colors, rename propagates everywhere
 - **Date format** — configurable (MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD)

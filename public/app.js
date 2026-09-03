@@ -1094,6 +1094,11 @@ let reportRows = [];
 let selectedReportIds = new Set();
 let selectedReportStartDay = "";
 let selectedReportEndDay = "";
+// Tracks the search box's previous value (empty → non-empty transition auto-enables
+// "Search All"). Declared up here because setReportDefaults() runs at page init
+// (line ~1101) and resets it — a later declaration would throw a temporal-dead-zone
+// ReferenceError and kill the whole script before data loads.
+let prevReportSearch = "";
 
 populateGenericYearPicker(reportYear, true);
 // Build cumulative year chips after picker is ready
@@ -1994,10 +1999,15 @@ function selectReportDay(day, extendRange) {
   selectedReportEndDay = "";
 }
 
-// When user changes year/month/category, reload with current filters (including search)
+// When user changes year/month/category, reload with current filters (including search).
+// An explicit filter pick while searching scopes the search: turn "Search All" off.
 function onReportFilterChange(e) {
   if (e && (e.currentTarget === reportYear || e.currentTarget === reportMonth)) {
     clearReportDaySelection();
+  }
+  if (reportSearch.value.trim() !== "" && reportSearchAll) {
+    reportSearchAll = false;
+    reportSearchAllToggle.classList.remove("active");
   }
   updateReportFilterState();
   renderReportDayLinks();
@@ -2013,19 +2023,28 @@ reportDayLinks.addEventListener("click", e => {
   if (!btn) return;
 
   reportSearch.value = "";
+  prevReportSearch = "";
   selectReportDay(btn.dataset.day, e.shiftKey);
   updateReportFilterState();
   renderReportDayLinks();
   loadReports();
 });
 
-// Report search — as-you-type, respects current year/month selection, min 2 chars
+// Report search — as-you-type, min 2 chars. Typing the first character into an
+// empty box auto-enables "Search All" (results span all history); picking a
+// filter re-scopes. prev-value tracking keeps a manual toggle-off sticky
+// while text remains (clearing + retyping re-arms auto-All).
 reportSearch.addEventListener("input", () => {
+  const q = reportSearch.value.trim();
+  if (prevReportSearch === "" && q !== "") {
+    reportSearchAll = true;
+    reportSearchAllToggle.classList.add("active");
+  }
+  prevReportSearch = q;
   clearReportDaySelection();
   updateReportFilterState();
   renderReportDayLinks();
   clearTimeout(reportFilterDebounce);
-  const q = reportSearch.value.trim();
   if (q.length === 1) return; // wait for at least 2 chars
   reportFilterDebounce = setTimeout(loadReports, 400);
 });
@@ -2054,6 +2073,7 @@ function updateReportFilterState() {
 
 document.getElementById("report-reset").addEventListener("click", () => {
   reportSearch.value = "";
+  prevReportSearch = "";
   reportCategory.value = "all";
   reportSearchAll = false;
   reportSearchAllToggle.classList.remove("active");
@@ -2069,6 +2089,7 @@ function setReportDefaults() {
   reportYear.value = now.getFullYear();
   reportMonth.value = String(now.getMonth() + 1);
   reportSearch.value = "";
+  prevReportSearch = "";
   clearReportDaySelection();
 }
 

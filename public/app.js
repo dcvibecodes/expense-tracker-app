@@ -2074,6 +2074,10 @@ function updateReportFilterState() {
 document.getElementById("report-reset").addEventListener("click", () => {
   reportSearch.value = "";
   prevReportSearch = "";
+  // The mobile bar is a separate visible input that mirrors into reportSearch —
+  // clear it too, otherwise the term stays on screen on mobile.
+  const mobileReportSearch = document.getElementById("mobile-report-search");
+  if (mobileReportSearch) mobileReportSearch.value = "";
   reportCategory.value = "all";
   reportSearchAll = false;
   reportSearchAllToggle.classList.remove("active");

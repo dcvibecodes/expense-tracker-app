@@ -401,6 +401,7 @@ const rowsEl = document.getElementById("expense-list");
 const summaryGrid = document.getElementById("summary-grid");
 const summaryMonthLabel = document.getElementById("summary-month-label");
 const summaryTotalAmount = document.getElementById("summary-total-amount");
+const summaryTotalCompare = document.getElementById("summary-total-compare");
 const comparisonCtx = document.getElementById("comparison-chart");
 const cumulativeCtx = document.getElementById("cumulative-chart");
 const detailsList = document.getElementById("details-list");
@@ -661,6 +662,11 @@ function pieTotal(pie) {
 function renderSummary(pieData, lastMonthPie, avg3Pie, avg6Pie) {
   const total = pieTotal(pieData);
   summaryTotalAmount.textContent = formatAmountRounded(total);
+  // Hero total trend: same 1mo / 3mo / 6mo logic as categories.
+  // Totals are sums of the pies (averaging is linear, so sum of avg pie = avg of totals).
+  if (summaryTotalCompare) {
+    summaryTotalCompare.innerHTML = comparisonLine(total, pieTotal(lastMonthPie), pieTotal(avg3Pie), pieTotal(avg6Pie));
+  }
   summaryGrid.innerHTML = "";
   // Category items
   for (const cat of categories) {

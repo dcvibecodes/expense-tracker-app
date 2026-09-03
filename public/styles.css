@@ -431,6 +431,22 @@ input[type="date"].date-optional:not(.is-empty) { color: var(--text); }
   color: var(--text-faint);
   white-space: nowrap;
 }
+.summary-hero-sub {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.summary-hero-compare {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 0.35em;
+}
 .summary-grid { display: flex; gap: 10px; flex-wrap: wrap; }
 .summary-item { flex: 1 1 0; min-width: 120px; background: var(--elevated); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 10px; display: flex; align-items: center; gap: 8px; box-shadow: var(--shadow-item); }
 .summary-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }

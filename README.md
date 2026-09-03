@@ -1,6 +1,13 @@
-# Spend Less v4.5.0
+# Spend Less v4.6.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.6.0
+
+### Tracker — Hero Total Trend Arrows
+
+- **Big total now shows vs 1mo · 3mo · 6mo** — the large amount under the month name gets the same `▲/▼ %` comparison line the category cards already have (1mo = last month, 3mo/6mo = avg of last 3/6 months, same-day cutoff, empty months excluded). Code: `public/app.js` (`renderSummary` sums the pies via existing `pieTotal()` + `comparisonLine()` — no backend change).
+- **Legend moved to the values row** — the `vs 1mo · 3mo · 6mo` hint now sits on the same line as the live arrows beneath the amount (was cramped in the amount row). Code: `public/index.html` `.summary-hero-sub`, `public/styles.css`.
 
 ## What's New in v4.5.0
 

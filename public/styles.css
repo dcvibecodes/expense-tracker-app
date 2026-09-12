@@ -792,6 +792,7 @@ tbody tr:hover td { background: var(--accent-dim); }
 /* ── Modals ── */
 .modal-overlay { display: none; position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; }
 .modal-overlay.open { display: flex; }
+#confirm-modal { z-index: 1600; }
 .modal-content { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; width: 90%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
 .modal-content-sm { max-width: 380px; }
 .modal-content h2 { margin-bottom: 14px; font-size: 0.82rem; }

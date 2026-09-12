@@ -413,7 +413,9 @@ const editDate = document.getElementById("edit-date");
 const editDetails = document.getElementById("edit-details");
 const editCategory = document.getElementById("edit-category");
 const editAmount = document.getElementById("edit-amount");
+const editAmountLabel = document.getElementById("edit-amount-label-text");
 const editCancel = document.getElementById("edit-cancel");
+let editOriginal = null;
 
 let currentRows = [];
 let comparisonChart;
@@ -790,7 +792,16 @@ function openEditModal(row) {
   editId.value = row.id; editDate.value = row.date; editDetails.value = row.details;
   populateCategorySelect(editCategory, false);
   editCategory.value = row.category;
-  editAmount.value = row.amount;
+  if (row.original_currency && row.original_amount) {
+    const rate = row.exchange_rate || (currencyRates.find(r => r.code === row.original_currency) || {}).rate || null;
+    editOriginal = { currency: row.original_currency, rate };
+    editAmount.value = row.original_amount;
+    if (editAmountLabel) editAmountLabel.textContent = `Amount (${getCurrencySymbol(row.original_currency)})`;
+  } else {
+    editOriginal = null;
+    editAmount.value = row.amount;
+    if (editAmountLabel) editAmountLabel.textContent = `Amount (${getCurrencySymbol(baseCurrency)})`;
+  }
   document.getElementById("edit-note").value = row.note || "";
   editModal.classList.add("open");
   document.body.style.overflow = "hidden";
@@ -834,12 +845,20 @@ editForm.addEventListener("submit", async e => {
   const amountVal = editAmount.value.trim();
   const amountNum = parseFloat(amountVal);
   if (isNaN(amountNum) || amountNum <= 0) { alert("Please enter a valid amount."); return; }
+  if (editOriginal && !editOriginal.rate) { alert(`No exchange rate found for ${editOriginal.currency}. Please set a rate in Settings.`); return; }
   const saveBtn = editForm.querySelector(".save-btn");
   saveBtn.disabled = true;
   saveBtn.textContent = "Saving...";
   try {
     const editNoteVal = document.getElementById("edit-note").value.trim();
-    const res = await safeFetch(`/api/expenses/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: editDate.value, details: editDetails.value.trim(), category: editCategory.value, amount: amountNum, note: editNoteVal }) });
+    const body = { date: editDate.value, details: editDetails.value.trim(), category: editCategory.value, amount: amountNum, note: editNoteVal };
+    if (editOriginal) {
+      body.original_amount = amountNum;
+      body.original_currency = editOriginal.currency;
+      body.exchange_rate = editOriginal.rate;
+      body.amount = Math.round(amountNum * editOriginal.rate * 100) / 100;
+    }
+    const res = await safeFetch(`/api/expenses/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (res.ok) { closeEditModal(); await refreshAll(); await loadReports(); populateDetailsList(); }
     else { const err = await res.json(); alert(err.error || "Failed to update"); }
   } catch {}

@@ -1,6 +1,13 @@
-# Spend Less v4.7.0
+# Spend Less v4.7.1
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.7.1
+
+### Fixes — Duplicate Warning + Abroad Edit
+
+- **Mobile duplicate warning no longer hidden** — the confirm dialog (`#confirm-modal`) sat at `z-index:1000` while the mobile add bottom-sheet sits at `1050`, so the "Possible Duplicate" prompt rendered *behind* the open sheet and the button stayed stuck on "Adding...". `#confirm-modal` is now `z-index:1600`. Code: `public/styles.css`.
+- **Editing an abroad expense keeps its currency** — the edit modal now shows the expense's saved foreign amount and label (e.g. `Amount (€)`), and on save converts back to base at the saved rate while preserving `original_amount/original_currency/exchange_rate`. Previously it showed the base amount and the PUT wiped the foreign snapshot. Domestic expenses stay in base currency. Code: `public/app.js` (`openEditModal`, edit submit), `public/index.html` (`#edit-amount-label-text`). No server change.
 
 ## What's New in v4.7.0
 

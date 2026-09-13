@@ -1431,19 +1431,26 @@ app.post("/api/lock/setup", (req, res) => {
     return res.status(400).json({ error: "PIN must be exactly 6 digits." });
   }
 
-  const recoveryCode = generateRecoveryCode();
-  const pinResult = hashPinSecure(pin);
-  const recoveryResult = hashPinSecure(recoveryCode);
+  // Refuse to overwrite an existing lock — otherwise an unauthenticated
+  // request could reset the PIN and take over the app while it is locked.
+  db.get("SELECT id FROM app_lock WHERE id = 1", (checkErr, existing) => {
+    if (checkErr) return res.status(500).json({ error: "DB error." });
+    if (existing) return res.status(409).json({ error: "App lock is already configured." });
 
-  db.run(
-    "INSERT OR REPLACE INTO app_lock (id, pin_hash, pin_salt, recovery_hash, recovery_salt, locked) VALUES (1, ?, ?, ?, ?, 1)",
-    [pinResult.hash, pinResult.salt, recoveryResult.hash, recoveryResult.salt],
-    (err) => {
-      if (err) return res.status(500).json({ error: "Failed to setup lock." });
-      req.session.authenticated = true;
-      return res.json({ success: true, recoveryCode });
-    }
-  );
+    const recoveryCode = generateRecoveryCode();
+    const pinResult = hashPinSecure(pin);
+    const recoveryResult = hashPinSecure(recoveryCode);
+
+    db.run(
+      "INSERT OR REPLACE INTO app_lock (id, pin_hash, pin_salt, recovery_hash, recovery_salt, locked) VALUES (1, ?, ?, ?, ?, 1)",
+      [pinResult.hash, pinResult.salt, recoveryResult.hash, recoveryResult.salt],
+      (err) => {
+        if (err) return res.status(500).json({ error: "Failed to setup lock." });
+        req.session.authenticated = true;
+        return res.json({ success: true, recoveryCode });
+      }
+    );
+  });
 });
 
 app.post("/api/lock/unlock", (req, res) => {

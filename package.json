@@ -1,6 +1,6 @@
 {
   "name": "expense-tracker-plus",
-  "version": "4.7.1",
+  "version": "4.7.2",
   "description": "Spend Less \u2014 personal expense tracking app with SQLite database",
   "main": "server.js",
   "scripts": {

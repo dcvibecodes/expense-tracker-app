@@ -1,6 +1,12 @@
-# Spend Less v4.7.1
+# Spend Less v4.7.2
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.7.2
+
+### Security — App Lock Setup Hardened
+
+- **Lock setup can no longer overwrite an existing lock** — `POST /api/lock/setup` is reachable before unlock (by design) but used `INSERT OR REPLACE` with no guard, so while the app was locked anyone could POST a new 6-digit PIN, replace the real one, and have the request marked authenticated — a full lockout/takeover. The route now returns `409 App lock is already configured.` when a lock exists; `Disable`/`Recovery` still delete the lock so setup becomes available again. Code: `server.js` (`/api/lock/setup`).
 
 ## What's New in v4.7.1
 

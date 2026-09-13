@@ -1,4 +1,4 @@
-const CACHE_NAME = "spend-less-v1";
+const CACHE_NAME = "spend-less-v2";
 const STATIC_ASSETS = [
   "/",
   "/manifest.json",
@@ -42,11 +42,9 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(
       fetch(event.request)
-        .then((response) => response)
-        .catch(() => {
-          if (event.request.method === "GET") {
-            return caches.match(event.request);
-          }
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
           return new Response(JSON.stringify({ error: "You're offline. Connect to the internet to make changes." }), {
             status: 503,
             headers: { "Content-Type": "application/json" }

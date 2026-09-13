@@ -1,6 +1,18 @@
-# Spend Less v4.7.3
+# Spend Less v4.7.4
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.7.4
+
+### Polish — Races, Offline, PWA Reload, Escape & Locale Numbers
+
+- **Stale-report race fixed** — rapid filter/search changes could let a slower earlier `/api/reports` response overwrite newer results. `loadReports` now ignores out-of-order responses (same guard added to the item autocomplete). Code: `public/app.js`.
+- **Unhandled promise rejections** — batch edit, category reorder, forecast row delete/reorder, and inline forecast edits now catch network failures and show a toast instead of failing silently. Code: `public/app.js`.
+- **Service worker** — cache bumped to `spend-less-v2` so a deploy purges the old cache; offline API requests now return a cached response when available, otherwise a clean `503` JSON (no more `respondWith(undefined)`); and the app no longer reloads itself on first install (only on real updates). Code: `public/sw.js`, `public/app.js`.
+- **"All Years" cumulative chart** — the year chip now highlights the year actually plotted (the current year) instead of showing "All" over a single-year graph; removed a redundant duplicate fetch. Code: `public/app.js`.
+- **Escape dismisses confirm dialogs** — the custom confirm modal can now be cancelled with the Escape key. Code: `public/app.js`.
+- **Comma decimals accepted** — amount, rate, and forecast inputs now parse `10,50` (`10.5`), `1.234,56` (`1234.56`), and `1,234.56` (`1234.56`) via a shared `parseAmount` helper. Code: `public/app.js`.
+- **Forecast robustness** — the grid no longer crashes on an empty `start_month` (falls back to the current month), and the redundant double-load when opening the Forecast tab is gone. Code: `public/app.js`.
 
 ## What's New in v4.7.3
 

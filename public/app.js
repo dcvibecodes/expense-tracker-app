@@ -152,13 +152,15 @@ function showConfirm(title, message) {
     overlay.classList.add("open");
     const yesBtn = document.getElementById("confirm-modal-yes");
     const noBtn = document.getElementById("confirm-modal-no");
-    function cleanup() { overlay.classList.remove("open"); yesBtn.removeEventListener("click", onYes); noBtn.removeEventListener("click", onNo); overlay.removeEventListener("click", onOverlay); }
+    function onKey(e) { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cleanup(); resolve(false); } }
+    function cleanup() { overlay.classList.remove("open"); yesBtn.removeEventListener("click", onYes); noBtn.removeEventListener("click", onNo); overlay.removeEventListener("click", onOverlay); document.removeEventListener("keydown", onKey, true); }
     function onYes() { cleanup(); resolve(true); }
     function onNo() { cleanup(); resolve(false); }
     function onOverlay(e) { if (e.target === overlay) { cleanup(); resolve(false); } }
     yesBtn.addEventListener("click", onYes);
     noBtn.addEventListener("click", onNo);
     overlay.addEventListener("click", onOverlay);
+    document.addEventListener("keydown", onKey, true);
   });
 }
 
@@ -248,6 +250,24 @@ function formatAmountRounded(value) {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(num);
+}
+function parseAmount(value) {
+  if (value == null) return NaN;
+  let s = String(value).trim().replace(/\s/g, "");
+  if (!s) return NaN;
+  const lastComma = s.lastIndexOf(",");
+  const lastDot = s.lastIndexOf(".");
+  if (lastComma > -1 && lastDot > -1) {
+    // Both separators present — the rightmost one is the decimal separator
+    if (lastComma > lastDot) {
+      s = s.replace(/\./g, "").replace(",", "."); // 1.234,56 (EU)
+    } else {
+      s = s.replace(/,/g, ""); // 1,234.56 (US)
+    }
+  } else if (lastComma > -1) {
+    s = s.replace(",", "."); // 10,50 -> 10.50
+  }
+  return parseFloat(s);
 }
 function formatCategory(value) {
   if (!value) return "";
@@ -734,6 +754,7 @@ async function populateDetailsList() {
 // Details input: trigger autocomplete + suggestion lookup
 let suggestionDebounce = null;
 let lastSuggestionQuery = "";
+let suggestionReqId = 0;
 
 detailsInput.addEventListener("input", () => {
   clearTimeout(suggestionDebounce);
@@ -756,11 +777,13 @@ async function fetchSuggestions() {
 
   if (q.toLowerCase() === lastSuggestionQuery) return;
   lastSuggestionQuery = q.toLowerCase();
+  const reqId = ++suggestionReqId;
 
   try {
     const res = await fetch(`/api/suggestions?item=${encodeURIComponent(q)}`);
     if (!res.ok) return;
     const data = await res.json();
+    if (reqId !== suggestionReqId) return;
     applySuggestions(data);
   } catch {}
 }
@@ -843,7 +866,7 @@ editForm.addEventListener("submit", async e => {
   e.preventDefault();
   const id = parseInt(editId.value, 10);
   const amountVal = editAmount.value.trim();
-  const amountNum = parseFloat(amountVal);
+  const amountNum = parseAmount(amountVal);
   if (isNaN(amountNum) || amountNum <= 0) { alert("Please enter a valid amount."); return; }
   if (editOriginal && !editOriginal.rate) { alert(`No exchange rate found for ${editOriginal.currency}. Please set a rate in Settings.`); return; }
   const saveBtn = editForm.querySelector(".save-btn");
@@ -891,7 +914,7 @@ expenseForm.addEventListener("submit", async e => {
     addBtn.textContent = "Add expense";
     return;
   }
-  const amountNum = parseFloat(amount);
+  const amountNum = parseAmount(amount);
   if (isNaN(amountNum) || amountNum <= 0) {
     addExpenseMsg.textContent = "Please enter a valid amount (e.g. 10.50).";
     addExpenseMsg.className = "form-msg error";
@@ -1436,15 +1459,8 @@ function populateCumulativeYearToggle() {
     btn.textContent = opt.value === "all" ? "All" : opt.value;
     btn.style.flexShrink = "0";
     btn.addEventListener("click", () => {
-      if (opt.value === "all") {
-        sel.value = "all";
-        sel.dispatchEvent(new Event("change", { bubbles: true }));
-        fetchCumulative("all").then(cum => { if(cum) renderCumulativeChart(cum); });
-        syncCumulativeYearToggle("all");
-      } else {
-        sel.value = opt.value;
-        sel.dispatchEvent(new Event("change", { bubbles: true }));
-      }
+      sel.value = opt.value;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
     });
     wrap.appendChild(btn);
   });
@@ -1471,8 +1487,8 @@ function renderCumulativeChart(payload) {
   }
   const points = payload.points;
   const year = payload.year;
-  // title no longer shows year - chip indicates it
-  syncCumulativeYearToggle(document.getElementById("report-year")?.value || String(year));
+  // title no longer shows year - chip indicates the actual plotted year
+  syncCumulativeYearToggle(String(year));
   // Caption for current year: show future-dated gap so table total matches expectation
   const cap = document.getElementById("cumulative-caption");
   if (cap) {
@@ -1629,7 +1645,10 @@ function renderCumulativeChart(payload) {
   });
 }
 
+let reportsReqId = 0;
+
 async function loadReports() {
+  const reqId = ++reportsReqId;
   const params = new URLSearchParams();
   const search = reportSearch.value.trim();
 
@@ -1659,23 +1678,26 @@ async function loadReports() {
     const res = await safeFetch(`/api/reports?${params}`);
     if (!res.ok) { reportWrap.innerHTML = `<p class="report-empty">Failed to load reports.</p>`; return; }
     const data = await res.json();
+    if (reqId !== reportsReqId) return;
     renderReportTable(data);
 
     // Don't update charts when searching — charts show broad trends
     if (!search) {
       try {
         const charts = await fetchCharts();
+        if (reqId !== reportsReqId) return;
         if (charts) renderCharts(charts);
       } catch (chartErr) {
         console.error("Chart loading failed:", chartErr);
       }
       try {
-        const cumYear = reportYear.value || String(new Date().getFullYear());
+        const cumYear = (reportYear.value && reportYear.value !== "all") ? reportYear.value : String(new Date().getFullYear());
         const cum = await fetchCumulative(cumYear);
+        if (reqId !== reportsReqId) return;
         if (cum) renderCumulativeChart(cum);
         // Ensure year chip exists (first load)
         if (!document.getElementById("cumulative-year-toggle")?.hasChildNodes()) populateCumulativeYearToggle();
-        else syncCumulativeYearToggle(reportYear.value || String(new Date().getFullYear()));
+        else syncCumulativeYearToggle(cumYear);
       } catch (cumErr) {
         console.error("Cumulative chart failed:", cumErr);
       }
@@ -1834,23 +1856,27 @@ async function batchUpdateSelected(payload, confirmMessage) {
   if (!ids.length) return;
   if (!await showConfirm("Update Selected", confirmMessage)) return;
 
-  const res = await safeFetch("/api/expenses/batch-selected", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ids, ...payload })
-  });
+  try {
+    const res = await safeFetch("/api/expenses/batch-selected", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, ...payload })
+    });
 
-  if (res.ok) {
-    const result = await res.json();
-    clearReportSelection();
-    if (reportBatchDetails) reportBatchDetails.value = "";
-    await loadReports();
-    await refreshAll();
-    populateDetailsList();
-    showToast(`Updated ${result.updated} expense${result.updated === 1 ? "" : "s"}.`, "success");
-  } else {
-    const err = await res.json();
-    showErrorToast(err.error || "Failed to update selected expenses.");
+    if (res.ok) {
+      const result = await res.json();
+      clearReportSelection();
+      if (reportBatchDetails) reportBatchDetails.value = "";
+      await loadReports();
+      await refreshAll();
+      populateDetailsList();
+      showToast(`Updated ${result.updated} expense${result.updated === 1 ? "" : "s"}.`, "success");
+    } else {
+      const err = await res.json();
+      showErrorToast(err.error || "Failed to update selected expenses.");
+    }
+  } catch {
+    showErrorToast("Could not update selected expenses. Check your connection.");
   }
 }
 
@@ -2274,21 +2300,26 @@ addCategoryBtn.addEventListener("click", async () => {
 
 async function saveCategoryOrder() {
   const order = categories.map(cat => cat.id);
-  const res = await safeFetch("/api/categories/reorder", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ order })
-  });
+  try {
+    const res = await safeFetch("/api/categories/reorder", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order })
+    });
 
-  if (res.ok) {
-    await loadCategories();
-    await refreshAll();
-    await loadReports();
-    categoryMessage.textContent = "Category order saved.";
-    categoryMessage.className = "form-msg success";
-    setTimeout(() => { categoryMessage.textContent = ""; categoryMessage.className = "form-msg"; }, 2000);
-  } else {
-    categoryMessage.textContent = "Failed to save category order.";
+    if (res.ok) {
+      await loadCategories();
+      await refreshAll();
+      await loadReports();
+      categoryMessage.textContent = "Category order saved.";
+      categoryMessage.className = "form-msg success";
+      setTimeout(() => { categoryMessage.textContent = ""; categoryMessage.className = "form-msg"; }, 2000);
+    } else {
+      categoryMessage.textContent = "Failed to save category order.";
+      categoryMessage.className = "form-msg error";
+    }
+  } catch {
+    categoryMessage.textContent = "Could not save category order. Check your connection.";
     categoryMessage.className = "form-msg error";
   }
 }
@@ -2618,13 +2649,14 @@ document.getElementById("add-rate-btn").addEventListener("click", async () => {
 
   if (!code) { msg.textContent = "Enter a currency code."; msg.className = "form-msg error"; return; }
   if (!name) { msg.textContent = "Enter a currency name."; msg.className = "form-msg error"; return; }
-  if (!rate || isNaN(parseFloat(rate)) || parseFloat(rate) <= 0) { msg.textContent = "Enter a valid rate."; msg.className = "form-msg error"; return; }
+  const rateNum = parseAmount(rate);
+  if (!rate || isNaN(rateNum) || rateNum <= 0) { msg.textContent = "Enter a valid rate."; msg.className = "form-msg error"; return; }
 
   try {
     const res = await safeFetch("/api/currency-rates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, name, rate: parseFloat(rate) })
+      body: JSON.stringify({ code, name, rate: rateNum })
     });
     if (res.ok) {
       msg.textContent = `Added ${code}.`;
@@ -2719,7 +2751,7 @@ document.getElementById("currency-rates-list").addEventListener("click", async e
       resolved = true;
       const newCode = codeInput.value.trim().toUpperCase();
       const newName = nameInput.value.trim();
-      const newRate = parseFloat(valueInput.value.trim());
+      const newRate = parseAmount(valueInput.value.trim());
       const msg = document.getElementById("rate-message");
 
       if (!newCode || !newName || isNaN(newRate) || newRate <= 0) {
@@ -3108,8 +3140,12 @@ if ("serviceWorker" in navigator) {
     });
   }).catch(() => {});
 
-  // Handle controller change (new SW activated)
+  // Handle controller change (new SW activated). Ignore the first
+  // controllerchange from clients.claim() on initial install so the app
+  // doesn't reload itself right after a fresh load.
+  let hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController) { hadController = true; return; }
     window.location.reload();
   });
 }
@@ -3139,7 +3175,12 @@ let extrapIncome = [];
 let extrapOneoff = [];
 
 function getExtrapMonths() {
-  const [y, m] = extrapSettings.start_month.split("-").map(Number);
+  let [y, m] = (extrapSettings.start_month || "").split("-").map(Number);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || m < 1 || m > 12) {
+    const now = new Date();
+    y = now.getFullYear();
+    m = now.getMonth() + 1;
+  }
   const months = [];
   for (let i = 0; i < extrapSettings.num_months; i++) {
     let month = m + i;
@@ -3217,8 +3258,12 @@ async function deleteExtrapEntry(type, id) {
 async function deleteExtrapRow(type, label) {
   const list = type === "income" ? extrapIncome : extrapOneoff;
   const entries = list.filter(e => e.label === label);
-  for (const entry of entries) {
-    await safeFetch(`/api/extrapolate/${type}/${entry.id}`, { method: "DELETE" });
+  try {
+    for (const entry of entries) {
+      await safeFetch(`/api/extrapolate/${type}/${entry.id}`, { method: "DELETE" });
+    }
+  } catch {
+    showErrorToast("Could not delete the row. Check your connection.");
   }
 }
 
@@ -3237,7 +3282,11 @@ function startInlineEdit(cell, currentValue, onSave) {
   const finish = async () => {
     const val = input.value.trim();
     input.remove();
-    await onSave(val);
+    try {
+      await onSave(val);
+    } catch {
+      showErrorToast("Could not save. Check your connection.");
+    }
   };
 
   input.addEventListener("blur", finish);
@@ -3262,7 +3311,11 @@ function startLabelEdit(cell, currentLabel, type, onSave) {
   const finish = async () => {
     const val = input.value.trim();
     input.remove();
-    await onSave(val);
+    try {
+      await onSave(val);
+    } catch {
+      showErrorToast("Could not save. Check your connection.");
+    }
   };
 
   input.addEventListener("blur", finish);
@@ -3364,7 +3417,7 @@ function renderStartingBalanceRow(grid, months) {
   if (bal === 0) firstCell.style.color = "var(--text-secondary)";
   firstCell.addEventListener("click", () => {
     startInlineEdit(firstCell, String(extrapSettings.starting_balance || ""), async (val) => {
-      const num = parseFloat(val);
+      const num = parseAmount(val);
       const newBal = Number.isFinite(num) ? num : 0;
       extrapSettings.starting_balance = newBal;
       await safeFetch("/api/extrapolate/settings", {
@@ -3409,11 +3462,15 @@ function getOrderedLabels(list) {
 }
 
 async function reorderRows(type, labels) {
-  await safeFetch("/api/extrapolate/reorder", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type, labels })
-  });
+  try {
+    await safeFetch("/api/extrapolate/reorder", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, labels })
+    });
+  } catch {
+    showErrorToast("Could not reorder rows. Check your connection.");
+  }
 }
 
 function renderDataRow(grid, type, label, months, index, total) {
@@ -3548,7 +3605,7 @@ function renderDataRow(grid, type, label, months, index, total) {
     cell.addEventListener("click", () => {
       const currentVal = entry && entry.amount !== 0 ? String(entry.amount) : "";
       startInlineEdit(cell, currentVal, async (newVal) => {
-        const num = parseFloat(newVal);
+        const num = parseAmount(newVal);
         if (!newVal || newVal === "0") {
           // Set amount to 0 but keep the entry (preserves note and row)
           await saveExtrapCell(type, ym, label, 0);
@@ -3950,15 +4007,6 @@ document.getElementById("extrap-apply-btn")?.addEventListener("click", async () 
       showToast("Forecast updated.", "success");
     }
   } catch {}
-});
-
-// Load forecast tab when switching to it
-document.querySelectorAll(".bottom-nav-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    if (btn.dataset.tab === "forecast") {
-      loadExtrapolateData();
-    }
-  });
 });
 
 // Reset forecast

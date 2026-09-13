@@ -901,6 +901,17 @@ expenseForm.addEventListener("submit", async e => {
     return;
   }
 
+  // Abroad mode requires a saved rate — block rather than silently store the
+  // foreign amount as if it were base currency.
+  if (abroadMode.active && abroadMode.currency && !currencyRates.find(r => r.code === abroadMode.currency)) {
+    addExpenseMsg.textContent = `No exchange rate set for ${abroadMode.currency}. Add one in Settings before logging a foreign expense.`;
+    addExpenseMsg.className = "form-msg error";
+    isSubmitting = false;
+    addBtn.disabled = false;
+    addBtn.textContent = "Add expense";
+    return;
+  }
+
   // Duplicate check (skip if offline — not critical)
   if (navigator.onLine) {
     try {
@@ -1329,7 +1340,7 @@ if (chartView === "amounts") {
           if (value <= 0) continue;
           total += value;
           rows += `<div style="display:flex;justify-content:space-between;align-items:center;gap:16px;">
-              <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ds.backgroundColor};margin-right:6px;"></span><span style="color:var(--text-secondary);">${ds.label}</span></span>
+              <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${escapeHtml(ds.backgroundColor)};margin-right:6px;"></span><span style="color:var(--text-secondary);">${escapeHtml(ds.label)}</span></span>
               <span style="font-weight:600;">${fmtTooltipVal(value)}</span>
             </div>`;
         }
@@ -1705,7 +1716,7 @@ function renderReportTotals(data) {
     ? Math.round((amount / grandTotal) * 100)
     : 0;
 
-  html += ` | ${formatCategory(category)}: ${formatAmountRounded(amount)} (${percentage}%)`;
+  html += ` | ${escapeHtml(formatCategory(category))}: ${formatAmountRounded(amount)} (${percentage}%)`;
 }
 
 html += ` | Total: ${formatAmountRounded(grandTotal)}`;
@@ -2211,6 +2222,32 @@ function renderCategoriesList() {
       <button class="cat-delete-btn" data-id="${cat.id}" title="Delete category" aria-label="Delete ${escapeHtml(formatCategory(cat.name))}">${ICON.delete}</button>
     `;
     categoriesList.appendChild(div);
+
+    const colorDot = div.querySelector(".category-color-dot");
+    const picker = div.querySelector(".category-color-input");
+    if (colorDot && picker) {
+      picker.addEventListener("input", () => {
+        colorDot.style.background = picker.value;
+      });
+      picker.addEventListener("change", async () => {
+        const color = picker.value;
+        if (color === cat.color) return;
+        try {
+          const res = await safeFetch(`/api/categories/${cat.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: cat.name, color }) });
+          if (res.ok) {
+            categoryMessage.textContent = `Color updated for "${formatCategory(cat.name)}".`;
+            categoryMessage.className = "form-msg success";
+            await loadCategories();
+            await refreshAll();
+            await loadReports();
+          } else {
+            const data = await res.json();
+            categoryMessage.textContent = data.error || "Failed to update color.";
+            categoryMessage.className = "form-msg error";
+          }
+        } catch {}
+      });
+    }
   });
 }
 
@@ -2281,36 +2318,9 @@ categoriesList.addEventListener("click", async e => {
   // Color change
   const colorDot = e.target.closest(".category-color-dot");
   if (colorDot) {
-    const id = parseInt(colorDot.dataset.id, 10);
-    const cat = categories.find(c => c.id === id);
-    if (!cat) return;
-
     const item = colorDot.closest(".category-item");
     const picker = item.querySelector(".category-color-input");
-    if (!picker) return;
-
-    picker.addEventListener("input", () => {
-      colorDot.style.background = picker.value;
-    });
-    picker.addEventListener("change", async () => {
-      const color = picker.value;
-      if (color === cat.color) return;
-      try {
-        const res = await safeFetch(`/api/categories/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: cat.name, color }) });
-        if (res.ok) {
-          categoryMessage.textContent = `Color updated for "${formatCategory(cat.name)}".`;
-          categoryMessage.className = "form-msg success";
-          await loadCategories();
-          await refreshAll();
-          await loadReports();
-        } else {
-          const data = await res.json();
-          categoryMessage.textContent = data.error || "Failed to update color.";
-          categoryMessage.className = "form-msg error";
-        }
-      } catch {}
-    });
-    picker.click();
+    if (picker) picker.click();
     return;
   }
 
@@ -2721,16 +2731,17 @@ document.getElementById("currency-rates-list").addEventListener("click", async e
       }
 
       try {
-        // If code changed, delete old and create new
-        if (newCode !== rate.code) {
-          await safeFetch(`/api/currency-rates/${rate.code}`, { method: "DELETE" });
-        }
+        // Create/overwrite the new rate first, then remove the old code if it
+        // changed — so a failed save never loses the existing rate.
         const res = await safeFetch("/api/currency-rates", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code: newCode, name: newName, rate: newRate })
         });
         if (res.ok) {
+          if (newCode !== rate.code) {
+            await safeFetch(`/api/currency-rates/${rate.code}`, { method: "DELETE" });
+          }
           msg.textContent = `Updated ${newCode}.`;
           msg.className = "form-msg success";
           await loadCurrencyRates();
@@ -2973,10 +2984,10 @@ document.getElementById("abroad-currency-select").addEventListener("change", asy
     } catch {
       importMsg.textContent = "Import failed. Check your connection.";
       importMsg.className = "form-msg error";
+    } finally {
+      importBtn.disabled = false;
+      importBtn.textContent = "Import";
     }
-
-    importBtn.disabled = false;
-    importBtn.textContent = "Import";
   });
 })();
 

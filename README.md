@@ -1,6 +1,18 @@
-# Spend Less v4.7.2
+# Spend Less v4.7.3
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.7.3
+
+### Fixes — Data Safety, Import, XSS & Fresh Install
+
+- **Abroad mode without a rate no longer mis-saves** — adding a foreign expense when no exchange rate existed for the active currency silently stored the foreign number as base currency (and the duplicate check compared the wrong value). It now blocks with a clear message, matching the edit flow. Code: `public/app.js` (add handler).
+- **CSV import button no longer sticks** — a rejected import (bad rows, >15 categories, too many rows, >1 MB) returned early and left the button disabled on "Importing…" until reload; re-enabling now runs in a `finally`. Code: `public/app.js`.
+- **Category names are escaped on output** — the Reports totals bar and the chart tooltip wrote category names to `innerHTML` unescaped. Import now also rejects category names over 30 chars, matching the API. Code: `public/app.js` (`renderReportTotals`, chart tooltip), `server.js` (`/api/import/csv`).
+- **Forecast rename works for zero-amount months** — `PUT /api/extrapolate/income|oneoff/:id` accepted every amount except `0`, so renaming a row whose month had 0 failed silently. Code: `server.js`.
+- **Category color picker no longer stacks handlers** — clicking the swatch added duplicate `input`/`change` listeners, so one color change could fire several PUTs. Listeners are now bound once when the list renders. Code: `public/app.js` (`renderCategoriesList`).
+- **Currency-rate rename can't lose data** — renaming a rate deleted the old code before creating the new one, so a failed save lost the rate. It now creates first and deletes the old code only on success. Code: `public/app.js`.
+- **Fresh installs no longer crash on startup** — the `expenses` table was created inside a callback while its `ALTER TABLE` migration statements ran separately, so a brand-new database crashed with `no such table: expenses`. Schema create/migrate/alter is now one ordered chain. Code: `server.js`.
 
 ## What's New in v4.7.2
 

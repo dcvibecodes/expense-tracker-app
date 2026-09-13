@@ -92,56 +92,58 @@ db.serialize(() => {
     )
   `);
 
-  // Check if expenses table has the old CHECK constraint by trying to create the new schema
-  // If the table already exists, we need to migrate it to remove the CHECK constraint
+  // Create/migrate the expenses table, then ensure all columns exist — all in
+  // one callback chain so a fresh DB can't race its own ALTER statements.
   db.get("SELECT sql FROM sqlite_master WHERE type='table' AND name='expenses'", (err, row) => {
     if (err) return;
+
+    const addMissingColumns = () => {
+      db.all("PRAGMA table_info(expenses)", (pragmaErr, cols) => {
+        if (pragmaErr) return;
+        const colNames = cols.map(c => c.name);
+        if (!colNames.includes("original_amount")) {
+          db.run("ALTER TABLE expenses ADD COLUMN original_amount REAL");
+        }
+        if (!colNames.includes("original_currency")) {
+          db.run("ALTER TABLE expenses ADD COLUMN original_currency TEXT");
+        }
+        if (!colNames.includes("exchange_rate")) {
+          db.run("ALTER TABLE expenses ADD COLUMN exchange_rate REAL");
+        }
+        if (!colNames.includes("note")) {
+          db.run("ALTER TABLE expenses ADD COLUMN note TEXT DEFAULT ''");
+        }
+      });
+    };
+
+    const fullSchema = `
+      CREATE TABLE expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        details TEXT NOT NULL,
+        category TEXT NOT NULL,
+        amount REAL NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        original_amount REAL,
+        original_currency TEXT,
+        exchange_rate REAL,
+        note TEXT DEFAULT ''
+      )
+    `;
+
     if (row && row.sql && row.sql.includes("CHECK")) {
-      // Migrate: remove CHECK constraint
-      db.serialize(() => {
-        db.run("ALTER TABLE expenses RENAME TO expenses_old");
-        db.run(`
-          CREATE TABLE expenses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT NOT NULL,
-            details TEXT NOT NULL,
-            category TEXT NOT NULL,
-            amount REAL NOT NULL,
-            created_at TEXT NOT NULL DEFAULT (datetime('now'))
-          )
-        `);
-        db.run("INSERT INTO expenses SELECT * FROM expenses_old");
-        db.run("DROP TABLE expenses_old");
+      // Migrate: remove the old CHECK constraint (ordered callbacks)
+      db.run("ALTER TABLE expenses RENAME TO expenses_old", () => {
+        db.run(fullSchema, () => {
+          db.run("INSERT INTO expenses (id, date, details, category, amount, created_at) SELECT id, date, details, category, amount, created_at FROM expenses_old", () => {
+            db.run("DROP TABLE expenses_old", addMissingColumns);
+          });
+        });
       });
     } else if (!row) {
-      db.run(`
-        CREATE TABLE expenses (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          date TEXT NOT NULL,
-          details TEXT NOT NULL,
-          category TEXT NOT NULL,
-          amount REAL NOT NULL,
-          created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        )
-      `);
-    }
-  });
-
-  // Migrate: add multi-currency columns to expenses if missing
-  db.all("PRAGMA table_info(expenses)", (err, cols) => {
-    if (err) return;
-    const colNames = cols.map(c => c.name);
-    if (!colNames.includes("original_amount")) {
-      db.run("ALTER TABLE expenses ADD COLUMN original_amount REAL");
-    }
-    if (!colNames.includes("original_currency")) {
-      db.run("ALTER TABLE expenses ADD COLUMN original_currency TEXT");
-    }
-    if (!colNames.includes("exchange_rate")) {
-      db.run("ALTER TABLE expenses ADD COLUMN exchange_rate REAL");
-    }
-    if (!colNames.includes("note")) {
-      db.run("ALTER TABLE expenses ADD COLUMN note TEXT DEFAULT ''");
+      db.run(fullSchema, addMissingColumns);
+    } else {
+      addMissingColumns();
     }
   });
 
@@ -1338,6 +1340,10 @@ app.post("/api/import/csv", (req, res) => {
         errors.push(`Row ${rowNum}: category is required.`);
         continue;
       }
+      if (categoryRaw.length > 30) {
+        errors.push(`Row ${rowNum}: category name too long (max 30 chars).`);
+        continue;
+      }
       const catLower = categoryRaw.toLowerCase();
       if (!existingCategories.has(catLower)) {
         categoriesToCreate.set(catLower, categoryRaw);
@@ -1877,7 +1883,7 @@ app.put("/api/extrapolate/income/:id", (req, res) => {
   if (!month || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: "Invalid month." });
   if (!label || typeof label !== "string" || !label.trim()) return res.status(400).json({ error: "Label required." });
   const amt = Number(amount);
-  if (!Number.isFinite(amt) || amt === 0) return res.status(400).json({ error: "Valid amount required." });
+  if (!Number.isFinite(amt)) return res.status(400).json({ error: "Valid amount required." });
   const noteVal = typeof note === "string" ? note.trim() : "";
   db.run("UPDATE extrap_income SET month = ?, label = ?, amount = ?, note = ? WHERE id = ?", [month, label.trim(), amt, noteVal, id], function(err) {
     if (err) return res.status(500).json({ error: "Failed to update." });
@@ -1950,7 +1956,7 @@ app.put("/api/extrapolate/oneoff/:id", (req, res) => {
   if (!month || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: "Invalid month." });
   if (!label || typeof label !== "string" || !label.trim()) return res.status(400).json({ error: "Label required." });
   const amt = Number(amount);
-  if (!Number.isFinite(amt) || amt === 0) return res.status(400).json({ error: "Valid amount required." });
+  if (!Number.isFinite(amt)) return res.status(400).json({ error: "Valid amount required." });
   const noteVal = typeof note === "string" ? note.trim() : "";
   db.run("UPDATE extrap_oneoff SET month = ?, label = ?, amount = ?, note = ? WHERE id = ?", [month, label.trim(), amt, noteVal, id], function(err) {
     if (err) return res.status(500).json({ error: "Failed to update." });

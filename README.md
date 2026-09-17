@@ -1,6 +1,15 @@
-# Spend Less v4.7.4
+# Spend Less v4.8.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.8.0
+
+### Abroad Mode — Per-Entry Home/Abroad Override
+
+- **Log a base-currency expense without leaving abroad mode** — while abroad mode is on, the Add Expense form now shows a `This entry in: Home | Abroad` pill (defaults to Abroad). Pick Home and that single expense is saved in your base currency with no conversion — no more toggling the global mode off and back on for domestic bills like home utility payments. Code: `public/index.html` (`#entry-currency-row` / `#entry-currency-toggle`), `public/app.js` (`entryIsAbroad()` helper gates the amount conversion, rate check, and duplicate-check amount).
+- **Follows the global mode** — the pill only appears when abroad mode is on, and resets to Abroad after each save, on Clear, and when the foreign currency changes. The amount label and info line update live (`Amount (₹)` vs `Amount (¥)`). Code: `public/app.js` (`updateAbroadModeInfo`).
+- **No server or database change** — a Home entry is stored exactly like a normal domestic expense (no `original_*` snapshot).
+- **Service worker** — cache bumped to `spend-less-v3` so a deploy purges the old shell. Code: `public/sw.js`.
 
 ## What's New in v4.7.4
 

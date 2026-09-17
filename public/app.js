@@ -15,6 +15,13 @@ let dateFormat = "MM/DD/YYYY"; // configurable date display format
 let baseCurrency = "INR"; // configurable base currency
 let currencyRates = []; // loaded from server
 let abroadMode = { active: false, currency: "" }; // loaded from server
+let entryCurrency = "abroad"; // per-entry override for the Add form: "abroad" | "home"
+
+// Whether the expense currently being added should be converted from a foreign
+// currency. Abroad mode must be on AND the per-entry pill left on "Abroad".
+function entryIsAbroad() {
+  return !!(abroadMode.active && abroadMode.currency && entryCurrency === "abroad");
+}
 
 // Currency symbol map (common currencies)
 const CURRENCY_SYMBOLS = {
@@ -925,8 +932,8 @@ expenseForm.addEventListener("submit", async e => {
   }
 
   // Abroad mode requires a saved rate — block rather than silently store the
-  // foreign amount as if it were base currency.
-  if (abroadMode.active && abroadMode.currency && !currencyRates.find(r => r.code === abroadMode.currency)) {
+  // foreign amount as if it were base currency. (A "Home" entry skips this.)
+  if (entryCurrency === "abroad" && abroadMode.active && abroadMode.currency && !currencyRates.find(r => r.code === abroadMode.currency)) {
     addExpenseMsg.textContent = `No exchange rate set for ${abroadMode.currency}. Add one in Settings before logging a foreign expense.`;
     addExpenseMsg.className = "form-msg error";
     isSubmitting = false;
@@ -940,7 +947,7 @@ expenseForm.addEventListener("submit", async e => {
     try {
       // Use the final base-currency amount for duplicate check
       let dupAmount = amountNum;
-      if (abroadMode.active && abroadMode.currency) {
+      if (entryIsAbroad()) {
         const rate = currencyRates.find(r => r.code === abroadMode.currency);
         if (rate) dupAmount = Math.round(amountNum * rate.rate * 100) / 100;
       }
@@ -980,7 +987,7 @@ expenseForm.addEventListener("submit", async e => {
     const noteVal = document.getElementById("note").value.trim();
     if (noteVal) body.note = noteVal;
 
-    if (abroadMode.active && abroadMode.currency) {
+    if (entryIsAbroad()) {
       const rate = currencyRates.find(r => r.code === abroadMode.currency);
       if (rate) {
         body.original_amount = amountNum;
@@ -995,6 +1002,8 @@ expenseForm.addEventListener("submit", async e => {
       addSuccess = true;
       addExpenseMsg.textContent = "Expense added successfully.";
       addExpenseMsg.className = "form-msg success";
+      entryCurrency = "abroad"; // reset the per-entry pill to the global default
+      updateAbroadModeInfo();
       detailsInput.value = ""; amountInput.value = "";
       document.getElementById("note").value = "";
       document.getElementById("note-field-wrap").style.display = "none";
@@ -1037,6 +1046,8 @@ document.getElementById("clear-form-btn").addEventListener("click", () => {
   document.getElementById("note-field-wrap").style.display = "none";
   document.getElementById("note-toggle-link").textContent = "Add note";
   if (categories.length) categoryInput.value = categories[0].name;
+  entryCurrency = "abroad";
+  updateAbroadModeInfo();
   detailsAutocomplete.hide();
   hideSuggestions();
   addExpenseMsg.textContent = "";
@@ -2840,10 +2851,25 @@ function updateAbroadUI() {
 function updateAbroadModeInfo() {
   const infoEl = document.getElementById("abroad-mode-info");
   const amountLabel = document.getElementById("amount-label-text");
+  const pillRow = document.getElementById("entry-currency-row");
   if (!infoEl) return;
   if (abroadMode.active && abroadMode.currency) {
+    // Abroad mode is on — offer a per-entry Home/Abroad choice so domestic
+    // bills (still in base currency) can be logged without toggling the mode.
+    if (pillRow) pillRow.style.display = "";
+    const homeBtn = document.querySelector('#entry-currency-toggle [data-entry-currency="home"]');
+    const abroadBtn = document.querySelector('#entry-currency-toggle [data-entry-currency="abroad"]');
+    if (homeBtn) homeBtn.textContent = `Home (${getCurrencySymbol(baseCurrency)})`;
+    if (abroadBtn) abroadBtn.textContent = `Abroad (${getCurrencySymbol(abroadMode.currency)})`;
+    document.querySelectorAll("#entry-currency-toggle .theme-option-btn").forEach(b => {
+      b.classList.toggle("active", b.dataset.entryCurrency === entryCurrency);
+    });
     const rate = currencyRates.find(r => r.code === abroadMode.currency);
-    if (rate) {
+    if (entryCurrency === "home") {
+      infoEl.textContent = `This entry will be saved in ${getCurrencySymbol(baseCurrency)} — no conversion.`;
+      infoEl.style.display = "block";
+      if (amountLabel) amountLabel.textContent = `Amount (${getCurrencySymbol(baseCurrency)})`;
+    } else if (rate) {
       infoEl.textContent = `Abroad mode · ${getCurrencySymbol(abroadMode.currency)} converts at ${rate.rate} to ${getCurrencySymbol(baseCurrency)}`;
       infoEl.style.display = "block";
       if (amountLabel) amountLabel.textContent = `Amount (${getCurrencySymbol(abroadMode.currency)})`;
@@ -2853,6 +2879,7 @@ function updateAbroadModeInfo() {
       if (amountLabel) amountLabel.textContent = "Amount";
     }
   } else {
+    if (pillRow) pillRow.style.display = "none";
     infoEl.style.display = "none";
     if (amountLabel) amountLabel.textContent = `Amount (${getCurrencySymbol(baseCurrency)})`;
   }
@@ -2914,6 +2941,7 @@ document.getElementById("abroad-currency-select").addEventListener("change", asy
       body: JSON.stringify({ abroad_mode: { active: true, currency } })
     });
     abroadMode = { active: true, currency };
+    entryCurrency = "abroad"; // new foreign currency — reset the per-entry pill
     msg.textContent = `Abroad mode ON (${currency}).`;
     msg.className = "form-msg";
     updateAbroadModeInfo();
@@ -2922,6 +2950,15 @@ document.getElementById("abroad-currency-select").addEventListener("change", asy
     msg.textContent = "Failed to save.";
     msg.className = "form-msg error";
   }
+});
+
+// Per-entry Home/Abroad pill — lets a single expense be logged in the base
+// currency while abroad mode (and therefore the default) stays on.
+document.querySelectorAll("#entry-currency-toggle .theme-option-btn").forEach(btn => {
+  btn.addEventListener("click", function() {
+    entryCurrency = this.dataset.entryCurrency;
+    updateAbroadModeInfo();
+  });
 });
 
 // ===== CSV IMPORT =====

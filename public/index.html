@@ -146,6 +146,14 @@
               <select id="category" required></select>
             </label>
 
+            <div class="entry-currency-row" id="entry-currency-row" style="display:none; grid-column: 1/-1;">
+              <span class="entry-currency-label">This entry in</span>
+              <div class="theme-toggle-row" id="entry-currency-toggle">
+                <button type="button" class="theme-option-btn" data-entry-currency="home">Home</button>
+                <button type="button" class="theme-option-btn active" data-entry-currency="abroad">Abroad</button>
+              </div>
+            </div>
+
             <label><span id="amount-label-text">Amount</span>
               <input type="text" id="amount" inputmode="decimal" placeholder="0.00" autocomplete="off" required />
             </label>

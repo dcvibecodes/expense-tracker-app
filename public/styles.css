@@ -1201,6 +1201,9 @@ tbody tr:hover td { background: var(--accent-dim); }
 .toggle-switch input:checked + .toggle-slider::before { transform: translateX(16px); }
 .toggle-switch input:focus-visible + .toggle-slider { outline: 2px solid var(--accent); outline-offset: 2px; }
 #abroad-currency-label { min-width: 130px; }
+/* Per-entry Home/Abroad override inside the Add Expense form */
+.entry-currency-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.entry-currency-row .entry-currency-label { font-size: 0.72rem; color: var(--text-secondary); font-weight: 550; }
 .currency-rate-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--surface); flex-wrap: wrap; transition: border-color 0.15s; box-shadow: var(--shadow-item); }
 .currency-rate-item:hover { border-color: var(--border); }
 .currency-rate-item .rate-code { font-weight: 700; font-size: 0.76rem; min-width: 45px; }

@@ -402,6 +402,7 @@ function switchToTab(tabId) {
   btn.classList.add("active");
   const tabEl = document.getElementById(`tab-${tabId}`);
   tabEl.classList.add("active");
+  if (tabId === "tracker") refreshAll();
   if (tabId === "reports") loadReports();
   if (tabId === "forecast") loadExtrapolateData();
 }
@@ -568,7 +569,7 @@ async function fetchExpenses() {
 
   params.set("through", today);
 
-  const res = await safeFetch(`/api/expenses?${params}`);
+  const res = await safeFetch(`/api/expenses?${params}`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch expenses");
   return res.json();
 }
@@ -730,8 +731,8 @@ async function refreshAll() {
 
     const [rows, summaryRes, avgRes] = await Promise.all([
       fetchExpenses(),
-      fetch(`/api/charts?month=${month}&year=${year}&through=${today}`).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch(`/api/charts/average?month=${month}&year=${year}&through=${today}`).then(r => r.ok ? r.json() : null).catch(() => null)
+      fetch(`/api/charts?month=${month}&year=${year}&through=${today}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`/api/charts/average?month=${month}&year=${year}&through=${today}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null)
     ]);
 
     renderRows(rows);
@@ -750,6 +751,54 @@ async function refreshAll() {
     // Error toast already shown by safeFetch if network fails
   }
 }
+
+// ===== REFRESH =====
+// Re-pull data for whichever tab is currently visible. Reuses the same
+// loaders used on first paint / after edits, so nothing new to maintain.
+async function refreshActiveTab() {
+  const tab = document.querySelector(".bottom-nav-btn.active")?.dataset.tab || "tracker";
+  if (tab === "reports") { await loadReports(); return; }
+  if (tab === "forecast") { await loadExtrapolateData(); return; }
+  await refreshAll();
+}
+
+// True when a dialog/sheet is open — avoid yanking the list out from
+// under an in-progress edit or form entry.
+function anyOverlayOpen() {
+  return !!document.querySelector(".modal-overlay.open, .notif-overlay.open, .mobile-form-overlay.open");
+}
+
+let lastAutoRefresh = Date.now();
+const AUTO_REFRESH_MIN_MS = 30000;
+
+async function manualRefresh() {
+  const btn = document.getElementById("refresh-btn");
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  btn.classList.add("spinning");
+  try {
+    await refreshActiveTab();
+    populateDetailsList();
+    showToast("Updated", "success");
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove("spinning");
+  }
+}
+
+async function autoRefresh() {
+  if (document.hidden || anyOverlayOpen()) return;
+  const now = Date.now();
+  if (now - lastAutoRefresh < AUTO_REFRESH_MIN_MS) return;
+  lastAutoRefresh = now;
+  await refreshActiveTab();
+}
+
+document.getElementById("refresh-btn")?.addEventListener("click", manualRefresh);
+// Returning to the app/PWA (or the browser tab) re-pulls data, so edits
+// made elsewhere (e.g. an AI agent hitting the API) show up automatically.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) autoRefresh(); });
+window.addEventListener("focus", autoRefresh);
 
 async function populateDetailsList() {
   try {

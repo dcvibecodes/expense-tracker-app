@@ -131,6 +131,9 @@ button, a, input, select, textarea, [tabindex] {
   color: var(--accent);
   border-color: var(--accent);
 }
+.notification-bell:disabled { opacity: 0.6; cursor: default; }
+.notification-bell.spinning .header-icon { animation: refresh-spin 0.8s linear infinite; }
+@keyframes refresh-spin { to { transform: rotate(360deg); } }
 /* ── Notification Panel ── */
 .notification-panel {
   display: none; position: fixed; top: 0; right: 0; width: 320px; max-width: 85vw;

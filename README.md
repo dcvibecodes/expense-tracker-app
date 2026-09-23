@@ -1,6 +1,17 @@
-# Spend Less v4.8.0
+# Spend Less v4.9.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.9.0
+
+### Refresh — See Out-of-Band Edits Without a Reload
+
+- **Header refresh button** — a refresh icon in the app header re-pulls the current tab on demand (spins while loading, shows an "Updated" toast). Code: `public/index.html` (`#refresh-btn`), `public/app.js` (`manualRefresh`).
+- **Auto-refresh on return** — coming back to the app/PWA (`visibilitychange` / `focus`) re-pulls data, so edits made elsewhere (e.g. an AI agent hitting the API) show up automatically without closing and reopening. Throttled to once per 30s. Code: `public/app.js` (`autoRefresh`).
+- **Returning to the Tracker tab refreshes it** — tapping the Tracker tab now reloads the list and summary; previously only Reports and Forecast reloaded on tab switch. Code: `public/app.js` (`switchToTab`).
+- **Only the active tab reloads** — one `refreshActiveTab()` dispatches to `refreshAll` / `loadReports` / `loadExtrapolateData`, and auto-refresh is skipped while a modal or sheet is open so in-progress edits aren't disturbed. Code: `public/app.js`.
+- **Cache-safe fetches** — tracker and chart GETs now send `cache: "no-store"` (API routes set no cache headers). Service worker cache bumped to `spend-less-v4`. Code: `public/app.js`, `public/sw.js`.
+- **No server or database change.**
 
 ## What's New in v4.8.0
 
@@ -569,6 +580,7 @@ Recurring series set up before this update will not automatically generate notif
 - **Date format** — configurable (MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD)
 - **App Lock** — 6-digit PIN with PBKDF2 hashing, recovery code, rate limiting
 - **Dark mode** — theme toggle in Settings (Auto / Light / Dark); Auto follows device preference
+- **Refresh** — header refresh button, auto-refresh when returning to the app, and a reload when tapping back to the Tracker tab; sees edits made outside the app (e.g. via the API) without a full reload
 - **PWA** — installable, service worker for offline shell
 
 ## Setup

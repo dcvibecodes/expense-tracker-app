@@ -1,6 +1,15 @@
-# Spend Less v4.9.0
+# Spend Less v4.9.1
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.9.1
+
+### Fix — Android Status Bar Now Follows the Dark Theme
+
+- **Status-bar tint matches the active theme** — on Android the top strip stayed cream (`#f5efe6`) in dark mode because `<meta name="theme-color">` was a fixed color. It's now set to `#000000` in dark and `#f5efe6` in light. Code: `public/index.html` (zero-flash inline head script), `public/app.js` (`updateThemeColor()` called from `applyTheme()`).
+- **Works with the manual toggle** — the meta is updated in JS (not via a `media` query) so the in-app Auto/Light/Dark override is covered, and it's set before first paint to avoid a flash.
+- **iOS unchanged** — iOS ignores `theme-color`; its status bar is driven by the static `apple-mobile-web-app-status-bar-style` and already renders dark via the page background.
+- **No server or database change.** Static assets are network-first, so no service-worker cache bump is needed.
 
 ## What's New in v4.9.0
 

@@ -172,6 +172,12 @@ function showConfirm(title, message) {
 }
 
 // ===== THEME (auto-detect system preference, with user override) =====
+function updateThemeColor() {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  meta.setAttribute("content", dark ? "#000000" : "#f5efe6");
+}
 function applyTheme() {
   const saved = localStorage.getItem("theme-preference");
   if (saved === "dark") {
@@ -182,6 +188,7 @@ function applyTheme() {
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
   }
+  updateThemeColor();
 }
 applyTheme();
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {

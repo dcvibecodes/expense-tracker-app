@@ -854,8 +854,44 @@ tbody tr:hover td { background: var(--accent-dim); }
 .report-action-row .btn-secondary {
   flex: 1;
 }
+.report-day-scroller {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.report-days-nav {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--elevated);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.report-days-nav:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.report-days-nav:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.report-days-nav svg {
+  width: 16px;
+  height: 16px;
+}
+.report-days-nav[hidden] {
+  display: none;
+}
 .report-day-links {
   display: flex;
+  flex: 1;
+  min-width: 0;
   flex-wrap: nowrap;
   gap: 6px;
   overflow-x: auto;
@@ -1314,6 +1350,17 @@ body { overflow-x: clip; }
   .search-with-toggle .search-icon-wrap input { width: 100%; }
   .report-range-btns { flex-wrap: wrap; display: flex; gap: 6px; }
   .report-range-btns button { flex: 1; min-width: 0; }
+  .report-day-scroller {
+    gap: 4px;
+  }
+  .report-days-nav {
+    width: 26px;
+    height: 26px;
+  }
+  .report-days-nav svg {
+    width: 14px;
+    height: 14px;
+  }
   .report-day-links {
     flex-wrap: nowrap;
     gap: 3px;

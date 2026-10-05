@@ -1,6 +1,14 @@
-# Spend Less v4.9.1
+# Spend Less v4.9.2
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.9.2
+
+### Fix — Reports Day Strip Gets Arrow Buttons
+
+- **Clickable `<` / `>` arrows** — the day-of-month pill row was scroll-only with a hidden scrollbar (touch/trackpad only), so a desktop + normal mouse couldn't reach later days. Arrow buttons now flank the strip and scroll it by ~240px. Code: `public/index.html` (`.report-day-scroller`), `public/app.js` (`updateReportDaysNav`), `public/styles.css`.
+- **Smart visibility** — arrows hide when all days fit or the list is empty (search / Year=All); left disables at start, right at end. Touch swipe on mobile still works.
+- **No server or database change.** Static assets are network-first, so no service-worker cache bump is needed.
 
 ## What's New in v4.9.1
 

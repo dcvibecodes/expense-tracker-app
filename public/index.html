@@ -297,7 +297,15 @@
               <button id="report-reset" type="button" class="btn-secondary">Reset</button> 
               <button id="report-csv-btn" type="button" class="btn-secondary">↓ CSV</button> 
             </div>
-            <div id="report-day-links" class="report-day-links" aria-label="Filter by day of month"></div>
+            <div class="report-day-scroller">
+              <button id="report-days-prev" type="button" class="report-days-nav" aria-label="Scroll days left">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              </button>
+              <div id="report-day-links" class="report-day-links" aria-label="Filter by day of month"></div>
+              <button id="report-days-next" type="button" class="report-days-nav" aria-label="Scroll days right">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
+            </div>
           </div>
           <div id="report-totals-bar" class="report-totals-bar"></div>
         </section> 

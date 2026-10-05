@@ -1,6 +1,13 @@
-# Spend Less v4.9.2
+# Spend Less v4.9.3
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.9.3
+
+### Fix — Day-Strip Arrows Show Immediately
+
+- **Arrows no longer need a first date-click** — the day pills render at page load while the Reports tab is hidden (zero width), so the arrow-visibility check read "nothing to scroll" and hid them until a re-render. Opening Reports now re-renders the pills and refreshes arrow state on the next frame; refresh-while-on-Reports does the same; a zero-width read retries once instead of hiding. Code: `public/app.js` (`switchToTab`, `refreshActiveTab`, `updateReportDaysNav`).
+- **No server or database change.** Static assets are network-first, so no service-worker cache bump is needed.
 
 ## What's New in v4.9.2
 

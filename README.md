@@ -1,6 +1,13 @@
-# Spend Less v4.9.3
+# Spend Less v4.9.4
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.9.4
+
+### Fix — Day-Strip Arrows Are Desktop-Only
+
+- **Arrows hidden on mobile (`≤768px`)** — they crowded the narrow strip, sat off-center from the date pills (26px vs 24px + asymmetric strip margins), and were redundant next to touch swipe. Desktop keeps the arrows (32px, aligned with the pills); mobile gets the full-width swipeable strip back. Code: `public/styles.css` (one media-query rule; no JS change).
+- **No server or database change.** Static assets are network-first, so no service-worker cache bump is needed.
 
 ## What's New in v4.9.3
 

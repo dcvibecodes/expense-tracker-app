@@ -1210,6 +1210,8 @@ const reportApplyCategory = document.getElementById("report-apply-category");
 const reportApplyDetails = document.getElementById("report-apply-details");
 const reportClearSelection = document.getElementById("report-clear-selection");
 const reportDayLinks = document.getElementById("report-day-links");
+const reportDaysPrev = document.getElementById("report-days-prev");
+const reportDaysNext = document.getElementById("report-days-next");
 let reportRows = [];
 let selectedReportIds = new Set();
 let selectedReportStartDay = "";
@@ -2075,6 +2077,7 @@ function renderReportDayLinks() {
 
   if (search || reportYear.value === "all" || !year || !month) {
     reportDayLinks.innerHTML = "";
+    updateReportDaysNav();
     return;
   }
 
@@ -2097,6 +2100,7 @@ function renderReportDayLinks() {
   }
 
   reportDayLinks.innerHTML = links.join("");
+  updateReportDaysNav();
 }
 
 function selectReportDay(day, extendRange) {
@@ -2152,6 +2156,33 @@ reportDayLinks.addEventListener("click", e => {
   renderReportDayLinks();
   loadReports();
 });
+
+function updateReportDaysNav() {
+  if (!reportDayLinks || !reportDaysPrev || !reportDaysNext) return;
+  const hasDays = reportDayLinks.children.length > 0;
+  const maxScroll = reportDayLinks.scrollWidth - reportDayLinks.clientWidth;
+  const canScroll = hasDays && maxScroll > 1;
+  reportDaysPrev.hidden = !canScroll;
+  reportDaysNext.hidden = !canScroll;
+  if (!canScroll) return;
+  reportDaysPrev.disabled = reportDayLinks.scrollLeft <= 0;
+  reportDaysNext.disabled = reportDayLinks.scrollLeft >= maxScroll - 1;
+}
+
+if (reportDaysPrev && reportDaysNext) {
+  reportDaysPrev.addEventListener("click", () => {
+    reportDayLinks.scrollBy({ left: -240, behavior: "smooth" });
+  });
+  reportDaysNext.addEventListener("click", () => {
+    reportDayLinks.scrollBy({ left: 240, behavior: "smooth" });
+  });
+}
+
+if (reportDayLinks) {
+  reportDayLinks.addEventListener("scroll", updateReportDaysNav, { passive: true });
+  window.addEventListener("resize", updateReportDaysNav);
+  window.addEventListener("load", updateReportDaysNav);
+}
 
 // Report search — as-you-type, min 2 chars. Typing the first character into an
 // empty box auto-enables "Search All" (results span all history); picking a

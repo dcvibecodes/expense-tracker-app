@@ -410,7 +410,13 @@ function switchToTab(tabId) {
   const tabEl = document.getElementById(`tab-${tabId}`);
   tabEl.classList.add("active");
   if (tabId === "tracker") refreshAll();
-  if (tabId === "reports") loadReports();
+  if (tabId === "reports") {
+    loadReports();
+    // Day pills render at init while this tab is hidden (zero width),
+    // so refresh nav state now that the tab is visible.
+    renderReportDayLinks();
+    requestAnimationFrame(() => updateReportDaysNav());
+  }
   if (tabId === "forecast") loadExtrapolateData();
 }
 
@@ -764,7 +770,7 @@ async function refreshAll() {
 // loaders used on first paint / after edits, so nothing new to maintain.
 async function refreshActiveTab() {
   const tab = document.querySelector(".bottom-nav-btn.active")?.dataset.tab || "tracker";
-  if (tab === "reports") { await loadReports(); return; }
+  if (tab === "reports") { await loadReports(); updateReportDaysNav(); return; }
   if (tab === "forecast") { await loadExtrapolateData(); return; }
   await refreshAll();
 }
@@ -2157,9 +2163,17 @@ reportDayLinks.addEventListener("click", e => {
   loadReports();
 });
 
-function updateReportDaysNav() {
+function updateReportDaysNav(deferred) {
   if (!reportDayLinks || !reportDaysPrev || !reportDaysNext) return;
   const hasDays = reportDayLinks.children.length > 0;
+  // Hidden tab (or pre-layout): measurements read 0. Retry once on next
+  // frame if the Reports tab is visible; otherwise leave buttons hidden.
+  if (hasDays && reportDayLinks.clientWidth === 0) {
+    if (!deferred && document.getElementById("tab-reports")?.classList.contains("active")) {
+      requestAnimationFrame(() => updateReportDaysNav(true));
+    }
+    return;
+  }
   const maxScroll = reportDayLinks.scrollWidth - reportDayLinks.clientWidth;
   const canScroll = hasDays && maxScroll > 1;
   reportDaysPrev.hidden = !canScroll;
@@ -2179,9 +2193,9 @@ if (reportDaysPrev && reportDaysNext) {
 }
 
 if (reportDayLinks) {
-  reportDayLinks.addEventListener("scroll", updateReportDaysNav, { passive: true });
-  window.addEventListener("resize", updateReportDaysNav);
-  window.addEventListener("load", updateReportDaysNav);
+  reportDayLinks.addEventListener("scroll", () => updateReportDaysNav(), { passive: true });
+  window.addEventListener("resize", () => updateReportDaysNav());
+  window.addEventListener("load", () => updateReportDaysNav());
 }
 
 // Report search — as-you-type, min 2 chars. Typing the first character into an

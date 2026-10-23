@@ -1,6 +1,13 @@
-# Spend Less v4.9.5
+# Spend Less v4.9.6
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.9.6
+
+### Fix — Self-Hosted Fonts Load on the Lock Screen
+
+- **`/fonts/` bypasses the app-lock gate** — the lock middleware blocked same-origin font requests with the lock page HTML, so the lock screen fell back to system fonts. The lock screen now renders the same self-hosted Outfit/Fraunces pair as the app.
+- **No database change.**
 
 ## What's New in v4.9.5
 

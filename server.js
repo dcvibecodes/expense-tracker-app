@@ -308,6 +308,11 @@ function authMiddleware(req, res, next) {
       return res.status(401).json({ error: "Unauthorized. Please unlock the app first." });
     }
 
+    // Self-hosted fonts must load on the lock screen itself
+    if (req.path.startsWith("/fonts/")) {
+      return next();
+    }
+
     // For browser requests, serve the lock page
     return res.send(getLockPage());
   });

@@ -2102,3 +2102,14 @@ body { overflow-x: clip; }
 .skeleton-text { height: 12px; border-radius: 3px; }
 .skeleton-text-sm { height: 10px; border-radius: 3px; width: 60%; }
 .skeleton-chart { height: 200px; border-radius: 6px; }
+
+/* ── API tokens: desktop-only management ── */
+.api-token-mobile-note { display: none; }
+@media (max-width: 768px) {
+  #api-token-add-row,
+  #token-profile-warning,
+  #token-message,
+  #new-token-result,
+  #api-tokens-list { display: none; }
+  #api-tokens-section .api-token-mobile-note { display: block; }
+}

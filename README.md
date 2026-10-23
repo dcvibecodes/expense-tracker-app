@@ -1,6 +1,13 @@
-# Spend Less v4.10.0
+# Spend Less v4.10.1
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.10.1
+
+### Fix — API Tokens UI Is Desktop-Only
+
+- **Mobile shows a note instead of cramped controls** — the API tokens section in Settings now displays "API token setup is available on the desktop web version" on screens ≤768px; the name input, profile selector, token list, and Revoke buttons only render on larger screens.
+- **No server change.**
 
 ## What's New in v4.10.0
 

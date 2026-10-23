@@ -241,7 +241,7 @@ function hashToken(raw) {
 function bearerToken(req) {
   const h = req.headers["authorization"];
   if (typeof h !== "string") return null;
-  const m = h.match(/^Bearer (.+)$/);
+  const m = h.match(/^Bearer\s+(.+)$/i);
   if (!m) return null;
   const t = m[1].trim();
   if (!t) return null;
@@ -312,7 +312,7 @@ function tokenAuth(req, res, next) {
       if (err || !row) {
         const ip = req.ip || "unknown";
         if (!rateLimit(`tokenfail:${ip}`, 60, 60 * 60 * 1000)) {
-          return res.status(429).json({ error: "Too many invalid token attempts. Slow down and try again later." });
+          return res.status(429).json({ error: "Too many invalid token attempts. Try again later." });
         }
         return res.status(401).json({ error: "Invalid or revoked token" });
       }
@@ -322,7 +322,7 @@ function tokenAuth(req, res, next) {
       req.token = { id: row.id, name: row.name, profile: row.profile };
       req.tokenHash = tokenHash;
       // Fire-and-forget last-used update (never log raw token/hash material beyond hash lookup)
-      db.run("UPDATE personal_access_tokens SET last_used_at = datetime('now') WHERE id = ?", [row.id], () => {});
+      db.run("UPDATE personal_access_tokens SET last_used_at = ? WHERE id = ?", [new Date().toISOString(), row.id], () => {});
       return next();
     }
   );
@@ -773,14 +773,12 @@ function runIdemExclusive(fn) {
 function getIdempotencyKey(req) {
   const h = req.headers["idempotency-key"];
   const b = req.body && req.body.idempotency_key;
-  const raw = h !== undefined && h !== null && String(h) !== "" ? h : b;
-  if (raw === undefined || raw === null || (typeof raw === "string" && raw.trim() === "")) {
+  const raw = h !== undefined ? h : b;
+  if (raw === undefined || raw === null) {
     return { missing: true };
   }
-  if (typeof raw !== "string") return { invalid: true };
-  const key = raw.trim();
-  if (key.length < 1 || key.length > 200) return { invalid: true };
-  return { key };
+  if (typeof raw !== "string" || !raw.trim() || raw.trim().length > 200) return { invalid: true };
+  return { key: raw.trim() };
 }
 
 function fingerprintCreatePayload(body) {
@@ -842,6 +840,8 @@ app.post("/api/expenses", (req, res) => {
     try {
       payloadHash = fingerprintCreatePayload(req.body || {});
     } catch (e) {
+      const field = e && e.status === 400 && e.message ? e.message : null;
+      if (field) return res.status(400).json({ error: `Invalid numeric field: ${field}. Must be a finite number.` });
       return res.status(400).json({ error: "Amount must be a valid number." });
     }
     const { date, details, category, amount, original_amount, original_currency, exchange_rate, note } = req.body || {};
@@ -2027,11 +2027,11 @@ app.post("/api/tokens", (req, res) => {
     if (name === undefined || name === null || String(name).trim() === "") name = "agent";
     name = String(name).trim();
     if (name.length > 80) {
-      return res.status(400).json({ error: "Token name too long (max 80 chars)." });
+      return res.status(400).json({ error: "Token name must be 80 characters or fewer." });
     }
     if (profile === undefined || profile === null || profile === "") profile = "read";
     if (profile !== "read" && profile !== "write") {
-      return res.status(400).json({ error: "Invalid profile. Use 'read' or 'write'." });
+      return res.status(400).json({ error: "Profile must be 'read' or 'write'." });
     }
     const raw = crypto.randomBytes(48).toString("base64url");
     const tokenHash = hashToken(raw);
@@ -2056,7 +2056,7 @@ app.post("/api/tokens/:id/revoke", (req, res) => {
     db.get("SELECT id, revoked_at FROM personal_access_tokens WHERE id = ?", [id], (err, row) => {
       if (err) return res.status(500).json({ error: "DB error" });
       if (!row || row.revoked_at) return res.status(404).json({ error: "Token not found." });
-      db.run("UPDATE personal_access_tokens SET revoked_at = datetime('now') WHERE id = ?", [id], (uErr) => {
+      db.run("UPDATE personal_access_tokens SET revoked_at = ? WHERE id = ?", [new Date().toISOString(), id], (uErr) => {
         if (uErr) return res.status(500).json({ error: "Failed to revoke token." });
         return res.json({ success: true });
       });

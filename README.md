@@ -1,6 +1,14 @@
-# Spend Less v4.10.1
+# Spend Less v4.10.2
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.10.2
+
+### API Tokens UI Now Matches Invest More
+
+- **Same section, same look** — the API Tokens card in Settings now mirrors Invest More: identical heading, intro, name + profile row, show-once copyable token field with Copy button, and a Name/Profile/Created/Last used table with per-token Revoke. "Read only" / "Read + write" labels instead of raw `read`/`write`.
+- **Same server messages** — Bearer parsing is now case-insensitive, and the invalid-token, token-name, profile, and numeric-field error strings match Invest More exactly.
+- **No behavior change** — `write` still covers create/edit/delete of single expenses per this app's API; scopes, idempotency, and rate limits are unchanged.
 
 ## What's New in v4.10.1
 

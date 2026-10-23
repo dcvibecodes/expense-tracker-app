@@ -2103,13 +2103,19 @@ body { overflow-x: clip; }
 .skeleton-text-sm { height: 10px; border-radius: 3px; width: 60%; }
 .skeleton-chart { height: 200px; border-radius: 6px; }
 
-/* ── API tokens: desktop-only management ── */
-.api-token-mobile-note { display: none; }
+/* ── API tokens: desktop-only management (mirrors Invest More) ── */
+.api-tokens-mobile-note { display: none; }
+.settings-add { display: flex; gap: 6px; align-items: center; }
+.settings-add input { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.8rem; background: var(--elevated); color: var(--text); min-height: 34px; font-family: inherit; box-shadow: var(--shadow-item); }
+.settings-select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.8rem; background: var(--elevated); color: var(--text); min-width: 160px; min-height: 34px; font-family: inherit; box-shadow: var(--shadow-item); }
+.settings-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+.token-table { font-size: 0.76rem; width: 100%; border-collapse: collapse; table-layout: fixed; }
+.token-table thead { background: var(--bg); }
+.token-table th, .token-table td { padding: 7px 8px; text-align: left; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.token-table th { font-weight: 600; font-size: 0.66rem; text-transform: uppercase; color: var(--text-faint); letter-spacing: 0.4px; }
+.token-table td { overflow: hidden; text-overflow: ellipsis; }
+.token-table .col-actions { text-align: center; }
 @media (max-width: 768px) {
-  #api-token-add-row,
-  #token-profile-warning,
-  #token-message,
-  #new-token-result,
-  #api-tokens-list { display: none; }
-  #api-tokens-section .api-token-mobile-note { display: block; }
+  .api-tokens-desktop { display: none; }
+  #api-tokens-section .api-tokens-mobile-note { display: block; }
 }

@@ -3228,49 +3228,45 @@ document.querySelectorAll('#settings-pin, #settings-pin-confirm, #settings-disab
   input.addEventListener("input", () => { input.value = input.value.replace(/\D/g, ""); });
 });
 
-// ===== API TOKENS SETTINGS =====
+// ===== API TOKENS SETTINGS (mirrors Invest More) =====
 async function loadApiTokens() {
-  const listEl = document.getElementById("api-tokens-list");
-  if (!listEl) return;
+  const tbody = document.getElementById("settings-tokens-list");
+  if (!tbody) return;
+  // Token management is desktop-only; mobile shows a notice instead.
+  if (window.matchMedia("(max-width: 768px)").matches) return;
   try {
     const res = await safeFetch("/api/tokens");
     const data = await res.json();
     if (!res.ok) {
-      listEl.innerHTML = `<p class="settings-desc">${escapeHtml(data.error || "Could not load tokens.")}</p>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="settings-desc">Token management needs the app lock set up first.</td></tr>`;
       return;
     }
     const tokens = data.tokens || [];
     if (tokens.length === 0) {
-      listEl.innerHTML = `<p class="settings-desc">No tokens yet.</p>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="settings-desc">No API tokens yet.</td></tr>`;
       return;
     }
-    listEl.innerHTML = "";
-    for (const t of tokens) {
-      const row = document.createElement("div");
-      row.className = "category-item";
+    tbody.innerHTML = tokens.map((t) => {
       const revoked = !!t.revoked_at;
-      row.innerHTML = `<div style="flex:1"><strong>${escapeHtml(t.name)}</strong> <span class="settings-desc">(${escapeHtml(t.profile)})</span><br><span class="settings-desc">Created ${escapeHtml(t.created_at || "")}${t.last_used_at ? " · Last used " + escapeHtml(t.last_used_at) : ""}${revoked ? " · Revoked" : ""}</span></div>`;
-      if (!revoked) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "cancel-btn";
-        btn.textContent = "Revoke";
-        btn.addEventListener("click", async () => {
-          try {
-            const r = await safeFetch(`/api/tokens/${t.id}/revoke`, { method: "POST" });
-            if (r.ok) loadApiTokens();
-          } catch {}
-        });
-        row.appendChild(btn);
-      }
-      listEl.appendChild(row);
-    }
+      const action = revoked
+        ? `<span class="settings-desc">Revoked</span>`
+        : `<button type="button" class="cancel-btn" data-token-revoke="${t.id}">Revoke</button>`;
+      return `<tr><td>${escapeHtml(t.name)}</td><td>${t.profile === "write" ? "Read + write" : "Read only"}</td><td>${escapeHtml(t.created_at || "")}</td><td>${escapeHtml(t.last_used_at || "—")}</td><td class="col-actions">${action}</td></tr>`;
+    }).join("");
+    tbody.querySelectorAll("[data-token-revoke]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try {
+          const r = await safeFetch(`/api/tokens/${btn.getAttribute("data-token-revoke")}/revoke`, { method: "POST" });
+          if (r.ok) loadApiTokens();
+        } catch {}
+      });
+    });
   } catch {}
 }
 
 (function initApiTokensUI() {
-  const profileSel = document.getElementById("new-token-profile");
-  const warningEl = document.getElementById("token-profile-warning");
+  const profileSel = document.getElementById("settings-token-profile");
+  const warningEl = document.getElementById("settings-token-profile-warning");
   if (profileSel && warningEl) {
     const syncWarning = () => {
       warningEl.style.display = profileSel.value === "write" ? "block" : "none";
@@ -3278,13 +3274,13 @@ async function loadApiTokens() {
     profileSel.addEventListener("change", syncWarning);
     syncWarning();
   }
-  const createBtn = document.getElementById("add-token-btn");
+  const createBtn = document.getElementById("settings-token-add-btn");
   if (createBtn) {
     createBtn.addEventListener("click", async () => {
-      const nameEl = document.getElementById("new-token-name");
-      const msgEl = document.getElementById("token-message");
-      const resultEl = document.getElementById("new-token-result");
-      const valueEl = document.getElementById("new-token-value");
+      const nameEl = document.getElementById("settings-token-name");
+      const msgEl = document.getElementById("settings-token-message");
+      const resultEl = document.getElementById("settings-token-once");
+      const valueEl = document.getElementById("settings-token-once-value");
       if (msgEl) { msgEl.textContent = ""; msgEl.className = "form-msg"; }
       if (resultEl) resultEl.style.display = "none";
       try {
@@ -3298,11 +3294,25 @@ async function loadApiTokens() {
           if (msgEl) { msgEl.textContent = data.error || "Failed to create token."; msgEl.className = "form-msg error"; }
           return;
         }
-        if (valueEl) valueEl.textContent = data.token || "";
+        if (valueEl) valueEl.value = data.token || "";
         if (resultEl) resultEl.style.display = "block";
         if (nameEl) nameEl.value = "";
+        if (msgEl) { msgEl.textContent = "Token created. Copy it now — it will never be shown again."; msgEl.className = "form-msg success"; }
         loadApiTokens();
       } catch {}
+    });
+  }
+  const copyBtn = document.getElementById("settings-token-copy-btn");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async () => {
+      const input = document.getElementById("settings-token-once-value");
+      if (!input) return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(input.value);
+        else { input.select(); document.execCommand("copy"); }
+        copyBtn.textContent = "Copied";
+        setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
+      } catch (e) { input.select(); }
     });
   }
 })();

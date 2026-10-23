@@ -502,28 +502,44 @@
         </section> 
 
         <section class="card" id="api-tokens-section">
-          <h2>API tokens</h2>
-          <p class="settings-desc">Create tokens for an external agent. Read-only by default; read + write can add, edit and delete expenses.</p>
-          <p class="settings-desc api-token-mobile-note">API token setup is available on the desktop web version. Please open Settings on a larger screen to create or manage tokens.</p>
-          <div class="category-add-row" id="api-token-add-row">
-            <input type="text" id="new-token-name" placeholder="Token name (e.g. agent)" maxlength="80" />
-            <label>Profile
-              <select id="new-token-profile">
-                <option value="read">Read only</option>
-                <option value="write">Read + write</option>
-              </select>
-            </label>
-            <div class="category-add-actions">
-              <button id="add-token-btn" type="button" class="add-btn">Create token</button>
+          <h2>API Tokens</h2>
+          <p class="settings-desc">Personal access tokens let an external agent you approve run budget queries and log expenses you dictate, without your browser session. Tokens are bearer secrets — anyone holding one can use it.</p>
+          <p class="settings-desc api-tokens-mobile-note">API token management is available on the desktop version of Spend Less. Please open Settings on a larger screen to create or revoke tokens.</p>
+          <div class="api-tokens-desktop">
+          <div class="settings-add">
+            <input type="text" id="settings-token-name" placeholder="Token name (e.g. agent)" maxlength="80" />
+            <select id="settings-token-profile" class="settings-select">
+              <option value="read">Read only</option>
+              <option value="write">Read + write</option>
+            </select>
+            <button id="settings-token-add-btn" type="button" class="add-btn">+ Create</button>
+          </div>
+          <p id="settings-token-profile-warning" class="settings-desc" style="display:none;">Read + write tokens can add, edit and delete expenses. Only create one for an agent you trust, and only log changes you explicitly dictate.</p>
+          <div id="settings-token-once" style="display:none;">
+            <p class="settings-desc">Copy this token now — it is shown once and never again.</p>
+            <div class="settings-add">
+              <input type="text" id="settings-token-once-value" readonly />
+              <button id="settings-token-copy-btn" type="button" class="add-btn">Copy</button>
             </div>
           </div>
-          <p id="token-profile-warning" class="form-msg" style="display:none;">Read + write can add, edit and delete expenses. Create only if you need it.</p>
-          <p id="token-message" class="form-msg"></p>
-          <div id="new-token-result" style="display:none;">
-            <p class="settings-desc">Copy this token now — it is shown once, store it now.</p>
-            <code id="new-token-value" class="recovery-code" style="word-break:break-all;"></code>
+          <p id="settings-token-message" class="form-msg"></p>
+          <div class="table-wrap">
+            <table class="token-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Profile</th>
+                  <th>Created</th>
+                  <th>Last used</th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="settings-tokens-list">
+                <tr><td colspan="5"><div class="skeleton-row"><div class="skeleton skeleton-text" style="flex:1"></div><div class="skeleton skeleton-text" style="width:80px"></div></div></td></tr>
+              </tbody>
+            </table>
           </div>
-          <div id="api-tokens-list" class="categories-list"></div>
+          </div>
         </section>
 
       </div>

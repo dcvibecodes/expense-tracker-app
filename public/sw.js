@@ -1,4 +1,4 @@
-const CACHE_NAME = "spend-less-v4";
+const CACHE_NAME = "spend-less-v5";
 const STATIC_ASSETS = [
   "/",
   "/manifest.json",
@@ -6,7 +6,9 @@ const STATIC_ASSETS = [
   "/favicon-32.png",
   "/apple-touch-icon.png",
   "/icon-192.png",
-  "/icon-512.png"
+  "/icon-512.png",
+  "/fonts/fraunces-latin-var.woff2",
+  "/fonts/outfit-latin-var.woff2"
 ];
 
 // Install: cache static assets

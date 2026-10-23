@@ -1,6 +1,15 @@
-# Spend Less v4.9.4
+# Spend Less v4.9.5
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.9.5
+
+### Self-Hosted Fonts — Same Typography on Web, Mobile, and Offline
+
+- **Outfit + Fraunces are now served locally** from `public/fonts/` with `@font-face` in `styles.css`; Google Fonts and its preconnects are gone. The app no longer depends on an external font CDN and renders the same display typography on desktop, mobile, and offline/PWA.
+- **Lock screen matches the app** — the generated PIN lock page now uses the same self-hosted Outfit/Fraunces pair instead of Google-hosted Inter.
+- **Offline-safe** — both WOFF2 files are precached in `spend-less-v5`; only ~100 KB total including license files.
+- **No server or database change.** Static assets are network-first.
 
 ## What's New in v4.9.4
 

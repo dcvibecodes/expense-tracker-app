@@ -3228,6 +3228,85 @@ document.querySelectorAll('#settings-pin, #settings-pin-confirm, #settings-disab
   input.addEventListener("input", () => { input.value = input.value.replace(/\D/g, ""); });
 });
 
+// ===== API TOKENS SETTINGS =====
+async function loadApiTokens() {
+  const listEl = document.getElementById("api-tokens-list");
+  if (!listEl) return;
+  try {
+    const res = await safeFetch("/api/tokens");
+    const data = await res.json();
+    if (!res.ok) {
+      listEl.innerHTML = `<p class="settings-desc">${escapeHtml(data.error || "Could not load tokens.")}</p>`;
+      return;
+    }
+    const tokens = data.tokens || [];
+    if (tokens.length === 0) {
+      listEl.innerHTML = `<p class="settings-desc">No tokens yet.</p>`;
+      return;
+    }
+    listEl.innerHTML = "";
+    for (const t of tokens) {
+      const row = document.createElement("div");
+      row.className = "category-item";
+      const revoked = !!t.revoked_at;
+      row.innerHTML = `<div style="flex:1"><strong>${escapeHtml(t.name)}</strong> <span class="settings-desc">(${escapeHtml(t.profile)})</span><br><span class="settings-desc">Created ${escapeHtml(t.created_at || "")}${t.last_used_at ? " · Last used " + escapeHtml(t.last_used_at) : ""}${revoked ? " · Revoked" : ""}</span></div>`;
+      if (!revoked) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "cancel-btn";
+        btn.textContent = "Revoke";
+        btn.addEventListener("click", async () => {
+          try {
+            const r = await safeFetch(`/api/tokens/${t.id}/revoke`, { method: "POST" });
+            if (r.ok) loadApiTokens();
+          } catch {}
+        });
+        row.appendChild(btn);
+      }
+      listEl.appendChild(row);
+    }
+  } catch {}
+}
+
+(function initApiTokensUI() {
+  const profileSel = document.getElementById("new-token-profile");
+  const warningEl = document.getElementById("token-profile-warning");
+  if (profileSel && warningEl) {
+    const syncWarning = () => {
+      warningEl.style.display = profileSel.value === "write" ? "block" : "none";
+    };
+    profileSel.addEventListener("change", syncWarning);
+    syncWarning();
+  }
+  const createBtn = document.getElementById("add-token-btn");
+  if (createBtn) {
+    createBtn.addEventListener("click", async () => {
+      const nameEl = document.getElementById("new-token-name");
+      const msgEl = document.getElementById("token-message");
+      const resultEl = document.getElementById("new-token-result");
+      const valueEl = document.getElementById("new-token-value");
+      if (msgEl) { msgEl.textContent = ""; msgEl.className = "form-msg"; }
+      if (resultEl) resultEl.style.display = "none";
+      try {
+        const res = await safeFetch("/api/tokens", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: nameEl ? nameEl.value : "", profile: profileSel ? profileSel.value : "read" })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (msgEl) { msgEl.textContent = data.error || "Failed to create token."; msgEl.className = "form-msg error"; }
+          return;
+        }
+        if (valueEl) valueEl.textContent = data.token || "";
+        if (resultEl) resultEl.style.display = "block";
+        if (nameEl) nameEl.value = "";
+        loadApiTokens();
+      } catch {}
+    });
+  }
+})();
+
 // ===== APP INIT =====
 async function initApp() {
   dateInput.value = todayStr();
@@ -3244,6 +3323,7 @@ async function initApp() {
   await refreshAll();
 
   loadLockSettings();
+  loadApiTokens();
   updateAbroadModeInfo();
 
   window.scrollTo(0, 0);

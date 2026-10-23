@@ -40,8 +40,30 @@ self.addEventListener("message", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
+  // Never cache token-authenticated requests or token management responses
+  const hasAuth = (() => {
+    try {
+      return !!event.request.headers.get("Authorization");
+    } catch {
+      return false;
+    }
+  })();
+  const isTokenRoute = url.pathname.startsWith("/api/tokens");
+
   // API requests: network-first
   if (url.pathname.startsWith("/api/")) {
+    // Token traffic is network-only: never serve from cache, never store.
+    if (hasAuth || isTokenRoute) {
+      event.respondWith(
+        fetch(event.request).catch(() => {
+          return new Response(JSON.stringify({ error: "You're offline. Connect to the internet to make changes." }), {
+            status: 503,
+            headers: { "Content-Type": "application/json" }
+          });
+        })
+      );
+      return;
+    }
     event.respondWith(
       fetch(event.request)
         .catch(async () => {
@@ -60,7 +82,7 @@ self.addEventListener("fetch", (event) => {
 event.respondWith(
   fetch(event.request)
     .then((response) => {
-      if (response.ok && event.request.method === "GET") {
+      if (response.ok && event.request.method === "GET" && !hasAuth) {
         const clone = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
       }

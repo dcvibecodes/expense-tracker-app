@@ -14,16 +14,16 @@ const rateLimitMap = new Map(); // key -> { count, resetAt }
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX = 10; // 10 attempts per window
 
-function rateLimit(key) {
+function rateLimit(key, max = RATE_LIMIT_MAX, windowMs = RATE_LIMIT_WINDOW) {
   const now = Date.now();
   let entry = rateLimitMap.get(key);
   if (!entry || now > entry.resetAt) {
-    entry = { count: 1, resetAt: now + RATE_LIMIT_WINDOW };
+    entry = { count: 1, resetAt: now + windowMs };
     rateLimitMap.set(key, entry);
     return true;
   }
   entry.count++;
-  if (entry.count > RATE_LIMIT_MAX) {
+  if (entry.count > max) {
     return false;
   }
   return true;
@@ -43,6 +43,10 @@ if (!fs.existsSync(dataDir)) {
 }
 const dbPath = path.join(dataDir, "expenses.db");
 const db = new sqlite3.Database(dbPath);
+// Dedicated connection used ONLY by the token idempotent-create transaction
+// (Work item 4). Keeps BEGIN IMMEDIATE..COMMIT isolated from the shared
+// connection so no foreign statement can interleave mid-transaction.
+const idemDb = new sqlite3.Database(dbPath);
 
 db.serialize(() => {
   db.run(`
@@ -158,6 +162,30 @@ db.serialize(() => {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS personal_access_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      profile TEXT NOT NULL DEFAULT 'read' CHECK (profile IN ('read','write')),
+      token_hash TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL,
+      last_used_at TEXT,
+      revoked_at TEXT
+    )
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS idempotency_keys (
+      token_id INTEGER NOT NULL,
+      key TEXT NOT NULL,
+      method TEXT NOT NULL,
+      route TEXT NOT NULL,
+      payload_hash TEXT NOT NULL,
+      expense_id INTEGER,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (token_id, key)
+    )
+  `);
+
   // Migrate: add salt columns if missing (for existing DBs)
   db.all("PRAGMA table_info(app_lock)", (err, cols) => {
     if (err) return;
@@ -203,6 +231,148 @@ function hashPinLegacy(pin) {
 
 function generateRecoveryCode() {
   return crypto.randomBytes(4).toString("hex").toUpperCase();
+}
+
+// --- Personal access tokens (Work items 2-4) ---
+function hashToken(raw) {
+  return crypto.createHash("sha256").update(raw).digest("hex");
+}
+
+function bearerToken(req) {
+  const h = req.headers["authorization"];
+  if (typeof h !== "string") return null;
+  const m = h.match(/^Bearer (.+)$/);
+  if (!m) return null;
+  const t = m[1].trim();
+  if (!t) return null;
+  return t;
+}
+
+function denyToken(res) {
+  res.setHeader("Cache-Control", "no-store");
+  return res.status(403).json({ error: "This token is not allowed to use this endpoint" });
+}
+
+function dbGetAsync(conn, sql, params) {
+  return new Promise((resolve, reject) => {
+    conn.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
+  });
+}
+
+function dbRunAsync(conn, sql, params) {
+  return new Promise((resolve, reject) => {
+    conn.run(sql, params, function (err) {
+      if (err) reject(err);
+      else resolve(this);
+    });
+  });
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function busyRetry(fn, attempts = 5) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (e && e.code === "SQLITE_BUSY") {
+        await sleep(20 * (i + 1));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr;
+}
+
+// Fail-safe bearer auth. Runs before every route handler including
+// /api/csrf-token and /api/lock/*.
+function tokenAuth(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  if (authHeader === undefined || authHeader === null || authHeader === "") {
+    return next();
+  }
+  const raw = bearerToken(req);
+  if (!raw) {
+    res.setHeader("Cache-Control", "no-store");
+    const ip = req.ip || "unknown";
+    rateLimit(`tokenfail:${ip}`, 60, 60 * 60 * 1000);
+    return res.status(401).json({ error: "Invalid or revoked token" });
+  }
+  const tokenHash = hashToken(raw);
+  db.get(
+    "SELECT id, name, profile FROM personal_access_tokens WHERE token_hash = ? AND revoked_at IS NULL",
+    [tokenHash],
+    (err, row) => {
+      res.setHeader("Cache-Control", "no-store");
+      if (err || !row) {
+        const ip = req.ip || "unknown";
+        if (!rateLimit(`tokenfail:${ip}`, 60, 60 * 60 * 1000)) {
+          return res.status(429).json({ error: "Too many invalid token attempts. Slow down and try again later." });
+        }
+        return res.status(401).json({ error: "Invalid or revoked token" });
+      }
+      if (!rateLimit(`token:${tokenHash}`, 300, 60 * 60 * 1000)) {
+        return res.status(429).json({ error: "Token rate limit reached. Slow down and try again later." });
+      }
+      req.token = { id: row.id, name: row.name, profile: row.profile };
+      req.tokenHash = tokenHash;
+      // Fire-and-forget last-used update (never log raw token/hash material beyond hash lookup)
+      db.run("UPDATE personal_access_tokens SET last_used_at = datetime('now') WHERE id = ?", [row.id], () => {});
+      return next();
+    }
+  );
+}
+
+// Default-deny scope gate for token requests. Mounted at app root so
+// req.path is the full pathname.
+function tokenScopeGate(req, res, next) {
+  if (!req.token) return next();
+  const method = req.method;
+  const p = req.path;
+  const expenseId = /^\/api\/expenses\/\d+$/;
+
+  if (method === "GET") {
+    if (
+      p === "/api/expenses" ||
+      expenseId.test(p) ||
+      p === "/api/reports" ||
+      p === "/api/reports/cumulative" ||
+      p === "/api/categories" ||
+      p === "/api/suggestions" ||
+      p === "/api/details" ||
+      p === "/api/settings" ||
+      p === "/api/currency-rates" ||
+      p === "/api/charts" ||
+      p === "/api/charts/average" ||
+      p === "/api/export/csv"
+    ) {
+      return next();
+    }
+    return denyToken(res);
+  }
+  if (method === "POST") {
+    if (p === "/api/expenses/check-duplicate") return next();
+    if (p === "/api/expenses" && req.token.profile === "write") return next();
+    return denyToken(res);
+  }
+  if (method === "PUT" || method === "DELETE") {
+    if (expenseId.test(p) && req.token.profile === "write") return next();
+    return denyToken(res);
+  }
+  return denyToken(res);
+}
+
+// Ensure token + token-management responses are never cached.
+function tokenCacheHeaders(req, res, next) {
+  if (req.token || (req.headers && req.headers["authorization"]) || req.path.startsWith("/api/tokens")) {
+    res.setHeader("Cache-Control", "no-store");
+  }
+  return next();
 }
 
 app.use(express.json());
@@ -251,11 +421,20 @@ function csrfTokenMiddleware(req, res, next) {
 
 // Validate CSRF token on state-changing requests
 function csrfProtectionMiddleware(req, res, next) {
+  // Token clients carry the bearer secret instead of a session CSRF token
+  if (req.token) return next();
   // Only check POST, PUT, PATCH, DELETE
   if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();
 
   // Exempt certain paths
   if (CSRF_EXEMPT_PATHS.includes(req.path)) return next();
+
+  // Token-management routes decide auth themselves (401 when locked without
+  // session, 403 when no lock). Let unauthenticated requests through so they
+  // get the correct auth status instead of a CSRF 403.
+  if (req.path.startsWith("/api/tokens") && (!req.session || req.session.authenticated !== true)) {
+    return next();
+  }
 
   // For requests with Content-Type: application/json, check X-CSRF-Token header
   const token = req.headers["x-csrf-token"];
@@ -266,6 +445,11 @@ function csrfProtectionMiddleware(req, res, next) {
 }
 
 function authMiddleware(req, res, next) {
+  // Token requests: scope gate already decided. Never serve HTML/lock page.
+  if (req.token) {
+    if (req.path.startsWith("/api/")) return next();
+    return denyToken(res);
+  }
   const openPaths = [
     "/api/lock/status",
     "/api/lock/unlock",
@@ -383,10 +567,14 @@ function getLockPage() {
 </html>`;
 }
 
+app.use(tokenAuth);
+app.use(tokenCacheHeaders);
+app.use(tokenScopeGate);
 app.use(csrfTokenMiddleware);
 
 // CSRF token endpoint — returns the current session's CSRF token
-// Must be registered after csrfTokenMiddleware so the token is initialized
+// Must be registered after csrfTokenMiddleware so the token is initialized.
+// The token scope gate runs before this handler so bearer requests are denied here.
 app.get("/api/csrf-token", (req, res) => {
   return res.json({ token: req.session.csrfToken || "" });
 });
@@ -574,7 +762,250 @@ app.get("/api/suggestions", (req, res) => {
   });
 });
 
+// --- Idempotent create helpers (tokens only, Work item 4) ---
+let idemMutex = Promise.resolve();
+function runIdemExclusive(fn) {
+  const p = idemMutex.then(fn, fn);
+  idemMutex = p.catch(() => {});
+  return p;
+}
+
+function getIdempotencyKey(req) {
+  const h = req.headers["idempotency-key"];
+  const b = req.body && req.body.idempotency_key;
+  const raw = h !== undefined && h !== null && String(h) !== "" ? h : b;
+  if (raw === undefined || raw === null || (typeof raw === "string" && raw.trim() === "")) {
+    return { missing: true };
+  }
+  if (typeof raw !== "string") return { invalid: true };
+  const key = raw.trim();
+  if (key.length < 1 || key.length > 200) return { invalid: true };
+  return { key };
+}
+
+function fingerprintCreatePayload(body) {
+  // Strict numeric validation first: garbage/null must never collapse.
+  const num = (v, field) => {
+    if (v === undefined || v === null) return null;
+    // Empty-string behaves like the existing route (Number('') === 0); keep parity.
+    const n = Number(v);
+    if (!Number.isFinite(n)) {
+      const e = new Error(field);
+      e.status = 400;
+      throw e;
+    }
+    return n;
+  };
+  const amount = num(body.amount, "amount");
+  if (amount === null || !Number.isFinite(amount)) {
+    const e = new Error("amount");
+    e.status = 400;
+    throw e;
+  }
+  const original_amount = body.original_amount === undefined ? null : num(body.original_amount, "original_amount");
+  const exchange_rate = body.exchange_rate === undefined ? undefined : num(body.exchange_rate, "exchange_rate");
+  // Note: exchange_rate missing -> null for canonical stability
+  const canon = {
+    amount,
+    category: body.category !== undefined ? body.category : null,
+    date: body.date !== undefined ? body.date : null,
+    details: body.details !== undefined ? body.details : null,
+    exchange_rate: exchange_rate === undefined ? null : exchange_rate,
+    note: body.note !== undefined ? body.note : null,
+    original_amount,
+    original_currency: body.original_currency !== undefined ? body.original_currency : null,
+  };
+  const sorted = {};
+  for (const k of Object.keys(canon).sort()) sorted[k] = canon[k];
+  return crypto.createHash("sha256").update(JSON.stringify(sorted)).digest("hex");
+}
+
+async function idemGet(sql, params) {
+  return busyRetry(() => dbGetAsync(idemDb, sql, params));
+}
+async function idemRun(sql, params) {
+  return busyRetry(() => dbRunAsync(idemDb, sql, params));
+}
+
 app.post("/api/expenses", (req, res) => {
+  // Token path: atomic + idempotent (key required)
+  if (req.token) {
+    const k = getIdempotencyKey(req);
+    if (k.missing) {
+      return res.status(400).json({ error: "Idempotency-Key header is required for API creates" });
+    }
+    if (k.invalid) {
+      return res.status(400).json({ error: "Invalid idempotency key" });
+    }
+    const idemKey = k.key;
+    let payloadHash;
+    try {
+      payloadHash = fingerprintCreatePayload(req.body || {});
+    } catch (e) {
+      return res.status(400).json({ error: "Amount must be a valid number." });
+    }
+    const { date, details, category, amount, original_amount, original_currency, exchange_rate, note } = req.body || {};
+
+    runIdemExclusive(async () => {
+      try {
+        await idemRun("BEGIN IMMEDIATE", []);
+      } catch (e) {
+        if (e && e.code === "SQLITE_BUSY") {
+          res.status(503).json({ error: "Database busy, retry" });
+          return;
+        }
+        res.status(500).json({ error: "Failed to save expense." });
+        return;
+      }
+      try {
+        const claim = await idemGet("SELECT token_id, key, method, route, payload_hash, expense_id FROM idempotency_keys WHERE token_id = ? AND key = ?", [req.token.id, idemKey]);
+        if (claim) {
+          if (claim.method !== "POST" || claim.route !== "/api/expenses" || claim.payload_hash !== payloadHash) {
+            await idemRun("ROLLBACK", []).catch(() => {});
+            res.status(409).json({ error: "Idempotency key reused with a different payload" });
+            return;
+          }
+          if (claim.expense_id == null) {
+            // Should not persist (claim+expense commit atomically); clean up and retry as new.
+            await idemRun("DELETE FROM idempotency_keys WHERE token_id = ? AND key = ?", [req.token.id, idemKey]).catch(() => {});
+            await idemRun("ROLLBACK", []).catch(() => {});
+            // Fall through to fresh create in a new transaction
+          } else {
+            const existing = await idemGet("SELECT id FROM expenses WHERE id = ?", [claim.expense_id]).catch(() => null);
+            await idemRun("ROLLBACK", []).catch(() => {});
+            if (existing) {
+              res.json({ id: claim.expense_id, deduplicated: true });
+              return;
+            }
+            res.json({ id: claim.expense_id, deduplicated: true, deleted: true });
+            return;
+          }
+          // Fresh create after stale-null cleanup: new transaction
+          try {
+            await idemRun("BEGIN IMMEDIATE", []);
+          } catch (e) {
+            res.status(503).json({ error: "Database busy, retry" });
+            return;
+          }
+        }
+        // Not found (or cleaned): claim + validate + insert atomically
+        const nowIso = new Date().toISOString();
+        try {
+          await idemRun(
+            "INSERT INTO idempotency_keys (token_id, key, method, route, payload_hash, expense_id, created_at) VALUES (?, ?, ?, ?, ?, NULL, ?)",
+            [req.token.id, idemKey, "POST", "/api/expenses", payloadHash, nowIso]
+          );
+        } catch (e) {
+          if (e && e.code === "SQLITE_BUSY") {
+            await idemRun("ROLLBACK", []).catch(() => {});
+            res.status(503).json({ error: "Database busy, retry" });
+            return;
+          }
+          // Race lost (claim appeared): reload and return deduplicated path
+          const raced = await idemGet("SELECT token_id, key, method, route, payload_hash, expense_id FROM idempotency_keys WHERE token_id = ? AND key = ?", [req.token.id, idemKey]).catch(() => null);
+          await idemRun("ROLLBACK", []).catch(() => {});
+          if (raced && raced.payload_hash === payloadHash && raced.expense_id != null) {
+            const ex = await dbGetAsync(db, "SELECT id FROM expenses WHERE id = ?", [raced.expense_id]).catch(() => null);
+            if (ex) {
+              res.json({ id: raced.expense_id, deduplicated: true });
+              return;
+            }
+            res.json({ id: raced.expense_id, deduplicated: true, deleted: true });
+            return;
+          }
+          if (raced) {
+            res.status(409).json({ error: "Idempotency key reused with a different payload" });
+            return;
+          }
+          res.status(500).json({ error: "Failed to save expense." });
+          return;
+        }
+
+        // Existing validation (same messages as session path)
+        if (!isValidDate(date)) {
+          await idemRun("ROLLBACK", []).catch(() => {});
+          res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
+          return;
+        }
+        if (typeof details !== "string" || !details.trim()) {
+          await idemRun("ROLLBACK", []).catch(() => {});
+          res.status(400).json({ error: "Details are required." });
+          return;
+        }
+        if (!category || typeof category !== "string") {
+          await idemRun("ROLLBACK", []).catch(() => {});
+          res.status(400).json({ error: "Category is required." });
+          return;
+        }
+        const amt = Number(amount);
+        if (!Number.isFinite(amt)) {
+          await idemRun("ROLLBACK", []).catch(() => {});
+          res.status(400).json({ error: "Amount must be a valid number." });
+          return;
+        }
+        const origAmt = original_amount != null ? Number(original_amount) : null;
+        const origCurr = original_currency || null;
+        const exRate = exchange_rate != null ? Number(exchange_rate) : null;
+        if (origAmt !== null && !Number.isFinite(origAmt)) {
+          await idemRun("ROLLBACK", []).catch(() => {});
+          res.status(400).json({ error: "Amount must be a valid number." });
+          return;
+        }
+        if (exRate !== null && !Number.isFinite(exRate)) {
+          await idemRun("ROLLBACK", []).catch(() => {});
+          res.status(400).json({ error: "Amount must be a valid number." });
+          return;
+        }
+        const cleanNote = (typeof note === "string" ? note.trim() : "") || "";
+        const catRow = await idemGet("SELECT id FROM categories WHERE name = ?", [category]).catch(() => null);
+        if (!catRow) {
+          await idemRun("ROLLBACK", []).catch(() => {});
+          res.status(400).json({ error: "Invalid category." });
+          return;
+        }
+        let insertResult;
+        try {
+          insertResult = await idemRun(
+            "INSERT INTO expenses (date, details, category, amount, original_amount, original_currency, exchange_rate, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [date, details.trim(), category, amt, origAmt, origCurr, exRate, cleanNote]
+          );
+        } catch (e) {
+          await idemRun("ROLLBACK", []).catch(() => {});
+          if (e && e.code === "SQLITE_BUSY") {
+            res.status(503).json({ error: "Database busy, retry" });
+          } else {
+            res.status(500).json({ error: "Failed to save expense." });
+          }
+          return;
+        }
+        const newId = insertResult.lastID;
+        try {
+          await idemRun("UPDATE idempotency_keys SET expense_id = ? WHERE token_id = ? AND key = ?", [newId, req.token.id, idemKey]);
+          await idemRun("COMMIT", []);
+        } catch (e) {
+          await idemRun("ROLLBACK", []).catch(() => {});
+          res.status(500).json({ error: "Failed to save expense." });
+          return;
+        }
+        res.status(201).json({ id: newId });
+        return;
+      } catch (e) {
+        try {
+          await dbRunAsync(idemDb, "ROLLBACK", []);
+        } catch {}
+        if (e && e.code === "SQLITE_BUSY") {
+          res.status(503).json({ error: "Database busy, retry" });
+          return;
+        }
+        res.status(500).json({ error: "Failed to save expense." });
+        return;
+      }
+    }).catch(() => {
+      // runIdemExclusive itself should not reject; handler already responded
+    });
+    return;
+  }
+
   const { date, details, category, amount, original_amount, original_currency, exchange_rate, note } = req.body;
   if (!isValidDate(date)) {
     return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
@@ -1561,6 +1992,74 @@ app.post("/api/lock/recovery", (req, res) => {
     db.run("DELETE FROM app_lock WHERE id = 1", (delErr) => {
       if (delErr) return res.status(500).json({ error: "Failed to recover." });
       return res.json({ success: true });
+    });
+  });
+});
+
+// --- Personal access token management (session-only, Work item 5) ---
+function requireTokenManager(req, res, cb) {
+  db.get("SELECT id FROM app_lock WHERE id = 1", (err, row) => {
+    if (err) return res.status(500).json({ error: "DB error" });
+    if (!row) {
+      return res.status(403).json({ error: "Set up the app lock before managing API tokens." });
+    }
+    if (!req.session || req.session.authenticated !== true) {
+      return res.status(401).json({ error: "Unauthorized. Please unlock the app first." });
+    }
+    cb();
+  });
+}
+
+app.get("/api/tokens", (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  requireTokenManager(req, res, () => {
+    db.all("SELECT id, name, profile, created_at, last_used_at, revoked_at FROM personal_access_tokens ORDER BY id ASC", (err, rows) => {
+      if (err) return res.status(500).json({ error: "DB error" });
+      return res.json({ tokens: rows || [] });
+    });
+  });
+});
+
+app.post("/api/tokens", (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  requireTokenManager(req, res, () => {
+    let { name, profile } = req.body || {};
+    if (name === undefined || name === null || String(name).trim() === "") name = "agent";
+    name = String(name).trim();
+    if (name.length > 80) {
+      return res.status(400).json({ error: "Token name too long (max 80 chars)." });
+    }
+    if (profile === undefined || profile === null || profile === "") profile = "read";
+    if (profile !== "read" && profile !== "write") {
+      return res.status(400).json({ error: "Invalid profile. Use 'read' or 'write'." });
+    }
+    const raw = crypto.randomBytes(48).toString("base64url");
+    const tokenHash = hashToken(raw);
+    const createdAt = new Date().toISOString();
+    db.run(
+      "INSERT INTO personal_access_tokens (name, profile, token_hash, created_at) VALUES (?, ?, ?, ?)",
+      [name, profile, tokenHash, createdAt],
+      function (err) {
+        if (err) return res.status(500).json({ error: "Failed to create token." });
+        return res.status(201).json({ id: this.lastID, name, profile, token: raw, created_at: createdAt });
+      }
+    );
+  });
+});
+
+app.post("/api/tokens/:id/revoke", (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  requireTokenManager(req, res, () => {
+    const idStr = req.params.id;
+    if (!/^\d+$/.test(idStr)) return res.status(404).json({ error: "Token not found." });
+    const id = Number(idStr);
+    db.get("SELECT id, revoked_at FROM personal_access_tokens WHERE id = ?", [id], (err, row) => {
+      if (err) return res.status(500).json({ error: "DB error" });
+      if (!row || row.revoked_at) return res.status(404).json({ error: "Token not found." });
+      db.run("UPDATE personal_access_tokens SET revoked_at = datetime('now') WHERE id = ?", [id], (uErr) => {
+        if (uErr) return res.status(500).json({ error: "Failed to revoke token." });
+        return res.json({ success: true });
+      });
     });
   });
 });

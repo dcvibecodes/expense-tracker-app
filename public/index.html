@@ -501,6 +501,30 @@
           </div> 
         </section> 
 
+        <section class="card">
+          <h2>API tokens</h2>
+          <p class="settings-desc">Create tokens for an external agent. Read-only by default; read + write can add, edit and delete expenses.</p>
+          <div class="category-add-row" id="api-token-add-row">
+            <input type="text" id="new-token-name" placeholder="Token name (e.g. agent)" maxlength="80" />
+            <label>Profile
+              <select id="new-token-profile">
+                <option value="read">Read only</option>
+                <option value="write">Read + write</option>
+              </select>
+            </label>
+            <div class="category-add-actions">
+              <button id="add-token-btn" type="button" class="add-btn">Create token</button>
+            </div>
+          </div>
+          <p id="token-profile-warning" class="form-msg" style="display:none;">Read + write can add, edit and delete expenses. Create only if you need it.</p>
+          <p id="token-message" class="form-msg"></p>
+          <div id="new-token-result" style="display:none;">
+            <p class="settings-desc">Copy this token now — it is shown once, store it now.</p>
+            <code id="new-token-value" class="recovery-code" style="word-break:break-all;"></code>
+          </div>
+          <div id="api-tokens-list" class="categories-list"></div>
+        </section>
+
       </div>
 
     </main> 

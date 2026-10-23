@@ -1,6 +1,28 @@
-# Spend Less v4.9.6
+# Spend Less v4.10.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.10.0
+
+### Personal Access Token API — External Agent Access
+
+- **Bearer tokens with two profiles** — create tokens in Settings → API tokens. `read` (default) can run budget queries; `write` can also create, edit and delete single expenses. No custom ACLs.
+- **Atomic idempotent creates** — token `POST /api/expenses` requires an `Idempotency-Key` header. Replays return `200 { id, deduplicated: true }`; a replay after delete returns `deleted: true` without recreating. Key reuse with a different payload returns `409`.
+- **Fail-safe auth** — bad/unknown/revoked tokens get `401` on every route (including `/api/csrf-token` and lock routes), never fall through to session or unlocked mode. Tokens never serve HTML and never reach batch, category-write, settings-write, import, forecast, scratchpad, lock, or token-management routes.
+- **Hygiene** — token responses and `/api/tokens*` send `Cache-Control: no-store`; the service worker never caches token traffic; hashes only at rest; raw token shown once. Serve over HTTPS in production (tokens are bearer secrets).
+- **No existing behavior changed** — browser session flow, PIN/lock, CSRF, and route shapes are unchanged.
+
+### API
+
+- Auth: `Authorization: Bearer $TEST_TOKEN`.
+- `read` allows: `GET /api/expenses`, `GET /api/expenses/:id` (digits only), `GET /api/reports`, `GET /api/reports/cumulative`, `GET /api/categories`, `GET /api/suggestions`, `GET /api/details`, `GET /api/settings`, `GET /api/currency-rates`, `GET /api/charts`, `GET /api/charts/average`, `GET /api/export/csv`; `POST /api/expenses/check-duplicate`.
+- `write` adds: `POST /api/expenses` (requires `Idempotency-Key`), `PUT /api/expenses/:id`, `DELETE /api/expenses/:id`.
+- Always denied for tokens (403): `/api/csrf-token`, all `/api/lock/*`, all `/api/tokens*`, `PATCH /api/expenses/batch*`, category writes, `PUT /api/settings`, currency-rate writes, `POST /api/import/csv`, all `/api/extrapolate/*`, `PUT /api/scratchpad`.
+- Idempotency: send `Idempotency-Key: <1-200 chars>` (header, or `idempotency_key` body fallback). Payload fingerprint is canonical JSON with numeric normalization for `amount`, `original_amount`, `exchange_rate` only. Same key + same payload → `200 deduplicated:true` (one row total, safe for concurrent retries). Same key + different payload → `409`. Deleted-resource replay → `200 { id, deduplicated:true, deleted:true }`, no new row. Failures between claim and insert leave no claim and no expense, so the key can be retried.
+- Token management (unlocked browser session only, lock must be configured): `GET /api/tokens`, `POST /api/tokens { name?, profile? }` → `201 { id, name, profile, token, created_at }` (raw shown once), `POST /api/tokens/:id/revoke`.
+- Rate limits: valid tokens `300/hour` per token → `429 { error: "Token rate limit reached. Slow down and try again later." }`; invalid-token attempts `60/hour` per IP.
+- HTTPS note: tokens are bearer secrets — only use over HTTPS in production.
+- Agent rule: a token profile is technical capability, not permission — only create, edit, or delete entries the owner has explicitly instructed, and never invent operations on your own.
 
 ## What's New in v4.9.6
 

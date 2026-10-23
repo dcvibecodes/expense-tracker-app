@@ -479,28 +479,6 @@
           <p id="date-format-message" class="form-msg"></p> 
         </section> 
 
-        <section class="card"> 
-          <h2>App Lock</h2> 
-          <div id="lock-setup-section"> 
-            <p class="settings-desc">Set a 6-digit PIN to lock the app.</p> 
-            <div class="lock-form-row"> 
-              <label>PIN <input type="password" id="settings-pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="6 digits" /></label> 
-              <label>Confirm PIN <input type="password" id="settings-pin-confirm" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="Confirm" /></label> 
-            </div> 
-            <button id="settings-lock-enable" type="button" class="add-btn">Enable Lock</button> 
-            <p id="settings-lock-message" class="form-msg"></p> 
-          </div> 
-          <div id="lock-recovery-alert-section" style="display:none;"></div> 
-          <div id="lock-disable-section" style="display:none;"> 
-            <p class="lock-active-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> App is currently locked</p> 
-            <div class="lock-form-row"> 
-              <label>PIN <input type="password" id="settings-disable-pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="Enter PIN" /></label> 
-            </div> 
-            <button id="settings-lock-disable" type="button" class="cancel-btn">Disable Lock</button> 
-            <p id="settings-disable-message" class="form-msg"></p> 
-          </div> 
-        </section> 
-
         <section class="card" id="api-tokens-section">
           <h2>API Tokens</h2>
           <p class="settings-desc">Personal access tokens let an external agent you approve run budget queries and log expenses you dictate, without your browser session. Tokens are bearer secrets — anyone holding one can use it.</p>
@@ -541,6 +519,28 @@
           </div>
           </div>
         </section>
+
+        <section class="card"> 
+          <h2>App Lock</h2> 
+          <div id="lock-setup-section"> 
+            <p class="settings-desc">Set a 6-digit PIN to lock the app.</p> 
+            <div class="lock-form-row"> 
+              <label>PIN <input type="password" id="settings-pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="6 digits" /></label> 
+              <label>Confirm PIN <input type="password" id="settings-pin-confirm" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="Confirm" /></label> 
+            </div> 
+            <button id="settings-lock-enable" type="button" class="add-btn">Enable Lock</button> 
+            <p id="settings-lock-message" class="form-msg"></p> 
+          </div> 
+          <div id="lock-recovery-alert-section" style="display:none;"></div> 
+          <div id="lock-disable-section" style="display:none;"> 
+            <p class="lock-active-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> App is currently locked</p> 
+            <div class="lock-form-row"> 
+              <label>PIN <input type="password" id="settings-disable-pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="Enter PIN" /></label> 
+            </div> 
+            <button id="settings-lock-disable" type="button" class="cancel-btn">Disable Lock</button> 
+            <p id="settings-disable-message" class="form-msg"></p> 
+          </div> 
+        </section> 
 
       </div>
 

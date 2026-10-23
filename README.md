@@ -1,6 +1,12 @@
-# Spend Less v4.10.2
+# Spend Less v4.10.3
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.10.3
+
+### Settings Order Matches Invest More
+
+- **API Tokens is now second-to-last, App Lock last** — the Settings cards were in a different order than Invest More; the section order now matches. No functional change.
 
 ## What's New in v4.10.2
 

@@ -3229,31 +3229,61 @@ document.querySelectorAll('#settings-pin, #settings-pin-confirm, #settings-disab
 });
 
 // ===== API TOKENS SETTINGS (mirrors Invest More) =====
+function formatTokenDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
 async function loadApiTokens() {
   const tbody = document.getElementById("settings-tokens-list");
-  if (!tbody) return;
-  // Token management is desktop-only; mobile shows a notice instead.
-  if (window.matchMedia("(max-width: 768px)").matches) return;
+  const cards = document.getElementById("settings-tokens-cards");
+  if (!tbody || !cards) return;
+  const renderEmpty = (text) => {
+    tbody.innerHTML = `<tr><td colspan="5" class="settings-desc">${text}</td></tr>`;
+    cards.innerHTML = `<p class="token-empty">${text}</p>`;
+  };
   try {
     const res = await safeFetch("/api/tokens");
     const data = await res.json();
     if (!res.ok) {
-      tbody.innerHTML = `<tr><td colspan="5" class="settings-desc">Token management needs the app lock set up first.</td></tr>`;
+      renderEmpty("Token management needs the app lock set up first.");
       return;
     }
     const tokens = data.tokens || [];
     if (tokens.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="settings-desc">No API tokens yet.</td></tr>`;
+      renderEmpty("No API tokens yet.");
       return;
     }
+    const profileLabel = (profile) => profile === "write" ? "Read + write" : "Read only";
     tbody.innerHTML = tokens.map((t) => {
       const revoked = !!t.revoked_at;
       const action = revoked
         ? `<span class="settings-desc">Revoked</span>`
         : `<button type="button" class="cancel-btn" data-token-revoke="${t.id}">Revoke</button>`;
-      return `<tr><td>${escapeHtml(t.name)}</td><td>${t.profile === "write" ? "Read + write" : "Read only"}</td><td>${escapeHtml(t.created_at || "")}</td><td>${escapeHtml(t.last_used_at || "—")}</td><td class="col-actions">${action}</td></tr>`;
+      const createdLabel = escapeHtml(formatTokenDate(t.created_at));
+      const lastUsedLabel = escapeHtml(formatTokenDate(t.last_used_at));
+      return `<tr><td>${escapeHtml(t.name)}</td><td>${profileLabel(t.profile)}</td><td title="${escapeHtml(t.created_at || "")}">${createdLabel}</td><td title="${escapeHtml(t.last_used_at || "")}">${lastUsedLabel}</td><td class="col-actions">${action}</td></tr>`;
     }).join("");
-    tbody.querySelectorAll("[data-token-revoke]").forEach((btn) => {
+    cards.innerHTML = tokens.map((t) => {
+      const revoked = !!t.revoked_at;
+      const action = revoked
+        ? `<span class="token-card-revoked">Revoked</span>`
+        : `<button type="button" class="cancel-btn" data-token-revoke="${t.id}">Revoke</button>`;
+      return `<div class="token-card${revoked ? " is-revoked" : ""}">
+        <div class="token-card-head">
+          <span class="token-card-name">${escapeHtml(t.name)}</span>
+          <span class="token-card-badge${t.profile === "write" ? " is-write" : ""}">${profileLabel(t.profile)}</span>
+        </div>
+        <div class="token-card-meta">
+          <div class="token-card-field"><span class="token-card-label">Created</span><span class="token-card-value" title="${escapeHtml(t.created_at || "")}">${escapeHtml(formatTokenDate(t.created_at))}</span></div>
+          <div class="token-card-field"><span class="token-card-label">Last used</span><span class="token-card-value" title="${escapeHtml(t.last_used_at || "")}">${escapeHtml(formatTokenDate(t.last_used_at))}</span></div>
+        </div>
+        <div class="token-card-actions">${action}</div>
+      </div>`;
+    }).join("");
+    document.querySelectorAll("#settings-tokens-list [data-token-revoke], #settings-tokens-cards [data-token-revoke]").forEach((btn) => {
       btn.addEventListener("click", async () => {
         try {
           const r = await safeFetch(`/api/tokens/${btn.getAttribute("data-token-revoke")}/revoke`, { method: "POST" });
@@ -3265,6 +3295,19 @@ async function loadApiTokens() {
 }
 
 (function initApiTokensUI() {
+  const selectTokenText = () => {
+    const textEl = document.getElementById("settings-token-once-text");
+    if (textEl && textEl.offsetParent !== null) {
+      const range = document.createRange();
+      range.selectNodeContents(textEl);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      return;
+    }
+    const input = document.getElementById("settings-token-once-value");
+    if (input) input.select();
+  };
   const profileSel = document.getElementById("settings-token-profile");
   const warningEl = document.getElementById("settings-token-profile-warning");
   if (profileSel && warningEl) {
@@ -3295,6 +3338,8 @@ async function loadApiTokens() {
           return;
         }
         if (valueEl) valueEl.value = data.token || "";
+        const textEl = document.getElementById("settings-token-once-text");
+        if (textEl) textEl.textContent = data.token || "";
         if (resultEl) resultEl.style.display = "block";
         if (nameEl) nameEl.value = "";
         if (msgEl) { msgEl.textContent = "Token created. Copy it now — it will never be shown again."; msgEl.className = "form-msg success"; }
@@ -3309,10 +3354,10 @@ async function loadApiTokens() {
       if (!input) return;
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(input.value);
-        else { input.select(); document.execCommand("copy"); }
+        else { selectTokenText(); document.execCommand("copy"); }
         copyBtn.textContent = "Copied";
         setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
-      } catch (e) { input.select(); }
+      } catch (e) { selectTokenText(); }
     });
   }
 })();

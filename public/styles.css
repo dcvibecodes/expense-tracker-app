@@ -2103,8 +2103,7 @@ body { overflow-x: clip; }
 .skeleton-text-sm { height: 10px; border-radius: 3px; width: 60%; }
 .skeleton-chart { height: 200px; border-radius: 6px; }
 
-/* ── API tokens: desktop-only management (mirrors Invest More) ── */
-.api-tokens-mobile-note { display: none; }
+/* ── API tokens: responsive management (mirrors Invest More) ── */
 .settings-add { display: flex; gap: 6px; align-items: center; }
 .settings-add input { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.8rem; background: var(--elevated); color: var(--text); min-height: 34px; font-family: inherit; box-shadow: var(--shadow-item); }
 .settings-select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.8rem; background: var(--elevated); color: var(--text); min-width: 160px; min-height: 34px; font-family: inherit; box-shadow: var(--shadow-item); }
@@ -2114,8 +2113,43 @@ body { overflow-x: clip; }
 .token-table th, .token-table td { padding: 7px 8px; text-align: left; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .token-table th { font-weight: 600; font-size: 0.66rem; text-transform: uppercase; color: var(--text-faint); letter-spacing: 0.4px; }
 .token-table td { overflow: hidden; text-overflow: ellipsis; }
+.token-table th:nth-child(1), .token-table td:nth-child(1) { width: 24%; }
+.token-table th:nth-child(2), .token-table td:nth-child(2) { width: 16%; }
+.token-table th:nth-child(3), .token-table td:nth-child(3) { width: 23%; }
+.token-table th:nth-child(4), .token-table td:nth-child(4) { width: 23%; }
+.token-table th:nth-child(5), .token-table td:nth-child(5) { width: 14%; }
+.token-table td:nth-child(3), .token-table td:nth-child(4) { white-space: normal; overflow-wrap: anywhere; }
 .token-table .col-actions { text-align: center; }
+.token-cards { display: none; }
+.token-once-text { display: none; margin: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 5px; background: var(--elevated); color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.72rem; line-height: 1.45; overflow-wrap: anywhere; user-select: all; }
 @media (max-width: 768px) {
-  .api-tokens-desktop { display: none; }
-  #api-tokens-section .api-tokens-mobile-note { display: block; }
+  .token-table-desktop { display: none; }
+  .token-cards { display: flex; flex-direction: column; gap: 8px; }
+  #settings-token-once-value { display: none; }
+  .token-once-text { display: block; }
+  #settings-token-copy-btn { width: 100%; }
+  .token-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 10px 12px;
+    background: var(--elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    box-shadow: var(--shadow-item);
+  }
+  .token-card.is-revoked { opacity: 0.68; }
+  .token-card-head { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 6px 8px; min-width: 0; }
+  .token-card-name { flex: 1 1 140px; min-width: 0; font-size: 0.82rem; font-weight: 600; overflow-wrap: anywhere; }
+  .token-card-badge { flex: none; padding: 2px 8px; border: 1px solid var(--border-subtle); border-radius: 999px; background: var(--bg); color: var(--text-faint); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; white-space: nowrap; }
+  .token-card-badge.is-write { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+  .token-card-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px 10px; }
+  .token-card-field { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .token-card-label { font-size: 0.6rem; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-faint); }
+  .token-card-value { font-size: 0.7rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .token-card-actions { display: flex; justify-content: flex-end; }
+  .token-card-actions .cancel-btn { min-height: 36px; }
+  .token-card-revoked { font-size: 0.7rem; font-weight: 600; color: var(--text-faint); }
+  .token-empty { margin: 0; padding: 8px 0; font-size: 0.72rem; color: var(--text-faint); }
 }

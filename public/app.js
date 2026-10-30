@@ -783,19 +783,30 @@ function anyOverlayOpen() {
 
 let lastAutoRefresh = Date.now();
 const AUTO_REFRESH_MIN_MS = 30000;
+let refreshing = false;
 
 async function manualRefresh() {
+  if (refreshing) return false;
   const btn = document.getElementById("refresh-btn");
-  if (!btn || btn.disabled) return;
-  btn.disabled = true;
-  btn.classList.add("spinning");
+  refreshing = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add("spinning");
+  }
   try {
     await refreshActiveTab();
     populateDetailsList();
     showToast("Updated", "success");
+    return true;
+  } catch (err) {
+    showToast(err.message || "Refresh failed", "error");
+    return false;
   } finally {
-    btn.disabled = false;
-    btn.classList.remove("spinning");
+    refreshing = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove("spinning");
+    }
   }
 }
 
@@ -812,6 +823,163 @@ document.getElementById("refresh-btn")?.addEventListener("click", manualRefresh)
 // made elsewhere (e.g. an AI agent hitting the API) show up automatically.
 document.addEventListener("visibilitychange", () => { if (!document.hidden) autoRefresh(); });
 window.addEventListener("focus", autoRefresh);
+
+// ===== PULL TO REFRESH (touch phones) =====
+// Desktop/web keeps the header refresh icon. Touch devices in the mobile layout
+// pull down at the top of the page; the same manualRefresh() runs. The pill is
+// fixed and the page itself is never transformed.
+const PULL_MEDIA = window.matchMedia("(max-width: 899px) and (pointer: coarse)");
+const PULL_THRESHOLD = 56;
+const PULL_MAX = 90;
+const PULL_RESISTANCE = 0.7;
+const PULL_MIN_SPIN = 500;
+const PULL_START_OFFSET = -36;
+
+let pullGesture = null;
+let pullBusy = false;
+
+function pullElements() {
+  return {
+    pill: document.getElementById("pull-refresh"),
+    label: document.getElementById("pull-refresh-label"),
+  };
+}
+
+function hidePullIndicator() {
+  const { pill, label } = pullElements();
+  if (!pill) return;
+  pill.classList.remove("pulling", "armed", "refreshing");
+  pill.style.opacity = "0";
+  pill.style.transform = `translate(-50%, ${PULL_START_OFFSET}px)`;
+  if (label) label.textContent = "Pull to refresh";
+}
+
+function paintPullIndicator(distance, gesture) {
+  const { pill, label } = pullElements();
+  if (!pill) return;
+  const armed = distance >= PULL_THRESHOLD;
+  pill.classList.add("pulling");
+  pill.classList.remove("refreshing");
+  pill.classList.toggle("armed", armed);
+  pill.style.opacity = String(Math.min(1, distance / 48));
+  pill.style.transform = `translate(-50%, ${PULL_START_OFFSET + distance}px)`;
+  if (label && label.textContent !== (armed ? "Release to refresh" : "Pull to refresh")) {
+    label.textContent = armed ? "Release to refresh" : "Pull to refresh";
+  }
+  if (gesture) gesture.armed = armed;
+}
+
+function pullPageTop() {
+  return (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
+}
+
+function pullAllowed() {
+  if (!PULL_MEDIA.matches) return false;
+  if (refreshing || pullBusy) return false;
+  if (!pullPageTop()) return false;
+  if (anyOverlayOpen()) return false;
+  return true;
+}
+
+function onPullStart(event) {
+  if (event.touches.length !== 1) return;
+  if (!pullAllowed()) return;
+  const touch = event.touches[0];
+  pullGesture = {
+    id: touch.identifier,
+    startX: touch.clientX,
+    startY: touch.clientY,
+    distance: 0,
+    armed: false,
+    mode: null,
+  };
+}
+
+function onPullMove(event) {
+  const gesture = pullGesture;
+  if (!gesture) return;
+  if (event.touches.length > 1) {
+    pullGesture = null;
+    hidePullIndicator();
+    return;
+  }
+  const touch = Array.from(event.touches).find((item) => item.identifier === gesture.id);
+  if (!touch) return;
+
+  const dx = touch.clientX - gesture.startX;
+  const dy = touch.clientY - gesture.startY;
+
+  if (!gesture.mode) {
+    // Let horizontal swipes and upward scrolls behave normally.
+    if (Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(dy)) {
+      pullGesture = null;
+      return;
+    }
+    if (dy < -6) {
+      pullGesture = null;
+      return;
+    }
+    if (dy <= 6) return;
+    gesture.mode = "pull";
+  }
+
+  if (!pullPageTop()) {
+    pullGesture = null;
+    hidePullIndicator();
+    return;
+  }
+
+  if (event.cancelable) event.preventDefault();
+  gesture.distance = Math.max(0, Math.min(PULL_MAX, dy * PULL_RESISTANCE));
+  paintPullIndicator(gesture.distance, gesture);
+}
+
+function onPullEnd() {
+  const gesture = pullGesture;
+  if (!gesture) return;
+  pullGesture = null;
+  if (gesture.mode !== "pull") return;
+  if (gesture.distance >= PULL_THRESHOLD) {
+    runPullRefresh();
+  } else {
+    hidePullIndicator();
+  }
+}
+
+function onPullCancel() {
+  if (!pullGesture) return;
+  pullGesture = null;
+  hidePullIndicator();
+}
+
+async function runPullRefresh() {
+  const { pill, label } = pullElements();
+  if (!pill) return;
+  pullBusy = true;
+  pill.classList.remove("pulling");
+  pill.classList.add("armed", "refreshing");
+  pill.style.opacity = "1";
+  pill.style.transform = `translate(-50%, ${PULL_START_OFFSET + PULL_THRESHOLD}px)`;
+  if (label) label.textContent = "Refreshing\u2026";
+
+  const startedAt = Date.now();
+  await manualRefresh();
+  const remaining = PULL_MIN_SPIN - (Date.now() - startedAt);
+  if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
+
+  hidePullIndicator();
+  pullBusy = false;
+}
+
+document.addEventListener("touchstart", onPullStart, { passive: true });
+document.addEventListener("touchmove", onPullMove, { passive: false });
+document.addEventListener("touchend", onPullEnd, { passive: true });
+document.addEventListener("touchcancel", onPullCancel, { passive: true });
+PULL_MEDIA.addEventListener("change", () => {
+  if (PULL_MEDIA.matches) return;
+  pullGesture = null;
+  hidePullIndicator();
+});
 
 async function populateDetailsList() {
   try {

@@ -1,6 +1,14 @@
-# Spend Less v4.10.3
+# Spend Less v4.11.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.11.0
+
+### Pull Down to Refresh on Phones
+
+- **Phones and phone PWAs pull instead of tapping** — on touch devices in the mobile layout the header refresh icon is gone; pull down at the top of the page to run the same refresh for the active tab (tracker, reports, or forecast). A small pill shows "Pull to refresh" / "Release to refresh" / "Refreshing…" as you drag.
+- **Desktop and web keep the refresh button** — including a narrow desktop window; nothing changes there.
+- Service worker cache bumped to `spend-less-v7`.
 
 ## What's New in v4.10.3
 

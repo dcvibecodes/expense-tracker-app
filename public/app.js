@@ -591,10 +591,9 @@ function buildExpenseCard(row) {
   const card = document.createElement("div");
   card.className = "expense-card";
 
-  const hasNote = Boolean(row.note && String(row.note).trim());
-  const noteBtn = hasNote
-    ? `<button class="action-btn btn-note" data-id="${row.id}" title="View note" aria-label="View note" aria-expanded="false">${ICON.note}</button>`
-    : `<button class="action-btn btn-note notes-empty" data-id="${row.id}" title="No note" aria-label="No note" disabled>${ICON.noteEmpty}</button>`;
+  const noteBtn = row.note
+    ? `<button class="action-btn btn-note" data-id="${row.id}" title="View note" aria-label="View note">${ICON.note}</button>`
+    : `<button class="action-btn btn-note notes-empty" data-id="${row.id}" title="Add note" aria-label="Add note">${ICON.noteEmpty}</button>`;
 
   const abroadMeta = (row.original_currency && row.original_amount)
     ? ` · ${getCurrencySymbol(row.original_currency)} ${new Intl.NumberFormat(getCurrencyLocale(row.original_currency), { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(row.original_amount)}`
@@ -609,8 +608,7 @@ function buildExpenseCard(row) {
     <div class="expense-card-row compact-row">
       <span class="card-meta">${escapeHtml(formatCategory(row.category))} · ${escapeHtml(formatDate(row.date))}${abroadMeta}</span>
       <span class="card-actions">${noteBtn}<button class="action-btn btn-edit" data-id="${row.id}" title="Edit" aria-label="Edit expense">${ICON.edit}</button><button class="action-btn delete btn-delete" data-id="${row.id}" title="Delete" aria-label="Delete expense">${ICON.delete}</button></span>
-    </div>
-    ${hasNote ? `<div class="note-expand" data-note-for="${row.id}" hidden><div class="note-expand-text">${escapeHtml(row.note)}</div><button type="button" class="note-edit-btn" data-id="${row.id}">Edit note</button></div>` : ""}`;
+    </div>`;
   return card;
 }
 
@@ -1081,8 +1079,7 @@ rowsEl.addEventListener("click", async e => {
   const btn = e.target.closest("button"); if (!btn) return;
   const id = parseInt(btn.dataset.id, 10);
   const row = currentRows.find(r => r.id === id); if (!row) return;
-  if (btn.classList.contains("btn-note")) { toggleNoteExpand(id); }
-  else if (btn.classList.contains("note-edit-btn")) { openNotesModal(row); }
+  if (btn.classList.contains("btn-note")) { openNotesModal(row); }
   else if (btn.classList.contains("btn-edit")) { openEditModal(row); }
   else if (btn.classList.contains("btn-delete")) {
     if (!await showConfirm("Delete Expense", `${formatDate(row.date)} — ${row.details} — ${formatAmount(row.amount)}`)) return;
@@ -1312,16 +1309,6 @@ document.getElementById("note-toggle-link").addEventListener("click", e => {
 
 // ===== NOTES MODAL =====
 let notesCurrentExpenseId = null;
-
-function toggleNoteExpand(id) {
-  const panels = document.querySelectorAll(`[data-note-for="${id}"]`);
-  if (!panels.length) return;
-  const expand = panels[0].hidden;
-  panels.forEach(panel => { panel.hidden = !expand; });
-  document.querySelectorAll(`.btn-note[data-id="${id}"], .rpt-note-btn[data-id="${id}"]`).forEach(btn => {
-    if (!btn.disabled) btn.setAttribute("aria-expanded", String(expand));
-  });
-}
 
 function openNotesModal(row) {
   notesCurrentExpenseId = row.id;
@@ -2003,10 +1990,9 @@ html += ` | Total: ${formatAmountRounded(grandTotal)}`;
 }
 
 function buildCompactReportCardHTML(exp) {
-  const hasNote = Boolean(exp.note && String(exp.note).trim());
-  const noteBtn = hasNote
-    ? `<button class="action-btn rpt-note-btn" data-id="${exp.id}" title="View note" aria-label="View note" aria-expanded="false">${ICON.note}</button>`
-    : `<button class="action-btn rpt-note-btn notes-empty" data-id="${exp.id}" title="No note" aria-label="No note" disabled>${ICON.noteEmpty}</button>`;
+  const noteBtn = exp.note
+    ? `<button class="action-btn rpt-note-btn" data-id="${exp.id}" title="View note" aria-label="View note">${ICON.note}</button>`
+    : `<button class="action-btn rpt-note-btn notes-empty" data-id="${exp.id}" title="Add note" aria-label="Add note">${ICON.noteEmpty}</button>`;
 
   const abroadMeta = (exp.original_currency && exp.original_amount)
     ? ` · ${getCurrencySymbol(exp.original_currency)} ${new Intl.NumberFormat(getCurrencyLocale(exp.original_currency), { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(exp.original_amount)}`
@@ -2022,7 +2008,6 @@ function buildCompactReportCardHTML(exp) {
       <span class="card-meta">${escapeHtml(formatCategory(exp.category))} · ${escapeHtml(formatDate(exp.date))}${abroadMeta}</span>
       <span class="card-actions">${noteBtn}<button class="action-btn rpt-edit-btn" data-id="${exp.id}" title="Edit" aria-label="Edit expense">${ICON.edit}</button><button class="action-btn delete rpt-delete-btn" data-id="${exp.id}" title="Delete" aria-label="Delete expense">${ICON.delete}</button></span>
     </div>
-    ${hasNote ? `<div class="note-expand" data-note-for="${exp.id}" hidden><div class="note-expand-text">${escapeHtml(exp.note)}</div><button type="button" class="note-edit-btn" data-id="${exp.id}">Edit note</button></div>` : ""}
   </div>`;
 }
 
@@ -2053,7 +2038,6 @@ function renderReportTable(data) {
   </div>`;
 
   for (const exp of data) {
-    const hasNote = Boolean(exp.note && String(exp.note).trim());
     let amountDisplay = formatAmount(exp.amount);
     if (exp.original_currency && exp.original_amount) {
       amountDisplay += `<br><span class="original-amt">${getCurrencySymbol(exp.original_currency)} ${new Intl.NumberFormat(getCurrencyLocale(exp.original_currency), { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(exp.original_amount)}</span>`;
@@ -2064,11 +2048,8 @@ function renderReportTable(data) {
     html += `  <span class="rpt-label">${escapeHtml(exp.details)}</span>`;
     html += `  <span class="rpt-cat"><span class="cat-badge" style="background:${getCategoryColor(exp.category)}20;color:${getCategoryColor(exp.category)}">${escapeHtml(formatCategory(exp.category))}</span></span>`;
     html += `  <span class="rpt-amt">${amountDisplay}</span>`;
-    html += `  <span class="rpt-actions">${hasNote ? `<button class="action-btn rpt-note-btn" data-id="${exp.id}" title="View note" aria-label="View note" aria-expanded="false">${ICON.note}</button>` : `<button class="action-btn rpt-note-btn notes-empty" data-id="${exp.id}" title="No note" aria-label="No note" disabled>${ICON.noteEmpty}</button>`}<button class="action-btn rpt-edit-btn" data-id="${exp.id}" title="Edit" aria-label="Edit expense">${ICON.edit}</button><button class="action-btn delete rpt-delete-btn" data-id="${exp.id}" title="Delete" aria-label="Delete expense">${ICON.delete}</button></span>`;
+    html += `  <span class="rpt-actions">${exp.note ? `<button class="action-btn rpt-note-btn" data-id="${exp.id}" title="View note" aria-label="View note">${ICON.note}</button>` : `<button class="action-btn rpt-note-btn notes-empty" data-id="${exp.id}" title="Add note" aria-label="Add note">${ICON.noteEmpty}</button>`}<button class="action-btn rpt-edit-btn" data-id="${exp.id}" title="Edit" aria-label="Edit expense">${ICON.edit}</button><button class="action-btn delete rpt-delete-btn" data-id="${exp.id}" title="Delete" aria-label="Delete expense">${ICON.delete}</button></span>`;
     html += `</div>`;
-    if (hasNote) {
-      html += `<div class="note-expand rpt-note-expand" data-note-for="${exp.id}" hidden><div class="note-expand-text">${escapeHtml(exp.note)}</div><button type="button" class="note-edit-btn" data-id="${exp.id}">Edit note</button></div>`;
-    }
   }
   html += `</div></div>`;
 
@@ -2147,13 +2128,8 @@ reportWrap.addEventListener("click", async e => {
   // Handle note button click in report
   const noteBtn = e.target.closest(".rpt-note-btn");
   if (noteBtn) {
-    toggleNoteExpand(parseInt(noteBtn.dataset.id, 10));
-    return;
-  }
-
-  const noteEditBtn = e.target.closest(".note-edit-btn");
-  if (noteEditBtn) {
-    const exp = reportRows.find(r => r.id === parseInt(noteEditBtn.dataset.id, 10));
+    const id = parseInt(noteBtn.dataset.id, 10);
+    const exp = reportRows.find(r => r.id === id);
     if (exp) openNotesModal(exp);
     return;
   }

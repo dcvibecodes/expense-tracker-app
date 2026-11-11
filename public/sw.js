@@ -1,4 +1,4 @@
-const CACHE_NAME = "spend-less-v9";
+const CACHE_NAME = "spend-less-v8";
 const STATIC_ASSETS = [
   "/",
   "/manifest.json",

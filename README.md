@@ -1,6 +1,15 @@
-# Spend Less v4.11.0
+# Spend Less v4.12.0
 
 Personal expense tracking PWA with SQLite database. Part of a unified suite with Invest More.
+
+## What's New in v4.12.0
+
+### Expand Full Notes on Tap or Click
+
+- **Tap or click the note icon to read the whole note inline** — on the Tracker and Reports, the full text opens under the entry (desktop) or inside the compact card (mobile), preserving line breaks and long words. Tap/click again to collapse.
+- **Nothing shows while collapsed** — entries look exactly as before; there are no preview lines or ellipsis in the collapsed state.
+- **Only real notes open** — the note icon is enabled only on entries that have a note; entries without one keep the faded icon and it no longer reacts to clicks. Add or change a note from Edit expense or the **Edit note** link inside the expanded panel.
+- Service worker cache bumped to `spend-less-v9`.
 
 ## What's New in v4.11.0
 

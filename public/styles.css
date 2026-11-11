@@ -843,7 +843,8 @@ tbody tr:hover td { background: var(--accent-dim); }
 }
 .card-actions .action-btn.delete { color: var(--red); }
 .card-actions .btn-note.notes-empty { opacity: 0.3; }
-.card-actions .btn-note.notes-empty:hover { opacity: 0.7; }
+.card-actions .btn-note.notes-empty:not(:disabled):hover { opacity: 0.7; }
+.action-btn:disabled { cursor: default; }
 
 /* ── Modals ── */
 .modal-overlay { display: none; position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; }
@@ -1893,8 +1894,46 @@ body { overflow-x: clip; }
 
 .action-btn.notes-empty,
 .rpt-note-btn.notes-empty { opacity: 0.3; }
-.action-btn.notes-empty:hover,
-.rpt-note-btn.notes-empty:hover { opacity: 0.7; }
+.action-btn.notes-empty:not(:disabled):hover,
+.rpt-note-btn.notes-empty:not(:disabled):hover { opacity: 0.7; }
+
+/* ── Inline full-note expansion (tap/click the note icon) ── */
+.note-expand[hidden] { display: none; }
+.note-expand {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 6px;
+  padding-left: 9px;
+  border-left: 2px solid var(--accent);
+}
+.rpt-note-expand {
+  margin: 0 10px 9px;
+  padding: 8px 10px;
+  background: var(--elevated);
+  border: 1px solid var(--border-subtle);
+  border-left: 2px solid var(--accent);
+  border-radius: 6px;
+}
+.note-expand-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.note-edit-btn {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.72rem;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.note-edit-btn:hover { color: var(--accent-hover); }
 
 /* ── Scratchpad Panel ── */
 .scratchpad-body {

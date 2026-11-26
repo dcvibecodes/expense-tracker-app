@@ -2133,28 +2133,7 @@ app.put("/api/settings", (req, res) => {
 
 // --- Currency Rates API ---
 
-// --- Scratchpad API (single persistent note) ---
-app.get("/api/scratchpad", (req, res) => {
-  db.get("SELECT value FROM settings WHERE key = 'scratchpad'", (err, row) => {
-    if (err) return res.status(500).json({ error: "DB error" });
-    return res.json({ text: row ? row.value : "" });
-  });
-});
-
-app.put("/api/scratchpad", (req, res) => {
-  const { text } = req.body;
-  if (typeof text !== "string") {
-    return res.status(400).json({ error: "Text is required." });
-  }
-  if (text.length > 10000) {
-    return res.status(400).json({ error: "Note too long (max 10,000 characters)." });
-  }
-  db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('scratchpad', ?)", [text], (err) => {
-    if (err) return res.status(500).json({ error: "Failed to save." });
-    return res.json({ success: true });
-  });
-});
-
+// The Quick Notes scratchpad was removed. Its text stays in settings (key 'scratchpad'); nothing deletes it.
 app.get("/api/currency-rates", (req, res) => {
   db.all("SELECT code, name, rate, updated_at FROM currency_rates ORDER BY code ASC", (err, rows) => {
     if (err) return res.status(500).json({ error: "Failed to fetch currency rates." });

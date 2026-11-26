@@ -4,7 +4,8 @@
   "description": "Spend Less — personal expense tracking app with SQLite database",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "dependencies": {
     "compression": "^1.8.1",

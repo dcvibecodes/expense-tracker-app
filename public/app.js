@@ -780,7 +780,7 @@ async function refreshActiveTab() {
 // True when a dialog/sheet is open — avoid yanking the list out from
 // under an in-progress edit or form entry.
 function anyOverlayOpen() {
-  return !!document.querySelector(".modal-overlay.open, .notif-overlay.open, .mobile-form-overlay.open");
+  return !!document.querySelector(".modal-overlay.open, .mobile-form-overlay.open");
 }
 
 let lastAutoRefresh = Date.now();
@@ -3578,17 +3578,6 @@ async function initApp() {
 
 initApp();
 
-// ===== OVERLAY (shared by Quick Notes scratchpad) =====
-const notifOverlay = document.createElement("div");
-notifOverlay.className = "notif-overlay";
-document.body.appendChild(notifOverlay);
-
-notifOverlay.addEventListener("click", () => {
-  document.getElementById("scratchpad-panel")?.classList.remove("open");
-  notifOverlay.classList.remove("open");
-  document.body.style.overflow = "";
-});
-
 // ===== SERVICE WORKER REGISTRATION =====
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").then(reg => {
@@ -4491,119 +4480,6 @@ document.getElementById("extrap-reset-btn")?.addEventListener("click", async () 
 
 // CSV download
 document.getElementById("extrap-csv-btn")?.addEventListener("click", downloadForecastCSV);
-
-// ===== SCRATCHPAD (Quick Notes) =====
-(function() {
-  const scratchpadBtn = document.getElementById("scratchpad-btn");
-  const scratchpadPanel = document.getElementById("scratchpad-panel");
-  const scratchpadClose = document.getElementById("scratchpad-close");
-  const scratchpadText = document.getElementById("scratchpad-text");
-  const scratchpadSave = document.getElementById("scratchpad-save");
-  const scratchpadStatus = document.getElementById("scratchpad-status");
-  if (!scratchpadBtn || !scratchpadPanel) return;
-
-  let scratchpadSaveTimer = null;
-  let scratchpadLastSaved = "";
-
-  async function openScratchpad() {
-    scratchpadPanel.classList.add("open");
-    notifOverlay.classList.add("open");
-    document.body.style.overflow = "hidden";
-
-    await loadScratchpad();
-
-    // Auto-expand textarea to fit content
-    scratchpadText.style.height = "auto";
-    scratchpadText.style.height = scratchpadText.scrollHeight + "px";
-
-    scratchpadText.focus();
-}
-
-  async function closeScratchpad() {
-  clearTimeout(scratchpadSaveTimer);
-
-  await saveScratchpad();
-
-  scratchpadPanel.classList.remove("open");
-  notifOverlay.classList.remove("open");
-  document.body.style.overflow = "";
-}
-
-  async function loadScratchpad() {
-    try {
-      const res = await fetch("/api/scratchpad");
-      if (res.ok) {
-        const data = await res.json();
-        scratchpadText.value = data.text || "";
-        scratchpadLastSaved = scratchpadText.value;
-       
-      }
-    } catch {}
-  }
-
-  async function saveScratchpad() {
-    const text = scratchpadText.value;
-
-    if (text === scratchpadLastSaved) {
-      return;
-    }
-    scratchpadSave.disabled = true;
-    scratchpadSave.textContent = "Saving...";
-    scratchpadStatus.textContent = "Saving...";
-    scratchpadStatus.className = "scratchpad-status";
-    try {
-      const res = await safeFetch("/api/scratchpad", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text })
-      });
-      if (res.ok) {
-      scratchpadLastSaved = text;
-
-      scratchpadStatus.textContent = "Saved ✓";
-      scratchpadStatus.className = "scratchpad-status saved";
-      setTimeout(() => {
-        scratchpadStatus.textContent = "";
-        scratchpadStatus.className = "scratchpad-status";
-      }, 2000);
-    } else {
-        scratchpadStatus.textContent = "Failed to save";
-        scratchpadStatus.className = "scratchpad-status";
-      }
-    } catch {
-      scratchpadStatus.textContent = "Network error";
-      scratchpadStatus.className = "scratchpad-status";
-    }
-    scratchpadSave.disabled = false;
-    scratchpadSave.textContent = "Save";
-  }
-
-  scratchpadBtn.addEventListener("click", openScratchpad);
-  scratchpadClose.addEventListener("click", closeScratchpad);
-  scratchpadSave.addEventListener("click", saveScratchpad);
-
-// Auto-save 1 second after typing stops
-scratchpadText.addEventListener("input", () => {
-  // Auto-expand textarea
-  scratchpadText.style.height = "auto";
-  scratchpadText.style.height = scratchpadText.scrollHeight + "px";
-  
-  clearTimeout(scratchpadSaveTimer);
-
-  scratchpadSaveTimer = setTimeout(() => {
-    saveScratchpad();
-  }, 2000);
-});
-
-// Ctrl+Enter saves immediately
-scratchpadText.addEventListener("keydown", e => {
-  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-    e.preventDefault();
-    clearTimeout(scratchpadSaveTimer);
-    saveScratchpad();
-  }
-});
-})();
 
 // ===== MOBILE FORM (Bottom Sheet) =====
 (function() {

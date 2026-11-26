@@ -107,8 +107,9 @@ button, a, input, select, textarea, [tabindex] {
 }
 
 /* ── Header ── */
-/* The in-page title bar is gone; the refresh icon lives in the summary card. */
-.summary-hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+/* The title bar is gone. On desktop the refresh icon sits at the far right end of the tab bar (tabs stay centered). */
+.nav-tabs { display: contents; }
+.bottom-nav #refresh-btn { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); }
 
 .header-icon {
   width: 16px;
@@ -1267,6 +1268,7 @@ tbody tr:hover td { background: var(--accent-dim); }
 body { overflow-x: clip; }
 
 @media (max-width: 768px) {
+  .bottom-nav #refresh-btn { position: static; transform: none; flex: 0 0 auto; margin: 0 6px; }
   /* Nav → fixed bottom tab bar */
   .bottom-nav {
     position: fixed;

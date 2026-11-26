@@ -7,7 +7,7 @@ const compression = require("compression");
 const sqlite3 = require("sqlite3").verbose();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // --- Rate Limiting (in-memory) ---
 const rateLimitMap = new Map(); // key -> { count, resetAt }
@@ -37,16 +37,19 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-const dataDir = path.join(__dirname, "data");
+const dataDir = process.env.DATA_DIR || path.join(__dirname, "data");
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 const dbPath = path.join(dataDir, "expenses.db");
 const db = new sqlite3.Database(dbPath);
+// Wait up to 5s for a lock instead of failing at once with SQLITE_BUSY.
+db.configure("busyTimeout", 5000);
 // Dedicated connection used ONLY by the token idempotent-create transaction
 // (Work item 4). Keeps BEGIN IMMEDIATE..COMMIT isolated from the shared
 // connection so no foreign statement can interleave mid-transaction.
 const idemDb = new sqlite3.Database(dbPath);
+idemDb.configure("busyTimeout", 5000);
 
 db.serialize(() => {
   db.run(`
@@ -117,6 +120,9 @@ db.serialize(() => {
         if (!colNames.includes("note")) {
           db.run("ALTER TABLE expenses ADD COLUMN note TEXT DEFAULT ''");
         }
+        // Indexes for the date and category filters used by the tracker and reports.
+        db.run("CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date)");
+        db.run("CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category)");
       });
     };
 
@@ -388,13 +394,73 @@ if (fs.existsSync(secretPath)) {
   fs.writeFileSync(secretPath, SESSION_SECRET, "utf8");
 }
 
+// --- Persistent session store (survives restarts and deploys) ---
+// Sessions are kept in the app database. Only a SHA-256 of the session id is stored,
+// so a copied database file cannot be used to hijack a login.
+class SqliteSessionStore extends session.Store {
+  constructor(database) {
+    super();
+    this.db = database;
+    // Chain the statements: sqlite3 may otherwise run them in parallel on one connection.
+    this.db.run("CREATE TABLE IF NOT EXISTS sessions (sid_hash TEXT PRIMARY KEY, sess TEXT NOT NULL, expires INTEGER NOT NULL)", (err) => {
+      if (err) return console.error("session table:", err.message);
+      this.db.run("CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires)", (err2) => {
+        if (err2) return console.error("session index:", err2.message);
+        this.purge();
+      });
+    });
+    this.timer = setInterval(() => this.purge(), 15 * 60 * 1000);
+    this.timer.unref();
+  }
+  static key(sid) { return crypto.createHash("sha256").update(String(sid)).digest("hex"); }
+  static expiry(sess) {
+    const e = sess && sess.cookie && sess.cookie.expires ? new Date(sess.cookie.expires).getTime() : NaN;
+    return Number.isFinite(e) ? e : Date.now() + 7 * 24 * 60 * 60 * 1000;
+  }
+  purge() {
+    this.db.run("DELETE FROM sessions WHERE expires < ?", [Date.now()], (err) => {
+      if (err) console.error("session purge:", err.message);
+    });
+  }
+  get(sid, cb) {
+    this.db.get("SELECT sess, expires FROM sessions WHERE sid_hash = ?", [SqliteSessionStore.key(sid)], (err, row) => {
+      if (err) return cb(err);
+      if (!row) return cb(null, null);
+      if (row.expires < Date.now()) return this.destroy(sid, () => cb(null, null));
+      try { cb(null, JSON.parse(row.sess)); } catch (e) { cb(e); }
+    });
+  }
+  set(sid, sess, cb) {
+    this.db.run("INSERT OR REPLACE INTO sessions (sid_hash, sess, expires) VALUES (?, ?, ?)",
+      [SqliteSessionStore.key(sid), JSON.stringify(sess), SqliteSessionStore.expiry(sess)], (err) => { if (cb) cb(err || null); });
+  }
+  touch(sid, sess, cb) {
+    this.db.run("UPDATE sessions SET expires = ? WHERE sid_hash = ?",
+      [SqliteSessionStore.expiry(sess), SqliteSessionStore.key(sid)], (err) => { if (cb) cb(err || null); });
+  }
+  destroy(sid, cb) {
+    this.db.run("DELETE FROM sessions WHERE sid_hash = ?", [SqliteSessionStore.key(sid)], (err) => { if (cb) cb(err || null); });
+  }
+}
+
+// Optional reverse-proxy settings, off unless set in the environment:
+//   TRUST_PROXY=1        trust one proxy hop (nginx) so req.ip is the real client address
+//   COOKIE_SECURE=auto   mark the session cookie Secure when the request arrived over HTTPS
+//                        (needs TRUST_PROXY and nginx sending X-Forwarded-Proto); "true" forces it
+if (process.env.TRUST_PROXY) {
+  const tp = process.env.TRUST_PROXY;
+  app.set("trust proxy", /^\d+$/.test(tp) ? Number(tp) : tp === "true" ? true : tp);
+}
+const cookieSecure = process.env.COOKIE_SECURE === "auto" ? "auto" : process.env.COOKIE_SECURE === "true";
+
 app.use(session({
+  store: new SqliteSessionStore(db),
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: false,
+    secure: cookieSecure,
     sameSite: "strict",
     maxAge: 7 * 24 * 60 * 60 * 1000 // 1 week
   }

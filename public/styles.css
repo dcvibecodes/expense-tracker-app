@@ -107,16 +107,8 @@ button, a, input, select, textarea, [tabindex] {
 }
 
 /* ── Header ── */
-.app-header {
-  background: var(--bg);
-  border-bottom: 1px solid var(--border-subtle);
-  padding: 10px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.app-title { font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.375rem; letter-spacing: -0.025em; }
-.header-actions { display: flex; gap: 2px; align-items: center; }
+/* The in-page title bar is gone; the refresh icon lives in the summary card. */
+.summary-hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 
 .header-icon {
   width: 16px;
@@ -150,45 +142,6 @@ button, a, input, select, textarea, [tabindex] {
 .notification-bell:disabled { opacity: 0.6; cursor: default; }
 .notification-bell.spinning .header-icon { animation: refresh-spin 0.8s linear infinite; }
 @keyframes refresh-spin { to { transform: rotate(360deg); } }
-/* ── Notification Panel ── */
-.notification-panel {
-  display: none; position: fixed; top: 0; right: 0; width: 320px; max-width: 85vw;
-  height: 100vh; background: var(--surface); border-left: 1px solid var(--border);
-  z-index: 1200; flex-direction: column; animation: notif-slide-in 0.2s ease;
-}
-.notification-panel.open { display: flex; }
-@keyframes notif-slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
-
-.notification-panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px;
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: var(--text);
-  border-bottom: 1px solid var(--border-subtle);
-  flex-shrink: 0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--surface);
-}
-.scratchpad-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.scratchpad-header-actions .add-btn {
-  width: auto;
-  min-width: 60px;
-}
-#scratchpad-close { background: none; border: none; font-size: 14px; cursor: pointer; color: var(--text-faint); padding: 4px 6px; border-radius: 4px; }
-#scratchpad-close:hover { color: var(--text); background: var(--accent-dim); }
-
-.notif-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1100; }
-.notif-overlay.open { display: block; }
-
 /* ── Pull to Refresh (touch phones) ──
    Desktop/web keeps the header refresh icon. Touch devices in the mobile
    layout pull down at the top of the page instead. */
@@ -1453,9 +1406,6 @@ body { overflow-x: clip; }
   .modal-content { width: 95%; padding: 16px; }
   .edit-grid { grid-template-columns: 1fr; }
 
-  .app-header { padding: 8px 12px; }
-  .app-title { font-size: 1.125rem; }
-
   .pivot-header { flex-direction: column; align-items: flex-start; gap: 6px; }
 
   .chart-header-compact { flex-direction: column; align-items: flex-start; gap: 5px; }
@@ -1540,8 +1490,6 @@ body { overflow-x: clip; }
   .modal-buttons { flex-direction: column; }
   .modal-buttons button { flex: none; }
 
-  .app-header { padding: 8px 10px; }
-  .header-actions { gap: 3px; }
   .header-btn { padding: 4px 6px; font-size: 0.66rem; }
 
   .range-selector, .range-selector-trend { flex-wrap: wrap; }
@@ -1934,48 +1882,6 @@ body { overflow-x: clip; }
   cursor: pointer;
 }
 .note-edit-btn:hover { color: var(--accent-hover); }
-
-/* ── Scratchpad Panel ── */
-.scratchpad-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 14px;
-  overflow: hidden;
-}
-.scratchpad-textarea {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 0.8rem;
-  font-family: inherit;
-  background: var(--elevated);
-  color: var(--text);
-  resize: none;
-  line-height: 1.5;
-  outline: none;
-  min-height: 120px;
-  max-height: 60vh;
-  overflow-y: auto;
-  transition: border-color 0.15s;
-}
-.scratchpad-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
-[data-theme="dark"] .scratchpad-textarea { background-color: #000000; border-color: var(--border); color: var(--text); }
-[data-theme="dark"] .scratchpad-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
-
-.scratchpad-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 10px;
-  gap: 10px;
-}
-.scratchpad-status {
-  font-size: 0.68rem;
-  color: var(--text-faint);
-}
-.scratchpad-status.saved { color: var(--text-secondary); }
 
 /* ── Mobile Report Search Bar + Filter Chip ── */
 .mobile-report-search-bar {
